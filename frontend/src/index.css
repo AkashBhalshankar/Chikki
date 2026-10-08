@@ -1,0 +1,224 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-base: #09090b;
+  --panel-base: rgba(18, 18, 22, 0.75);
+  --accent-purple: #6366f1;
+  --accent-glow: rgba(99, 102, 241, 0.25);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+}
+
+body {
+  background-color: var(--bg-base);
+  color: #e4e4e7;
+  font-family: "JetBrains Mono", monospace;
+  margin: 0;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+
+button,
+a,
+input {
+  font: inherit;
+}
+
+/* =========================================
+   Layout & Viewport
+========================================= */
+
+.app-shell {
+  width: min(100%, 920px);
+  margin: 0 auto;
+}
+
+.app-viewport {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.chat-scroll-container {
+  height: calc(100dvh - 310px);
+  min-height: 280px;
+}
+
+@media (max-width: 640px) {
+  .chat-scroll-container {
+    height: calc(100dvh - 330px);
+  }
+}
+
+/* =========================================
+   Glassmorphism & Surfaces
+========================================= */
+
+.glass-panel {
+  background: var(--panel-base);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+}
+
+.surface-line {
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: rgba(15, 15, 18, 0.8);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* =========================================
+   Chikki Stage & Visualizer Auras
+========================================= */
+
+.chikki-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 260px;
+  width: min(100%, 480px);
+  margin: 0 auto;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.12) 0%, rgba(9, 9, 11, 0.6) 70%);
+  transition: all 400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chikki-stage:hover,
+.chikki-stage:focus-visible {
+  border-color: rgba(143, 225, 216, 0.45);
+  box-shadow: 0 0 42px -12px rgba(74, 163, 162, 0.32);
+  transform: translateY(-3px);
+  outline: none;
+}
+
+.chikki-stage.is-speaking {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 50px -10px rgba(99, 102, 241, 0.3);
+}
+
+.chikki-stage.is-listening {
+  border-color: rgba(52, 211, 153, 0.3);
+  box-shadow: 0 0 45px -12px rgba(52, 211, 153, 0.2);
+}
+
+/* =========================================
+   Modern Interactive Buttons
+========================================= */
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(24, 24, 27, 0.6);
+  padding: 0.45rem 0.9rem;
+  color: #a1a1aa;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  touch-action: manipulation;
+  transition: all 180ms ease;
+}
+
+.action-button:hover {
+  border-color: rgba(99, 102, 241, 0.5);
+  color: #ffffff;
+  background: rgba(99, 102, 241, 0.12);
+  transform: translateY(-1px);
+}
+
+.primary-action {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(79, 70, 229, 0.15) 100%);
+  color: #e0e7ff;
+}
+
+.primary-action:hover {
+  border-color: rgba(99, 102, 241, 0.8);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.35) 0%, rgba(79, 70, 229, 0.25) 100%);
+  box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.4);
+}
+
+.prompt-button {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: rgba(18, 18, 22, 0.5);
+  padding: 0.6rem 0.85rem;
+  color: #a1a1aa;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  text-align: left;
+  touch-action: manipulation;
+  transition: all 180ms ease;
+}
+
+.prompt-button:hover {
+  border-color: rgba(99, 102, 241, 0.45);
+  color: #ffffff;
+  background: rgba(99, 102, 241, 0.08);
+  transform: translateY(-1px);
+}
+
+/* =========================================
+   Accents & Grid
+========================================= */
+
+.dot-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.badge-live {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  color: #34d399;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.badge-live::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #34d399;
+  box-shadow: 0 0 8px #34d399;
+}
+
+/* Sleek auto-hiding scrollbar */
+.chikki-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.chikki-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.chikki-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chikki-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+
+.chikki-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.5);
+}
