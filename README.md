@@ -1,4 +1,4 @@
-# Chikki — Akash's AI Assistant
+# Chikki — Voice-First AI Career Assistance
 
 A voice-first AI career assistant. Recruiters can ask about Akash by voice or
 text; Chikki answers using the configured AI providers and the current Google
