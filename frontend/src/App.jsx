@@ -182,6 +182,7 @@ const audioQueue = {
     }
 
     const audio = new Audio(item.src);
+    audio.volume = 0.85;
     this.currentAudio = audio;
 
     const wordCount = item.text.trim().split(/\s+/).filter(Boolean).length;
@@ -272,6 +273,7 @@ const audioQueue = {
 export default function App() {
   const [active, setActive] = useState(false);
   const [chikkiState, setChikkiState] = useState("idle");
+  const [isAssistantSpeaking, setIsAssistantSpeaking] = useState(false);
   const [micError, setMicError] = useState(false);
   const [currentLang, setCurrentLang] = useState("en-IN");
   const [inputMode, setInputMode] = useState("voice");
@@ -384,6 +386,7 @@ export default function App() {
     };
 
     audioQueue.onPlayStateChange = (playing) => {
+      setIsAssistantSpeaking(playing);
       if (playing) {
         setChikkiState("speaking");
       } else {
@@ -453,13 +456,30 @@ export default function App() {
 
   const handleInterimSpeech = useCallback((interimText) => {
     if (!interimText) return;
-    if (activeTurnIdRef.current || audioQueue.isPlaying || audioQueue.queue.length > 0) {
+
+    // While Chikki is actively speaking, ignore single noise clicks and faint bleed
+    if (audioQueue.isPlaying || isAssistantSpeaking) {
+      const trimmed = interimText.trim().toLowerCase();
+      const words = trimmed.split(/\s+/).filter(Boolean);
+      const isStopWord = /^(stop|wait|hold on|pause|listen|chikki|quiet|ఆగు|ఆపండి|రుకో|रुको|चुप)/i.test(trimmed);
+
+      // Only interrupt if the user explicitly says a stop command OR a real phrase (>= 3 words)
+      if (isStopWord || words.length >= 3) {
+        activeTurnIdRef.current = null;
+        stopAudioImmediate();
+        socketRef.current?.interrupt();
+        if (inputModeRef.current === "voice") setChikkiState("listening");
+      }
+      return;
+    }
+
+    if (activeTurnIdRef.current || audioQueue.queue.length > 0) {
       activeTurnIdRef.current = null;
       stopAudioImmediate();
       socketRef.current?.interrupt();
       if (inputModeRef.current === "voice") setChikkiState("listening");
     }
-  }, [stopAudioImmediate]);
+  }, [stopAudioImmediate, isAssistantSpeaking]);
 
   const handleResult = useCallback((transcript) => {
     if (!transcript) return;
@@ -636,6 +656,7 @@ export default function App() {
   const { supported, startListening } = useSpeechRecognition({
     mode: inputMode === "chat" ? "off" : active ? "command" : "wake",
     lang: currentLang,
+    isAssistantSpeaking,
     onWake: handleWake,
     onResult: handleResultWithReset,
     onInterim: handleInterimSpeech,

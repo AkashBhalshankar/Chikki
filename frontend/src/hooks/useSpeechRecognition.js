@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 export function useSpeechRecognition({
   mode = "wake", // "wake" | "command" | "off"
   lang = "en-IN",
+  isAssistantSpeaking = false,
   onWake,
   onResult,
   onInterim,
@@ -17,11 +18,31 @@ export function useSpeechRecognition({
   const modeRef = useRef(mode);
   const langRef = useRef(lang);
   const previousLangRef = useRef(lang);
+  const isSpeakingRef = useRef(isAssistantSpeaking);
+
   modeRef.current = mode;
   langRef.current = lang;
+  isSpeakingRef.current = isAssistantSpeaking;
 
   const callbacksRef = useRef({ onWake, onResult, onInterim, onSpeechError });
   callbacksRef.current = { onWake, onResult, onInterim, onSpeechError };
+
+  // Initialize mobile hardware DSP to isolate voice and stop tracks cleanly
+  const initHardwareDSP = useCallback(async () => {
+    try {
+      if (navigator.mediaDevices?.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true, // Kills phone speaker reflection
+            noiseSuppression: true, // Mutes ambient room noise (fans, distant chatter)
+            autoGainControl: false, // Prevents mic from auto-boosting background voices
+          },
+        });
+        // Stop temporary tracks so Web Speech API has clean hardware access
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    } catch (_) {}
+  }, []);
 
   const stopRecognition = useCallback(() => {
     if (silenceTimerRef.current) {
@@ -33,7 +54,7 @@ export function useSpeechRecognition({
         recognitionRef.current.onend = null;
         recognitionRef.current.onerror = null;
         recognitionRef.current.onresult = null;
-        recognitionRef.current.stop();
+        recognitionRef.current.abort();
       } catch (_) {}
       recognitionRef.current = null;
     }
@@ -79,6 +100,12 @@ export function useSpeechRecognition({
       };
 
       recognition.onresult = (event) => {
+        // Shield: drop all incoming frames while Chikki is speaking
+        if (isSpeakingRef.current) {
+          speechBufferRef.current = "";
+          return;
+        }
+
         let interimText = "";
         let finalText = "";
 
@@ -97,29 +124,44 @@ export function useSpeechRecognition({
         // Wake word check
         if (modeRef.current === "wake") {
           const lower = currentSegment.toLowerCase();
-          if (lower.includes("chikki") || lower.includes("chiki") || lower.includes("chikky")) {
+          if (
+            lower.includes("chikki") ||
+            lower.includes("chiki") ||
+            lower.includes("chikky")
+          ) {
             callbacksRef.current.onWake?.();
           }
           return;
         }
 
-        // In command mode: accumulate speech and wait for true pause
+        // In command mode
         if (modeRef.current === "command") {
-          const recognizedText = (speechBufferRef.current + " " + currentSegment).trim();
+          const recognizedText = (
+            speechBufferRef.current +
+            " " +
+            currentSegment
+          ).trim();
           callbacksRef.current.onInterim?.(recognizedText);
 
           if (finalText) {
-            speechBufferRef.current = (speechBufferRef.current + " " + finalText).trim();
+            speechBufferRef.current = (
+              speechBufferRef.current +
+              " " +
+              finalText
+            ).trim();
           }
 
-          // Reset silence timer: wait a full 2.2 seconds of silence before committing
           if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
           silenceTimerRef.current = setTimeout(() => {
             if (interimText && !finalText) {
-              speechBufferRef.current = (speechBufferRef.current + " " + interimText).trim();
+              speechBufferRef.current = (
+                speechBufferRef.current +
+                " " +
+                interimText
+              ).trim();
             }
             dispatchCommand();
-          }, 2200); // 2.2s gives you comfortable breathing room to pause mid-sentence
+          }, 1800);
         }
       };
 
@@ -130,10 +172,14 @@ export function useSpeechRecognition({
 
       recognition.onend = () => {
         isListeningRef.current = false;
-        // Do not die if user hasn't explicitly clicked Stop/Off
-        if (modeRef.current !== "off") {
+        // Only restart if not in "off" mode and assistant is not speaking
+        if (modeRef.current !== "off" && !isSpeakingRef.current) {
           setTimeout(() => {
-            if (modeRef.current !== "off" && !isListeningRef.current) {
+            if (
+              modeRef.current !== "off" &&
+              !isListeningRef.current &&
+              !isSpeakingRef.current
+            ) {
               try {
                 recognition.start();
                 isListeningRef.current = true;
@@ -142,12 +188,36 @@ export function useSpeechRecognition({
           }, 350);
         }
       };
+
       recognitionRef.current = recognition;
       recognition.start();
     } catch {
       isListeningRef.current = false;
     }
   }, [dispatchCommand]);
+
+  // Manage speaking lifecycle: abort during TTS, resume with cooldown
+  useEffect(() => {
+    if (isAssistantSpeaking) {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      speechBufferRef.current = "";
+      try {
+        recognitionRef.current?.abort();
+      } catch (_) {}
+      isListeningRef.current = false;
+    } else {
+      const timer = setTimeout(() => {
+        if (modeRef.current !== "off") {
+          startListening();
+        }
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [isAssistantSpeaking, startListening]);
+
+  useEffect(() => {
+    initHardwareDSP();
+  }, [initHardwareDSP]);
 
   useEffect(() => {
     if (previousLangRef.current !== lang) {
