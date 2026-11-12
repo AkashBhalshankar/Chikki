@@ -139,6 +139,28 @@ function loadStoredMessages() {
   }
 }
 
+// Browser text-to-speech fallback. Used only when the backend sends a text
+// reply but no audio (e.g. edge-tts is blocked/broken), so Chikki can still
+// speak. Free, built into the browser, and never rate-limited or blocked.
+function speakWithBrowser(text, lang, { onStart, onEnd } = {}) {
+  if (!("speechSynthesis" in window) || !text?.trim()) {
+    onEnd?.();
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = lang || "en-IN";
+  const voices = window.speechSynthesis.getVoices();
+  const match =
+    voices.find((v) => v.lang === utterance.lang) ||
+    voices.find((v) => v.lang.startsWith(utterance.lang.slice(0, 2)));
+  if (match) utterance.voice = match;
+  utterance.onstart = () => onStart?.();
+  utterance.onend = () => onEnd?.();
+  utterance.onerror = () => onEnd?.();
+  window.speechSynthesis.speak(utterance);
+}
+
 // Global Audio Queue
 const audioQueue = {
   queue: [],
@@ -422,8 +444,10 @@ export default function App() {
     } catch (_) {}
   };
 
+  // Stops both the normal audio queue and any browser-TTS fallback speech.
   const stopAudioImmediate = useCallback(() => {
     audioQueue.stopAll();
+    window.speechSynthesis?.cancel();
   }, []);
 
   const handleWake = useCallback(() => {
@@ -449,7 +473,11 @@ export default function App() {
         };
         await audio.play();
       } catch {
-        setChikkiState("listening");
+        // Backend TTS failed - speak the greeting with the browser voice instead.
+        speakWithBrowser(greeting, currentLangRef.current, {
+          onStart: () => setChikkiState("speaking"),
+          onEnd: () => setChikkiState("listening"),
+        });
       }
     }, 250);
   }, [stopAudioImmediate]);
@@ -770,6 +798,34 @@ export default function App() {
           setCurrentTraceId(tid);
         }
         setChatThinking(false);
+
+        // Fallback: backend sent text but no audio (e.g. edge-tts blocked),
+        // so speak the reply with the browser's built-in voice instead.
+        if (
+          inputModeRef.current === "voice" &&
+          !receivedAudioForTurnRef.current &&
+          !meta?.isError &&
+          reply?.trim()
+        ) {
+          const fallbackExpression = expressionForReply(reply);
+          replyExpressionRef.current = fallbackExpression;
+          setVoiceExpression(fallbackExpression);
+          speakWithBrowser(reply, currentLangRef.current, {
+            onStart: () => {
+              setIsAssistantSpeaking(true);
+              setChikkiState("speaking");
+            },
+            onEnd: () => {
+              setIsAssistantSpeaking(false);
+              setChikkiState(fallbackExpression);
+              if (expressionHoldTimerRef.current) window.clearTimeout(expressionHoldTimerRef.current);
+              expressionHoldTimerRef.current = window.setTimeout(
+                () => setChikkiState("listening"),
+                EXPRESSION_HOLD_MS
+              );
+            },
+          });
+        }
 
         setMessages((prev) => {
           const copy = [...prev];
