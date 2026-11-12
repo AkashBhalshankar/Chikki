@@ -137,23 +137,16 @@ async def synthesize_b64(
     user_msg: str = "",
     language: str | None = None,
 ) -> str:
-    """
-    Synthesizes text to a base64 mp3 string so the frontend audio queue
-    can play it instantly. Now goes through tts.py's synthesize_speech,
-    which cleans the text for speech (strips markdown/asterisks/etc) AND
-    applies speech_tone()'s rate/pitch profile - previously this function
-    called edge_tts directly and skipped both of those entirely, which is
-    why tone changes and text cleanup were never actually happening.
-    """
     try:
         tone = speech_tone(user_text=user_msg, reply=text)
         audio_bytes = await synthesize_speech(text, voice=voice, tone=tone, language=language)
         if not audio_bytes:
+            print("TTS warning: synthesize_speech returned empty audio for:", text[:60])
             return ""
         return base64.b64encode(audio_bytes).decode("utf-8")
-    except Exception:
+    except Exception as e:
+        print("TTS error:", type(e).__name__, e)
         return ""
-
 
 async def process_chikki_turn(
     websocket: WebSocket,
