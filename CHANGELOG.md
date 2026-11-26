@@ -10,6 +10,12 @@
 - Chikki project details moved from the hardcoded system prompt into `knowledge/chikki.md`.
 - Added admin endpoint `POST /knowledge/refresh`.
 
+### UI polish: readable font, welcome panel, copy answer
+- Answers and buttons use Inter (easier to read than all-monospace); small labels keep the monospace font. Replies are slightly larger.
+- The empty chat shows a welcome message and the four starter questions instead of a blank panel.
+- "Was that helpful?" in voice mode only appears once Chikki has answered.
+- A "Copy answer" button under every reply, bouncing typing dots while Chikki thinks, and a softer slate-indigo robot in the light theme.
+
 ### Light theme redesign and cleaner topic keywords
 - Light theme: solid indigo main buttons, a brand-colored bubble for the visitor's messages, white cards with soft shadows, darker small text, a light dialog backdrop and a soft page glow. Dark is unchanged.
 - The "topics you asked about" list (contact window and resume tailoring) no longer fills up with filler words or stray punctuation, and keeps short terms such as C#, AI and QA.

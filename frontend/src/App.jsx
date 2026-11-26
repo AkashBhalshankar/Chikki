@@ -1079,6 +1079,7 @@ export default function App() {
 
   const latestUser = [...messages].reverse().find((m) => m.role === "user");
   const latestAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+  const hasVoiceAnswer = Boolean(latestAssistant?.final && !latestAssistant?.isError && latestAssistant?.content?.trim());
   const currentPrompts = QUICK_PROMPTS[currentLang] || QUICK_PROMPTS["en-IN"];
 
   return (
@@ -1221,7 +1222,7 @@ export default function App() {
           </div>
 
           {/* Feedback Bar */}
-          <div className="mt-4 flex flex-col items-center gap-2">
+          <div className={`mt-4 flex flex-col items-center gap-2 ${hasVoiceAnswer ? "" : "hidden"}`}>
             <div className="flex items-center gap-3 text-[11px] text-gray-500">
               <span>Was that helpful?</span>
               <button

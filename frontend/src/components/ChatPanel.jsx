@@ -65,6 +65,17 @@ export default function ChatPanel({
   const [commentText, setCommentText] = useState("");
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState(null);
+
+  const handleCopyAnswer = async (index, text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 1800);
+    } catch (_) {
+      window.prompt("Copy this answer:", text);
+    }
+  };
   const [canCall] = useState(() => isMobileDevice());
   const [confirmClear, setConfirmClear] = useState(false);
 
@@ -227,10 +238,25 @@ export default function ChatPanel({
           className="chat-scroll-container surface-line chikki-scroll mt-3 w-full overflow-y-auto rounded-lg p-3 sm:p-4 space-y-4"
         >
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-center p-4">
-              <p className="text-xs text-gray-400">
-                Ask Chikki anything about Akash&apos;s experience, projects, or skills.
+            <div className="flex h-full flex-col items-center justify-center p-4 text-center">
+              <h2 className="text-lg font-semibold text-gray-100">Hi, I&apos;m Chikki 👋</h2>
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-gray-400">
+                Ask me anything about Akash&apos;s experience, projects and skills. My answers come from his
+                verified resume, and I&apos;ll say so when something isn&apos;t in it.
               </p>
+              <div className="mt-5 grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2">
+                {currentPrompts.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => onSend(prompt)}
+                    disabled={thinking}
+                    className="prompt-button justify-start disabled:opacity-40"
+                  >
+                    <span className="mr-2 text-chikki-purpleLight">›</span> {prompt}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -261,6 +287,16 @@ export default function ChatPanel({
                   )}
                 </div>
               </div>
+
+              {m.role === "assistant" && m.final && !m.isError && m.content?.trim() && (
+                <button
+                  type="button"
+                  onClick={() => handleCopyAnswer(i, m.history_content || m.content)}
+                  className="mt-1 ml-1 text-[11px] text-gray-500 transition-colors hover:text-chikki-purpleLight"
+                >
+                  {copiedIndex === i ? "✓ Copied" : "📋 Copy answer"}
+                </button>
+              )}
 
               {m.role === "assistant" && i === latestAssistantIndex && m.final && !m.isError && m.actions?.length > 0 && (
                 <div className="mt-2 ml-1 flex flex-wrap gap-2">
@@ -378,7 +414,7 @@ export default function ChatPanel({
           {thinking && (
             <div className="flex justify-start">
               <div className="rounded-xl rounded-bl-none px-3.5 py-2.5 text-xs bg-chikki-panel border border-gray-800 text-gray-400 flex items-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full bg-chikki-purple animate-ping" />
+                <span className="typing-dots" aria-hidden="true"><i /><i /><i /></span>
                 <span>🤖 Chikki is thinking...</span>
               </div>
             </div>
@@ -386,7 +422,7 @@ export default function ChatPanel({
         </div>
 
         {/* Quick Suggestion Chips */}
-        <div className="mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+        <div className={`mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2 ${messages.length === 0 ? "hidden" : ""}`}>
           {[...suggestions, ...currentPrompts].slice(0, 4).map((prompt) => (
             <button
               key={prompt}
