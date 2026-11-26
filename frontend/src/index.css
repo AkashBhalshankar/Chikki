@@ -610,3 +610,16 @@ html[data-theme="light"] .chikki-stage svg rect[stroke="#444"] { stroke: #7c86ad
 .answer-card code { background: rgba(255, 255, 255, 0.1); }
 html[data-theme="light"] .answer-card strong { color: #0f172a; }
 html[data-theme="light"] .answer-card code { background: rgba(15, 23, 42, 0.08); color: #1e293b; }
+
+/* The working word fades in each time it changes */
+.thinking-word {
+  animation: thinkingFade 0.45s ease both;
+  letter-spacing: 0.01em;
+}
+@keyframes thinkingFade {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .thinking-word { animation: none; }
+}

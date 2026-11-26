@@ -4,6 +4,7 @@ import LanguageSelector from "./LanguageSelector.jsx";
 import { isMobileDevice, telHref } from "../device.js";
 import MoreMenu from "./MoreMenu.jsx";
 import RichText from "./RichText.jsx";
+import ThinkingIndicator from "./ThinkingIndicator.jsx";
 import { plainText } from "../markdown.js";
 import { ProfileLine } from "./ProfileBadge.jsx";
 
@@ -263,6 +264,7 @@ export default function ChatPanel({
           )}
 
           {messages.map((m, i) => (
+            m.role === "assistant" && !m.isError && !m.content?.trim() ? null : (
             <div
               key={i}
               className={`flex flex-col ${
@@ -355,7 +357,7 @@ export default function ChatPanel({
               )}
 
               {/* Feedback Action */}
-              {m.role === "assistant" && i === latestAssistantIndex && onFeedback && (
+              {m.role === "assistant" && i === latestAssistantIndex && m.final && !m.isError && onFeedback && (
                 <div className="mt-2 flex flex-col items-start gap-1.5 ml-1">
                   <div className="flex items-center gap-2 text-[11px] text-gray-500">
                     <span className="text-[10px]">Feedback:</span>
@@ -421,16 +423,10 @@ export default function ChatPanel({
                 </div>
               )}
             </div>
+            )
           ))}
 
-          {thinking && (
-            <div className="flex justify-start">
-              <div className="rounded-xl rounded-bl-none px-3.5 py-2.5 text-xs bg-chikki-panel border border-gray-800 text-gray-400 flex items-center gap-2">
-                <span className="typing-dots" aria-hidden="true"><i /><i /><i /></span>
-                <span>🤖 Chikki is thinking...</span>
-              </div>
-            </div>
-          )}
+          {thinking && <ThinkingIndicator />}
         </div>
 
         {/* Quick Suggestion Chips */}
