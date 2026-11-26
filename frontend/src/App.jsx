@@ -9,6 +9,7 @@ import JobMatchModal from "./components/JobMatchModal.jsx";
 import HowItWorksModal from "./components/HowItWorksModal.jsx";
 import { buildShareUrl, readSharedLink } from "./sharedLink.js";
 import { cleanForBrowserSpeech } from "./speechText.js";
+import { resumeFocusFromMessages } from "./focus.js";
 import { isMobileDevice, telHref } from "./device.js";
 import { adminFromSearch, isToggleShortcut, readAdminUi, writeAdminUi } from "./adminMode.js";
 import { applyTheme, nextTheme, readTheme } from "./theme.js";
@@ -29,21 +30,6 @@ function createTurnId() {
 
 function isJokeRequest(text = "") {
   return /\b(joke|funny|make me laugh|crack me up)\b|జోక్|నవ్వు|चुटकुला|चुटकुले|जोक|हंसाओ|मज़ेदार/i.test(text);
-}
-
-function resumeFocusFromMessages(messages) {
-  const ignoredTerms = new Set([
-    "about", "akash", "and", "can", "could", "from", "have", "help", "his",
-    "how", "into", "more", "please", "should", "tell", "that", "the", "this",
-    "what", "when", "where", "which", "with", "would", "మీకు", "నాకు", "और", "क्यों",
-  ]);
-  const terms = messages
-    .filter((message) => message.role === "user")
-    .slice(-5)
-    .flatMap((message) => message.content.match(/[\p{L}\p{N}+#.-]+/gu) || [])
-    .map((term) => term.trim())
-    .filter((term) => term.length > 2 && !ignoredTerms.has(term.toLowerCase()));
-  return [...new Set(terms)].slice(-16).join(" ").slice(-240);
 }
 
 const QUICK_PROMPTS = {

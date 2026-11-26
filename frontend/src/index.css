@@ -428,3 +428,125 @@ html[data-theme="light"] [class*="bg-emerald-500/20"] { background-color: rgba(1
 /* borders */
 html[data-theme="light"] .border-gray-700 { border-color: rgba(15, 23, 42, 0.18); }
 html[data-theme="light"] .border-gray-800 { border-color: rgba(15, 23, 42, 0.12); }
+
+
+/* =========================================
+   Light theme, refined: clearer hierarchy and contrast
+========================================= */
+
+html[data-theme="light"] {
+  --bg-base: #f5f6fb;
+  --border-subtle: rgba(15, 23, 42, 0.14);
+}
+
+html[data-theme="light"] body {
+  background-image: radial-gradient(1100px 520px at 50% -8%, rgba(99, 102, 241, 0.14), transparent 70%);
+  background-repeat: no-repeat;
+}
+
+html[data-theme="light"] .dot-grid {
+  background-image: radial-gradient(rgba(15, 23, 42, 0.07) 1px, transparent 1px);
+}
+
+/* cards: white, crisp edge, soft shadow */
+html[data-theme="light"] .surface-line {
+  border: 1px solid #dde1ee;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 12px 32px rgba(15, 23, 42, 0.07);
+}
+
+html[data-theme="light"] .chikki-stage {
+  border: 1px solid #dde1ee;
+  background: radial-gradient(circle at 50% 45%, rgba(99, 102, 241, 0.16) 0%, #ffffff 68%);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 12px 32px rgba(15, 23, 42, 0.06);
+}
+
+/* secondary buttons: white with a visible edge and dark text */
+html[data-theme="light"] .action-button {
+  background: #ffffff;
+  border-color: #d3d8e6;
+  color: #27272a;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+html[data-theme="light"] .action-button:hover {
+  background: #eef0ff;
+  border-color: #818cf8;
+  color: #1e1b4b;
+}
+
+/* main buttons: solid indigo so the key actions stand out */
+html[data-theme="light"] .primary-action {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  border-color: #4338ca;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.28);
+}
+
+html[data-theme="light"] .primary-action:hover {
+  background: linear-gradient(135deg, #4338ca, #4f46e5);
+  border-color: #3730a3;
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.34);
+}
+
+html[data-theme="light"] .prompt-button {
+  background: #ffffff;
+  border-color: #dde1ee;
+  color: #3f3f46;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+html[data-theme="light"] .prompt-button:hover {
+  background: #eef0ff;
+  border-color: #a5b4fc;
+  color: #1e1b4b;
+}
+
+/* conversation */
+html[data-theme="light"] .user-bubble {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  border-color: #4338ca;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.22);
+}
+
+html[data-theme="light"] .answer-card {
+  background: #ffffff;
+  border-color: #dde1ee;
+  border-left-color: #6366f1;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 18px rgba(15, 23, 42, 0.05);
+}
+
+/* darker small text (the mono font is thin at small sizes) */
+html[data-theme="light"] .text-gray-400 { color: #475569; }
+html[data-theme="light"] .text-gray-500 { color: #5b6577; }
+html[data-theme="light"] .text-gray-600 { color: #64748b; }
+html[data-theme="light"] .text-chikki-purpleLight { color: #4338ca; }
+
+/* source chips and tinted pills */
+html[data-theme="light"] [class*="bg-emerald-500/10"] { background-color: rgba(16, 185, 129, 0.14); }
+html[data-theme="light"] .text-emerald-300 { color: #047857; }
+
+/* dialogs: a light scrim instead of a muddy dark one */
+html[data-theme="light"] [class*="bg-black/80"] {
+  background-color: rgba(30, 41, 59, 0.42);
+}
+
+html[data-theme="light"] .more-menu {
+  border-color: #dde1ee;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+}
+
+html[data-theme="light"] .profile-card {
+  background: #ffffff;
+  border-color: #dde1ee;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 12px 28px rgba(15, 23, 42, 0.07);
+}
+
+html[data-theme="light"] input:focus,
+html[data-theme="light"] textarea:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+}

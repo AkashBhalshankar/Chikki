@@ -10,6 +10,10 @@
 - Chikki project details moved from the hardcoded system prompt into `knowledge/chikki.md`.
 - Added admin endpoint `POST /knowledge/refresh`.
 
+### Light theme redesign and cleaner topic keywords
+- Light theme: solid indigo main buttons, a brand-colored bubble for the visitor's messages, white cards with soft shadows, darker small text, a light dialog backdrop and a soft page glow. Dark is unchanged.
+- The "topics you asked about" list (contact window and resume tailoring) no longer fills up with filler words or stray punctuation, and keeps short terms such as C#, AI and QA.
+
 ### New: resume-grounding guard
 - Every sentence is checked before it is shown or spoken: numbers, company names and technologies must appear in the Google Drive resume (and by default Chikki's own write-ups; `GROUNDING_SOURCES=resume` is strictest). Unverified sentences are replaced by "I don't have that detail in Akash's resume."
 - Abbreviations are accepted only when their long form is in the documents (for example P2P and Peer-to-Peer); the computed tenure is allowed because the prompt provides it.

@@ -248,7 +248,7 @@ export default function ChatPanel({
               <div
                 className={`max-w-[88%] sm:max-w-[78%] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm leading-relaxed shadow-sm ${
                   m.role === "user"
-                    ? "bg-chikki-purple/20 border border-chikki-purple text-gray-100 rounded-br-none"
+                    ? "user-bubble bg-chikki-purple/20 border border-chikki-purple text-gray-100 rounded-br-none"
                     : m.isError
                     ? "bg-red-950/40 border border-red-800 text-red-200 rounded-bl-none"
                     : "answer-card bg-chikki-panel border border-gray-800 text-gray-200 rounded-bl-none"
