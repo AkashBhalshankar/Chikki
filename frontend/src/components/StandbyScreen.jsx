@@ -1,11 +1,14 @@
 import ChikkiBot from "./ChikkiBot.jsx";
 import AppFooter from "./AppFooter.jsx";
+import { ProfileCard } from "./ProfileBadge.jsx";
 
 export default function StandbyScreen({
   state,
   onEnableMic,
   onTypeInstead,
   sharedLabel,
+  theme = "dark",
+  onToggleTheme,
 }) {
   return (
     <div className="min-h-screen dot-grid px-5 py-6 sm:px-8">
@@ -15,11 +18,26 @@ export default function StandbyScreen({
             <h1 className="text-lg tracking-[0.18em] text-chikki-purpleLight">CHIKKI</h1>
             <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-gray-600">AI career assistant</p>
           </div>
-          <span className="text-[10px] uppercase tracking-[0.18em] text-gray-600">Voice-first portfolio</span>
+          <div className="flex items-center gap-3">
+            <span className="hidden text-[10px] uppercase tracking-[0.18em] text-gray-600 sm:inline">Voice-first portfolio</span>
+            {onToggleTheme && (
+              <button
+                type="button"
+                onClick={onToggleTheme}
+                aria-label={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
+                title={theme === "light" ? "Dark theme" : "Light theme"}
+                className="action-button !min-h-0 px-2.5 py-1 text-sm"
+              >
+                {theme === "light" ? "🌙" : "☀️"}
+              </button>
+            )}
+          </div>
         </header>
 
         <main className="flex flex-1 flex-col items-center justify-center text-center">
-          <p className="mb-3 text-xs uppercase tracking-[0.22em] text-gray-600">Representing Akash Bhalshankar</p>
+          <div className="mb-4 px-2">
+            <ProfileCard />
+          </div>
           <ChikkiBot state={state} size={160} />
 
           <div className="mt-6 flex items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-gray-600">

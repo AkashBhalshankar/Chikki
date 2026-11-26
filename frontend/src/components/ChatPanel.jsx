@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import AppFooter from "./AppFooter.jsx";
 import LanguageSelector from "./LanguageSelector.jsx";
 import { isMobileDevice, telHref } from "../device.js";
+import MoreMenu from "./MoreMenu.jsx";
+import { ProfileLine } from "./ProfileBadge.jsx";
 
 const QUICK_PROMPTS = {
   "en-IN": [
@@ -48,6 +50,9 @@ export default function ChatPanel({
   onShare,
   onOpenHow,
   onClear,
+  adminUi = false,
+  theme = "dark",
+  onToggleTheme,
   language = "en-IN",
   onLanguageChange,
 }) {
@@ -135,33 +140,22 @@ export default function ChatPanel({
       <div className="app-shell flex flex-1 flex-col justify-between max-w-4xl mx-auto w-full">
         
         {/* Header */}
-        <header className="flex items-center justify-between border-b border-gray-800 pb-4">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-4">
           <div>
             <h1 className="text-lg tracking-[0.18em] font-bold text-chikki-purpleLight">CHIKKI</h1>
-            <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-gray-500">Text conversation</p>
+            <ProfileLine />
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
             <LanguageSelector language={language} onChange={onLanguageChange} />
-            <button
-              type="button"
-              onClick={onOpenDashboard}
-              className="action-button text-[11px] border-indigo-900/40 bg-indigo-950/20 text-indigo-300 hover:bg-indigo-900/30"
-              title="View Feedback Analytics"
-            >
-              📊 Analytics
-            </button>
-
-            {onClear && messages.length > 0 && (
+            {adminUi && (
               <button
                 type="button"
-                onClick={handleClearClick}
-                title="Delete this conversation"
-                className={`action-button text-[11px] ${
-                  confirmClear ? "border-rose-500/60 bg-rose-950/30 text-rose-200" : ""
-                }`}
+                onClick={onOpenDashboard}
+                className="action-button text-[11px] border-indigo-900/40 bg-indigo-950/20 text-indigo-300 hover:bg-indigo-900/30"
+                title="View Feedback Analytics"
               >
-                {confirmClear ? "⚠️ Click again to confirm" : "🗑️ Clear chat"}
+                📊 Analytics
               </button>
             )}
 
@@ -183,7 +177,7 @@ export default function ChatPanel({
 
         {/* Quick Action Links */}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {actions.resume && (
               <button
                 type="button"
@@ -203,43 +197,24 @@ export default function ChatPanel({
                 🎯 Check role fit
               </button>
             )}
-            {onOpenHow && (
-              <button type="button" onClick={onOpenHow} className="action-button">
-                🧠 How Chikki works
-              </button>
-            )}
-            {canCall && actions.phone && (
-              <a href={telHref(actions.phone)} onClick={onReturnHome} className="action-button">
-                📞 Call
-              </a>
-            )}
-            {onShare && (
-              <button type="button" onClick={handleShareClick} className="action-button">
-                {linkCopied ? "✓ Link copied" : "🔗 Copy link"}
-              </button>
-            )}
-            {actions.linkedin && (
-              <a
-                href={actions.linkedin}
-                target="_blank"
-                rel="noreferrer"
-                onClick={onReturnHome}
-                className="action-button"
-              >
-                LinkedIn
-              </a>
-            )}
-            {actions.github && (
-              <a
-                href={actions.github}
-                target="_blank"
-                rel="noreferrer"
-                onClick={onReturnHome}
-                className="action-button"
-              >
-                GitHub
-              </a>
-            )}
+            <MoreMenu
+              direction="down"
+              items={[
+                onOpenHow && { key: "how", label: "🧠 How Chikki works", onClick: onOpenHow },
+                onShare && { key: "share", label: linkCopied ? "✓ Link copied" : "🔗 Copy link", onClick: handleShareClick, keepOpen: true },
+                canCall && actions.phone && { key: "call", label: "📞 Call Akash", href: telHref(actions.phone) },
+                actions.linkedin && { key: "linkedin", label: "💼 LinkedIn", href: actions.linkedin },
+                actions.github && { key: "github", label: "💻 GitHub", href: actions.github },
+                onToggleTheme && { key: "theme", label: theme === "light" ? "🌙 Dark theme" : "☀️ Light theme", onClick: onToggleTheme },
+                onClear && messages.length > 0 && {
+                  key: "clear",
+                  label: confirmClear ? "⚠️ Click again to confirm" : "🗑️ Clear chat",
+                  onClick: handleClearClick,
+                  keepOpen: !confirmClear,
+                  danger: true,
+                },
+              ]}
+            />
           </div>
           <span className="hidden md:inline-block text-[10px] text-gray-500">
             Press <kbd className="px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-400">Enter</kbd> to send
@@ -276,7 +251,7 @@ export default function ChatPanel({
                     ? "bg-chikki-purple/20 border border-chikki-purple text-gray-100 rounded-br-none"
                     : m.isError
                     ? "bg-red-950/40 border border-red-800 text-red-200 rounded-bl-none"
-                    : "bg-chikki-panel border border-gray-800 text-gray-200 rounded-bl-none"
+                    : "answer-card bg-chikki-panel border border-gray-800 text-gray-200 rounded-bl-none"
                 }`}
               >
                 <div className="whitespace-pre-wrap break-words">

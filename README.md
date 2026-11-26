@@ -136,6 +136,15 @@ imported automatically on first start.
   - Redeploy after changing any `VITE_*` value, because they're embedded at build time.
 - Never commit `.env` files or provider secrets.
 
+## UI notes
+
+- **Analytics is owner-only.** Visitors do not see the 📊 Analytics button. Reveal it for your browser tab with
+  `?admin=1` on the address (or press Ctrl+Shift+A, press again to hide); the dashboard still asks for `ADMIN_TOKEN`.
+- **Themes:** dark by default, with a light theme in the **More** menu (or `?theme=light`). The choice is remembered.
+- **Less clutter:** Resume, Contact Akash and Role fit stay visible; How Chikki works, LinkedIn, GitHub, Call (phones),
+  Copy link, theme and Clear chat live under **More**.
+- **Profile card** on the start screen from the optional `VITE_PROFILE_*` and `VITE_OPEN_TO_WORK` settings.
+
 ## Notes
 
 - Speech recognition (wake word and speech-to-text) uses the browser's Web

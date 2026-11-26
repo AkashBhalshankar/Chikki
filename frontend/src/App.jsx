@@ -10,6 +10,11 @@ import HowItWorksModal from "./components/HowItWorksModal.jsx";
 import { buildShareUrl, readSharedLink } from "./sharedLink.js";
 import { cleanForBrowserSpeech } from "./speechText.js";
 import { isMobileDevice, telHref } from "./device.js";
+import { adminFromSearch, isToggleShortcut, readAdminUi, writeAdminUi } from "./adminMode.js";
+import { applyTheme, nextTheme, readTheme } from "./theme.js";
+import MoreMenu from "./components/MoreMenu.jsx";
+import ListeningWave from "./components/ListeningWave.jsx";
+import { ProfileLine } from "./components/ProfileBadge.jsx";
 import LanguageSelector from "./components/LanguageSelector.jsx";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition.js";
 import { connectVoiceSocket, downloadResumePdf, fetchGreetingAudio, sendFeedback } from "./services/api.js";
@@ -301,6 +306,42 @@ const audioQueue = {
   },
 };
 export default function App() {
+  // Read the address options before the shared-link code below removes them from the URL.
+  // ?admin and ?theme are removed from the address once read so they are not shared by accident.
+  const [adminUi, setAdminUi] = useState(() => {
+    const flag = adminFromSearch(window.location.search);
+    if (flag !== null) writeAdminUi(flag);
+    return flag === null ? readAdminUi() : flag;
+  });
+  const [theme, setTheme] = useState(() => applyTheme(readTheme(window.location.search)));
+  useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has("admin") || params.has("theme")) {
+        params.delete("admin");
+        params.delete("theme");
+        const rest = params.toString();
+        window.history.replaceState({}, "", window.location.pathname + (rest ? `?${rest}` : ""));
+      }
+    } catch (_) {}
+  });
+  const toggleTheme = useCallback(() => setTheme((current) => applyTheme(nextTheme(current))), []);
+
+  useEffect(() => {
+    writeAdminUi(adminUi);
+  }, [adminUi]);
+
+  useEffect(() => {
+    const onKey = (event) => {
+      if (isToggleShortcut(event)) {
+        event.preventDefault();
+        setAdminUi((value) => !value);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const [active, setActive] = useState(false);
   const [sharedLink] = useState(() => {
     const link = readSharedLink(window.location.search);
@@ -1002,6 +1043,8 @@ export default function App() {
         onActivate={handleWake}
         onTypeInstead={handleSwitchToChat}
         sharedLabel={sharedLink?.label}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
     );
   }
@@ -1024,6 +1067,9 @@ export default function App() {
           onOpenMatch={openMatch}
           onShare={handleShare}
           onOpenHow={openHow}
+          adminUi={adminUi}
+          theme={theme}
+          onToggleTheme={toggleTheme}
           onClear={handleClearChat}
           onOpenBooking={CONTACT_ACTIONS.booking ? () => window.open(CONTACT_ACTIONS.booking, "_blank", "noopener") : null}
           language={currentLang}
@@ -1053,23 +1099,25 @@ export default function App() {
     <div className="app-viewport dot-grid px-4 py-5 sm:px-8 sm:py-6 flex flex-col justify-between font-mono">
       <div className="app-shell flex flex-1 flex-col justify-between w-full">
         {/* Header */}
-        <header className="flex items-center justify-between border-b border-gray-800 pb-4">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-4">
           <div>
             <h1 className="text-lg tracking-[0.18em] font-bold text-chikki-purpleLight">CHIKKI</h1>
-            <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-gray-500">Voice conversation</p>
+            <ProfileLine />
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
             <LanguageSelector language={currentLang} onChange={setCurrentLang} />
-            {/* Telemetry Dashboard Button */}
-            <button
-              type="button"
-              onClick={() => setShowDashboard(true)}
-              className="action-button text-[11px] border-indigo-900/40 bg-indigo-950/20 text-indigo-300 hover:bg-indigo-900/30"
-              title="Open Feedback Analytics Dashboard"
-            >
-              📊 Analytics
-            </button>
+            {/* Owner-only: reveal with ?admin=1 or Ctrl+Shift+A */}
+            {adminUi && (
+              <button
+                type="button"
+                onClick={() => setShowDashboard(true)}
+                className="action-button text-[11px] border-indigo-900/40 bg-indigo-950/20 text-indigo-300 hover:bg-indigo-900/30"
+                title="Open Feedback Analytics Dashboard"
+              >
+                📊 Analytics
+              </button>
+            )}
 
             <button
               onClick={handleSwitchToChat}
@@ -1144,6 +1192,12 @@ export default function App() {
               </p>
             )}
           </div>
+
+          {(chikkiState === "listening" || (liveTranscript && chikkiState !== "speaking" && chikkiState !== "thinking")) && (
+            <div className="mt-3">
+              <ListeningWave hearing={Boolean(liveTranscript)} />
+            </div>
+          )}
 
           <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-chikki-purpleLight font-semibold">
             {chikkiState === "thinking"
@@ -1258,13 +1312,9 @@ export default function App() {
           )}
 
           {/* Links */}
-          <div className="mt-6 flex flex-wrap justify-center gap-2 text-xs">
-            <button
-              type="button"
-              onClick={handleDownloadResume}
-              className="action-button primary-action"
-            >
-              Resume PDF
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs">
+            <button type="button" onClick={handleDownloadResume} className="action-button primary-action">
+              📄 Resume PDF
             </button>
             <button type="button" onClick={openContact} className="action-button primary-action">
               ✉️ Contact Akash
@@ -1272,29 +1322,16 @@ export default function App() {
             <button type="button" onClick={openMatch} className="action-button">
               🎯 Check role fit
             </button>
-            <button type="button" onClick={openHow} className="action-button">
-              🧠 How Chikki works
-            </button>
-            {canCall && CONTACT_ACTIONS.phone && (
-              <a href={telHref(CONTACT_ACTIONS.phone)} className="action-button">
-                📞 Call
-              </a>
-            )}
-            {CONTACT_ACTIONS.linkedin && (
-              <a
-                href={CONTACT_ACTIONS.linkedin}
-                target="_blank"
-                rel="noreferrer"
-                className="action-button"
-              >
-                LinkedIn
-              </a>
-            )}
-            {CONTACT_ACTIONS.github && (
-              <a href={CONTACT_ACTIONS.github} target="_blank" rel="noreferrer" className="action-button">
-                GitHub
-              </a>
-            )}
+            <MoreMenu
+              direction="up"
+              items={[
+                { key: "how", label: "🧠 How Chikki works", onClick: openHow },
+                canCall && CONTACT_ACTIONS.phone && { key: "call", label: "📞 Call Akash", href: telHref(CONTACT_ACTIONS.phone) },
+                CONTACT_ACTIONS.linkedin && { key: "linkedin", label: "💼 LinkedIn", href: CONTACT_ACTIONS.linkedin },
+                CONTACT_ACTIONS.github && { key: "github", label: "💻 GitHub", href: CONTACT_ACTIONS.github },
+                { key: "theme", label: theme === "light" ? "🌙 Dark theme" : "☀️ Light theme", onClick: toggleTheme },
+              ]}
+            />
           </div>
         </main>
 

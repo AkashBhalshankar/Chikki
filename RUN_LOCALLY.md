@@ -98,8 +98,16 @@ If Groq reports a rate limit the run falls back to the next provider; just re-ru
     - mumble or whisper something unclear: Chikki should ask you to repeat instead of answering;
     - switch the language selector to **Telugu** or **Hindi** and ask in that language: the reply is in that script and the voice matches;
     - ask in English with the selector on Telugu: the English reply is spoken with the English voice, not garbled.
-12. **How it works:** click **🧠 How Chikki works** and check the page opens and closes (Esc works too).
-13. **Limits (optional):** send 6 role-fit checks in an hour, or 5 messages in an hour, and the last one should be refused politely.
+12. **UI:**
+    - the 📊 Analytics button is **not** visible to visitors; open `http://localhost:5173/?admin=1` (or press
+      Ctrl+Shift+A) to reveal it, then use your admin token;
+    - **More** menu: check How Chikki works, Copy link, LinkedIn, GitHub, theme and Clear chat open from it;
+    - switch to **☀️ Light theme** (or the ☀️ button on the start screen) and back; reload to confirm it is remembered;
+    - resize the window to phone width: buttons wrap cleanly, inputs do not zoom, and on a real phone **📞 Call Akash**
+      appears in More;
+    - in voice mode a small wave under the robot idles while listening and animates while it hears you.
+13. **How it works:** click **🧠 How Chikki works** and check the page opens and closes (Esc works too).
+14. **Limits (optional):** send 6 role-fit checks in an hour, or 5 messages in an hour, and the last one should be refused politely.
 
 ## 6. If something looks wrong
 

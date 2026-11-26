@@ -10,6 +10,14 @@
 - Chikki project details moved from the hardcoded system prompt into `knowledge/chikki.md`.
 - Added admin endpoint `POST /knowledge/refresh`.
 
+### UI refresh
+- The 📊 Analytics button is hidden from visitors; reveal it with `?admin=1` or Ctrl+Shift+A.
+- Fewer buttons: Resume, Contact Akash and Role fit stay visible; everything else moved into a **More** menu.
+- A profile card on the start screen and a one-line profile in the headers tell recruiters who Chikki represents (configurable with `VITE_PROFILE_*` and `VITE_OPEN_TO_WORK`).
+- A light theme (More menu, `?theme=light`) that is remembered; dark remains the default.
+- A listening wave in voice mode, an accent edge on Chikki's answers, and a tab icon.
+- Mobile: 16px inputs (no iOS zoom), 44px touch targets, safe-area padding, wrapping headers.
+
 ### Fix: one Contact Akash button
 - A **📞 Call** button is shown on phones and tablets only (a `tel:` link does nothing on desktop).
 - "Contact Akash" used a `mailto:` link that does nothing on computers without an email app, and "Call" a `tel:` link that does nothing on desktop, next to a separate "Leave a message" form. They are now one **Contact Akash** button that opens the form, plus the booking link when configured. Your email address and phone number are not shown on the page.
