@@ -26,6 +26,8 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
   const [filter, setFilter] = useState("all");
   const [adminToken, setAdminToken] = useState(readStoredToken);
   const [tokenInput, setTokenInput] = useState("");
+  const [view, setView] = useState("feedback");
+  const [contacts, setContacts] = useState([]);
 
   const fetchData = async (token = adminToken) => {
     if (!token) {
@@ -36,9 +38,10 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
     setLoadError("");
     try {
       const headers = { "X-Admin-Token": token };
-      const [resAnalytics, resLogs] = await Promise.all([
+      const [resAnalytics, resLogs, resContacts] = await Promise.all([
         fetch(`${BASE_URL}/feedback/analytics`, { cache: "no-store", headers }),
         fetch(`${BASE_URL}/feedback/recent?limit=50`, { cache: "no-store", headers }),
+        fetch(`${BASE_URL}/contact/recent?limit=50`, { cache: "no-store", headers }).catch(() => null),
       ]);
       if (resAnalytics.status === 401 || resLogs.status === 401) {
         storeToken("");
@@ -59,6 +62,10 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
       ]);
       setAnalytics(analyticsData);
       setRecentLogs(Array.isArray(logData) ? logData : logData.items || []);
+      if (resContacts?.ok) {
+        const contactData = await resContacts.json();
+        setContacts(Array.isArray(contactData) ? contactData : []);
+      }
     } catch {
       setLoadError("Feedback could not be loaded. Check the backend connection and retry.");
     } finally {
@@ -146,7 +153,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
       <div className="max-w-4xl w-full max-h-[90vh] rounded-2xl flex flex-col overflow-hidden shadow-2xl border border-gray-700 bg-[#0d0d12]">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-zinc-900/80">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-800 bg-zinc-900/80">
           <div className="flex items-center gap-2.5">
             <span className="text-lg">📊</span>
             <div>
@@ -156,17 +163,60 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
               <p className="text-[10px] text-gray-400">Real-time user feedback, ratings, and written comments</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-300 hover:text-white text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-gray-700 transition-colors"
-          >
-            ✕ Close
-          </button>
+          <div className="flex items-center gap-1.5">
+            {[["feedback", "📊 Feedback"], ["messages", `✉️ Messages (${contacts.length})`]].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setView(key)}
+                className={`text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${
+                  view === key
+                    ? "bg-chikki-purple/30 text-chikki-purpleLight border-chikki-purple"
+                    : "text-gray-400 border-gray-700 hover:bg-zinc-800"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+            <button
+              onClick={onClose}
+              className="text-gray-300 hover:text-white text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-gray-700 transition-colors"
+            >
+              ✕ Close
+            </button>
+          </div>
         </div>
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 chikki-scroll">
-          {loading && !analytics ? (
+          {view === "messages" ? (
+            <div className="space-y-3">
+              {contacts.length === 0 ? (
+                <div className="text-center py-10 text-xs text-gray-500">No messages yet.</div>
+              ) : (
+                contacts.map((contact) => (
+                  <div key={contact.id} className="p-4 rounded-xl border border-gray-800 bg-zinc-900/30 space-y-2 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-gray-200 font-semibold">
+                        {contact.name}
+                        {contact.company && <span className="text-gray-400 font-normal"> · {contact.company}</span>}
+                      </div>
+                      <span className="text-[10px] text-gray-400">
+                        {contact.at ? new Date(contact.at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
+                      </span>
+                    </div>
+                    <a href={`mailto:${contact.email}`} className="text-chikki-purpleLight underline underline-offset-2">
+                      {contact.email}
+                    </a>
+                    <p className="text-gray-300 whitespace-pre-wrap break-words">{contact.message}</p>
+                    {contact.topics && (
+                      <p className="text-[10px] text-gray-500">Asked Chikki about: {contact.topics}</p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          ) : loading && !analytics ? (
             <div className="text-center py-16 text-xs text-gray-400">Loading telemetry data...</div>
           ) : (
             <>

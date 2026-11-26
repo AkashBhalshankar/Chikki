@@ -74,6 +74,18 @@ export async function sendFeedback({
   } catch {}
 }
 
+export async function sendContactMessage({ name, email, company, message, topics, website }) {
+  const res = await fetch(`${BASE_URL}/contact`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, company, message, topics, website }),
+  });
+  if (res.status === 429) throw new Error("Too many messages sent. Please try again later.");
+  if (res.status === 422) throw new Error("Please check your name, a valid email, and your message.");
+  if (!res.ok) throw new Error("Could not send your message. Please try again.");
+  return res.json();
+}
+
 export function connectVoiceSocket({
   onOpen,
   onDelta,
@@ -166,6 +178,7 @@ export function connectVoiceSocket({
             kind: data.kind ?? data.meta?.kind ?? null,
             trace_id: data.trace_id ?? (data.meta ? data.meta.trace_id : null),
             turn_id: data.turn_id ?? (data.meta ? data.meta.turn_id : null),
+            sources: Array.isArray(data.meta?.sources) ? data.meta.sources : [],
           });
           return;
         }

@@ -62,7 +62,30 @@ Update the Google Drive resume configured by `GOOGLE_DRIVE_RESUME_URL` (or
 resume download is generated from its current content. Personal projects are
 limited to implemented projects.
 
-## 4. Admin: feedback dashboard
+## 4. Knowledge base (RAG)
+
+Chikki retrieves relevant excerpts from verified write-ups for each question
+and shows them as sources in text chat. The full resume always stays in the
+prompt as the ground truth.
+
+- Add Markdown files to [backend/knowledge/](backend/knowledge/). Use one file
+  per project, with `##` sections. The index rebuilds automatically when files change.
+- Optionally add raw README URLs with `KNOWLEDGE_URLS`, for implemented projects only.
+- Retrieval uses BM25 keyword scoring. When `NVIDIA_EMBED_MODEL` is set to an
+  available embedding model, dense similarity is fused in (hybrid search).
+  Embedding errors fall back to keyword search automatically.
+- Admins can force a rebuild with `POST /knowledge/refresh` (needs `X-Admin-Token`).
+
+## 5. Contact and booking
+
+- **Leave a message:** visitors send their name, email, company and a message.
+  Messages appear in the dashboard's **Messages** tab.
+  - Optional instant alerts: set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`,
+    and/or `CONTACT_WEBHOOK_URL` (Slack- or Discord-style webhook).
+  - Protected by a rate limit (5 per hour per IP) and a spam honeypot.
+- **Book a call:** set `VITE_BOOKING_URL` (Cal.com or Calendly) to show the button.
+
+## 6. Admin: feedback dashboard
 
 Open the 📊 dashboard in the app and enter your `ADMIN_TOKEN`. The token is
 kept only for that browser tab session. Never put the token in a `VITE_*`
@@ -72,7 +95,7 @@ Feedback is stored in SQLite at `FEEDBACK_DB_PATH`. The default is
 `backend/data/feedback.db`. Any legacy `feedback_log.jsonl` entries are
 imported automatically on first start.
 
-## 5. Security defaults
+## 7. Security defaults
 
 - Per-IP rate limits:
   - chat: 20/min
@@ -83,7 +106,7 @@ imported automatically on first start.
 - Chat messages are capped at 1,000 characters.
 - All limits can be tuned in `.env`. See `.env.example`.
 
-## 6. Deploying
+## 8. Deploying
 
 - **Backend → Render**
   - Connect the repository. Render reads `render.yaml`, which also generates an `ADMIN_TOKEN` for you. Copy it from the Render dashboard.

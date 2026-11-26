@@ -1,4 +1,4 @@
-"""Feedback persistence backed by SQLite.
+"""Feedback (and contact message) persistence backed by SQLite.
 
 The database path comes from FEEDBACK_DB_PATH. On Render, point it at a
 mounted persistent disk (for example /var/data/feedback.db); otherwise the
@@ -33,7 +33,7 @@ def _db_path() -> Path:
     return Path(os.getenv("FEEDBACK_DB_PATH") or DEFAULT_DB_PATH)
 
 
-def _connect() -> sqlite3.Connection:
+def get_connection() -> sqlite3.Connection:
     path = _db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path, timeout=5)
@@ -64,6 +64,20 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         """
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_feedback_at ON feedback(at)")
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS contacts (
+            id TEXT PRIMARY KEY,
+            at TEXT NOT NULL,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            company TEXT,
+            message TEXT NOT NULL,
+            topics TEXT,
+            notified INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
     conn.commit()
     _import_legacy_jsonl(conn)
 
@@ -129,7 +143,7 @@ def record_feedback(
         "session_id": session_id,
     }
     try:
-        with _connect() as conn:
+        with get_connection() as conn:
             conn.execute(
                 f"INSERT INTO feedback ({', '.join(COLUMNS)}) VALUES ({', '.join('?' * len(COLUMNS))})",
                 tuple(entry[column] for column in COLUMNS),
@@ -148,7 +162,7 @@ def read_feedback(limit: int = 50, filter_value: Optional[str] = None) -> List[D
     query += " ORDER BY at DESC LIMIT ?"
     params.append(limit)
     try:
-        with _connect() as conn:
+        with get_connection() as conn:
             return [dict(row) for row in conn.execute(query, params)]
     except sqlite3.Error:
         logger.exception("Failed to read feedback")
@@ -157,7 +171,7 @@ def read_feedback(limit: int = 50, filter_value: Optional[str] = None) -> List[D
 
 def feedback_analytics() -> Dict[str, Any]:
     try:
-        with _connect() as conn:
+        with get_connection() as conn:
             row = conn.execute(
                 """
                 SELECT

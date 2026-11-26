@@ -34,6 +34,7 @@ export default function ChatPanel({
   onFeedback,
   onDownloadResume,
   onOpenDashboard,
+  onOpenContact,
   language = "en-IN",
   onLanguageChange,
 }) {
@@ -137,6 +138,16 @@ export default function ChatPanel({
                 📄 Resume PDF
               </button>
             )}
+            {onOpenContact && (
+              <button type="button" onClick={onOpenContact} className="action-button primary-action">
+                ✉️ Leave a message
+              </button>
+            )}
+            {actions.booking && (
+              <a href={actions.booking} target="_blank" rel="noreferrer" className="action-button">
+                📅 Book a call
+              </a>
+            )}
             {actions.linkedin && (
               <a
                 href={actions.linkedin}
@@ -219,6 +230,35 @@ export default function ChatPanel({
                   )}
                 </div>
               </div>
+
+              {m.role === "assistant" && m.final && !m.isError && m.sources?.length > 0 && (
+                <div className="mt-1.5 ml-1 flex max-w-[88%] flex-wrap items-center gap-1 text-[10px] text-gray-500">
+                  <span className="uppercase tracking-wider">Sources:</span>
+                  {m.sources.map((source) => {
+                    const label = source.section && source.section !== source.title
+                      ? `${source.title} · ${source.section}`
+                      : source.title;
+                    return source.url ? (
+                      <a
+                        key={`${source.title}-${source.section}`}
+                        href={source.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded border border-gray-800 bg-zinc-900/60 px-1.5 py-0.5 text-gray-400 hover:text-chikki-purpleLight"
+                      >
+                        {label}
+                      </a>
+                    ) : (
+                      <span
+                        key={`${source.title}-${source.section}`}
+                        className="rounded border border-gray-800 bg-zinc-900/60 px-1.5 py-0.5 text-gray-400"
+                      >
+                        {label}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Feedback Action */}
               {m.role === "assistant" && i === latestAssistantIndex && onFeedback && (

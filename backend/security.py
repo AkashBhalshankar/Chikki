@@ -36,14 +36,15 @@ class RateLimiter:
     reset on restart, which is acceptable for abuse protection.
     """
 
-    def __init__(self, limit: int, window_seconds: float):
+    def __init__(self, limit: int, window_seconds: float, clock=time.monotonic):
         self.limit = limit
         self.window = window_seconds
+        self._clock = clock
         self._hits: dict[str, deque] = defaultdict(deque)
         self._lock = threading.Lock()
 
     def allow(self, key: str) -> bool:
-        now = time.monotonic()
+        now = self._clock()
         with self._lock:
             hits = self._hits[key]
             while hits and now - hits[0] >= self.window:
@@ -66,6 +67,7 @@ chat_limiter = RateLimiter(_int_env("RATE_LIMIT_CHAT_PER_MIN", 20), 60)
 tts_limiter = RateLimiter(_int_env("RATE_LIMIT_TTS_PER_MIN", 30), 60)
 resume_limiter = RateLimiter(_int_env("RATE_LIMIT_RESUME_PER_MIN", 6), 60)
 feedback_limiter = RateLimiter(_int_env("RATE_LIMIT_FEEDBACK_PER_MIN", 20), 60)
+contact_limiter = RateLimiter(_int_env("RATE_LIMIT_CONTACT_PER_HOUR", 5), 3600)
 
 
 class ConnectionTracker:

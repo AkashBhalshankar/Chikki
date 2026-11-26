@@ -2,6 +2,22 @@
 
 ## 2.0.0 (in progress)
 
+### New: retrieval-augmented answers (RAG)
+- New knowledge base in `backend/knowledge/` plus optional `KNOWLEDGE_URLS`, chunked by Markdown section.
+- Hybrid retrieval: BM25 keyword scoring always runs; NVIDIA embeddings are fused in with reciprocal rank fusion when configured. If embeddings fail, retrieval falls back to keywords and retries them later.
+- The top excerpts are added to the prompt for each non-joke turn. Follow-up questions also use the previous question.
+- Text chat shows the sources used under each reply (`meta.sources` on the WebSocket reply).
+- Chikki project details moved from the hardcoded system prompt into `knowledge/chikki.md`.
+- Added admin endpoint `POST /knowledge/refresh`.
+
+### New: contact and booking
+- "Leave a message" form (name, email, company, message, plus the topics the visitor asked about), stored in SQLite.
+- Optional Telegram and webhook notifications, sent in the background.
+- Rate limit (5 per hour per IP), a honeypot spam trap, and field validation.
+- Optional "Book a call" button via `VITE_BOOKING_URL`.
+- The admin dashboard has a Messages tab (`GET /contact/recent`).
+- Chikki points visitors to these buttons when they ask how to contact or hire Akash.
+
 ### Security
 - Feedback analytics (`/feedback/recent`, `/feedback/analytics`) and `/resume/sync` now require an `X-Admin-Token` header matching `ADMIN_TOKEN`. Access is refused when no token is configured.
 - The feedback dashboard asks for the admin token and keeps it only for the current browser tab session.

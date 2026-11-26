@@ -271,8 +271,13 @@ def stream_chikki(
     history: list[dict],
     language: str = "en-IN",
     previous_jokes: list[str] | None = None,
+    knowledge_context: str = "",
 ) -> Iterator[Tuple[str, str]]:
-    """Yields (token, trace_id) pairs with priority failover across all providers."""
+    """Yields (token, trace_id) pairs with priority failover across all providers.
+
+    knowledge_context is the formatted retrieval block appended to the system
+    prompt for non-joke turns.
+    """
     previous_jokes = previous_jokes or []
     is_joke = _is_joke_request(message)
     request_message = message.strip() if is_joke else _prepare_message(message, language)
@@ -288,7 +293,7 @@ def stream_chikki(
             "or mention Akash. Never target the listener. Return only the joke."
         )
     else:
-        system_prompt = build_system_prompt()
+        system_prompt = build_system_prompt() + knowledge_context
     if is_joke and previous_jokes:
         joke_memory = "\n".join(f"- {joke[:180]}" for joke in previous_jokes[-5:])
         system_prompt += (

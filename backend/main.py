@@ -3,16 +3,19 @@ import asyncio
 import logging
 import os
 import re
+from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request
+from fastapi import BackgroundTasks, Depends, FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from ai import ChikkiAIError, _is_joke_request, stream_chikki
+from contact_store import notify_contact, read_contacts, save_contact
 from feedback_store import feedback_analytics, read_feedback, record_feedback
 from generate_resume_pdf import build_resume_pdf
-from models import FeedbackRequest
+from knowledge import format_context, knowledge_base, sources_for
+from models import ContactRequest, FeedbackRequest
 from resume import sync_resume as sync_resume_profile
 from resume_loader import sync_drive_resume
 from security import (
@@ -20,6 +23,7 @@ from security import (
     MAX_TTS_CHARS,
     chat_limiter,
     client_ip,
+    contact_limiter,
     enforce_rate_limit,
     feedback_limiter,
     require_admin,
@@ -39,7 +43,21 @@ logger = logging.getLogger("chikki")
 
 APP_VERSION = "2.0.0"
 
-app = FastAPI(title="Chikki AI Assistant", version=APP_VERSION)
+def _safe_refresh_knowledge():
+    try:
+        knowledge_base.refresh()
+    except Exception:
+        logger.exception("Initial knowledge index build failed")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Build the retrieval index in the background so the first question is fast.
+    asyncio.get_running_loop().run_in_executor(None, _safe_refresh_knowledge)
+    yield
+
+
+app = FastAPI(title="Chikki AI Assistant", version=APP_VERSION, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -74,6 +92,12 @@ class ResumeDownloadRequest(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok", "version": APP_VERSION}
+
+
+@app.post("/knowledge/refresh", dependencies=[Depends(require_admin)])
+def refresh_knowledge():
+    knowledge_base.refresh()
+    return {"status": "ok", "chunks": knowledge_base.chunk_count}
 
 
 @app.post("/tts")
@@ -160,6 +184,27 @@ def feedback_analytics_route():
     return feedback_analytics()
 
 
+@app.post("/contact")
+def create_contact(body: ContactRequest, request: Request, background_tasks: BackgroundTasks):
+    enforce_rate_limit(contact_limiter, request)
+    if body.website.strip():
+        # Honeypot filled in: pretend success so bots do not retry.
+        logger.info("Dropped contact submission caught by honeypot")
+        return {"status": "received"}
+    try:
+        entry = save_contact(body.name, body.email, body.company, body.message, body.topics)
+    except Exception as error:
+        logger.exception("Failed to store contact message")
+        raise HTTPException(status_code=500, detail="Could not send your message. Please try again.") from error
+    background_tasks.add_task(notify_contact, entry)
+    return {"status": "received"}
+
+
+@app.get("/contact/recent", dependencies=[Depends(require_admin)])
+def recent_contacts(limit: int = Query(50, ge=1, le=200)):
+    return read_contacts(limit=limit)
+
+
 async def synthesize_b64(
     text: str,
     voice: str | None = None,
@@ -192,6 +237,21 @@ async def process_chikki_turn(
     last_trace_id = ""
     token_queue = asyncio.Queue()
     event_loop = asyncio.get_running_loop()
+    is_joke = _is_joke_request(user_msg)
+
+    retrieved = []
+    if not is_joke:
+        # Include the previous question so follow-ups like "tell me more" still retrieve.
+        previous_question = next(
+            (turn["content"] for turn in reversed(conversation_history) if turn["role"] == "user"), ""
+        )
+        try:
+            retrieved = await asyncio.to_thread(
+                knowledge_base.retrieve, f"{user_msg}\n{previous_question[:300]}"
+            )
+        except Exception:
+            logger.exception("Knowledge retrieval failed; answering without it")
+    knowledge_context = format_context(retrieved)
 
     def pump_tokens():
         try:
@@ -200,6 +260,7 @@ async def process_chikki_turn(
                 conversation_history,
                 language,
                 previous_jokes=conversation_jokes,
+                knowledge_context=knowledge_context,
             ):
                 event_loop.call_soon_threadsafe(token_queue.put_nowait, ("token", token_pair))
         except Exception as stream_error:
@@ -273,7 +334,6 @@ async def process_chikki_turn(
             {"role": "assistant", "content": final_text},
         ])
         del conversation_history[:-12]
-        is_joke = _is_joke_request(user_msg)
         if is_joke and final_text.strip():
             conversation_jokes.append(final_text.strip())
             del conversation_jokes[:-10]
@@ -286,6 +346,7 @@ async def process_chikki_turn(
                 "isError": False,
                 "turn_id": turn_id,
                 "kind": "joke" if is_joke else None,
+                "sources": sources_for(retrieved),
             },
             "turn_id": turn_id,
         })

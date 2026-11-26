@@ -28,6 +28,16 @@ services:
         sync: false
       - key: ADMIN_TOKEN
         generateValue: true
+      - key: NVIDIA_EMBED_MODEL
+        sync: false
+      - key: KNOWLEDGE_URLS
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: CONTACT_WEBHOOK_URL
+        sync: false
       - key: FEEDBACK_DB_PATH
         value: data/feedback.db
       - key: LANGFUSE_PUBLIC_KEY

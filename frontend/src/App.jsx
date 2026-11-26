@@ -4,6 +4,7 @@ import StandbyScreen from "./components/StandbyScreen.jsx";
 import ChatPanel from "./components/ChatPanel.jsx";
 import AppFooter from "./components/AppFooter.jsx";
 import FeedbackDashboard from "./components/FeedbackDashboard.jsx";
+import ContactModal from "./components/ContactModal.jsx";
 import LanguageSelector from "./components/LanguageSelector.jsx";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition.js";
 import { connectVoiceSocket, downloadResumePdf, fetchGreetingAudio, sendFeedback } from "./services/api.js";
@@ -61,6 +62,7 @@ const CONTACT_ACTIONS = {
   github: import.meta.env.VITE_GITHUB_URL,
   email: import.meta.env.VITE_CONTACT_EMAIL || "",
   phone: import.meta.env.VITE_CONTACT_PHONE || "",
+  booking: import.meta.env.VITE_BOOKING_URL || "",
   resume: import.meta.env.VITE_RESUME_URL || `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/resume`,
 };
 
@@ -307,6 +309,9 @@ export default function App() {
 
   // Telemetry Dashboard Modal
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showContact, setShowContact] = useState(false);
+  const openContact = useCallback(() => setShowContact(true), []);
+  const closeContact = useCallback(() => setShowContact(false), []);
 
   // Session tracking
   const [sessionId] = useState(() => {
@@ -841,6 +846,7 @@ export default function App() {
             final: true,
             isError: meta?.isError,
             kind: meta?.kind,
+            sources: meta?.sources || [],
             trace_id: tid || currentTraceIdRef.current,
           };
           if (!hasPacedAudio) {
@@ -914,12 +920,19 @@ export default function App() {
           onDownloadResume={handleDownloadResume}
           onBack={handleSwitchToVoice}
           onOpenDashboard={() => setShowDashboard(true)}
+          onOpenContact={openContact}
           language={currentLang}
           onLanguageChange={setCurrentLang}
         />
         <FeedbackDashboard
           isOpen={showDashboard}
           onClose={handleCloseDashboard}
+        />
+        <ContactModal
+          isOpen={showContact}
+          onClose={closeContact}
+          topics={resumeFocusFromMessages(messages).slice(0, 300)}
+          bookingUrl={CONTACT_ACTIONS.booking}
         />
       </>
     );
@@ -1139,6 +1152,14 @@ export default function App() {
             >
               Resume PDF
             </button>
+            <button type="button" onClick={openContact} className="action-button primary-action">
+              ✉️ Leave a message
+            </button>
+            {CONTACT_ACTIONS.booking && (
+              <a href={CONTACT_ACTIONS.booking} target="_blank" rel="noreferrer" className="action-button">
+                📅 Book a call
+              </a>
+            )}
             {CONTACT_ACTIONS.linkedin && (
               <a
                 href={CONTACT_ACTIONS.linkedin}
@@ -1179,6 +1200,12 @@ export default function App() {
       <FeedbackDashboard
         isOpen={showDashboard}
         onClose={handleCloseDashboard}
+      />
+      <ContactModal
+        isOpen={showContact}
+        onClose={closeContact}
+        topics={resumeFocusFromMessages(messages).slice(0, 300)}
+        bookingUrl={CONTACT_ACTIONS.booking}
       />
     </div>
   );

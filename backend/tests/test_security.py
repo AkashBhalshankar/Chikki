@@ -1,5 +1,3 @@
-import time
-
 import pytest
 from fastapi import HTTPException
 
@@ -23,10 +21,11 @@ def test_rate_limiter_blocks_after_limit_and_is_per_key():
 
 
 def test_rate_limiter_window_expires():
-    limiter = RateLimiter(limit=1, window_seconds=0.05)
+    now = [0.0]
+    limiter = RateLimiter(limit=1, window_seconds=60, clock=lambda: now[0])
     assert limiter.allow("a")
     assert not limiter.allow("a")
-    time.sleep(0.06)
+    now[0] = 61.0
     assert limiter.allow("a")
 
 
