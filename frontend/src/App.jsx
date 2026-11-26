@@ -6,6 +6,7 @@ import AppFooter from "./components/AppFooter.jsx";
 import FeedbackDashboard from "./components/FeedbackDashboard.jsx";
 import ContactModal from "./components/ContactModal.jsx";
 import JobMatchModal from "./components/JobMatchModal.jsx";
+import HowItWorksModal from "./components/HowItWorksModal.jsx";
 import { buildShareUrl, readSharedLink } from "./sharedLink.js";
 import { cleanForBrowserSpeech } from "./speechText.js";
 import LanguageSelector from "./components/LanguageSelector.jsx";
@@ -330,6 +331,9 @@ export default function App() {
   const voiceNoticeTimerRef = useRef(null);
   const openContact = useCallback(() => setShowContact(true), []);
   const closeContact = useCallback(() => setShowContact(false), []);
+  const [showHow, setShowHow] = useState(false);
+  const openHow = useCallback(() => setShowHow(true), []);
+  const closeHow = useCallback(() => setShowHow(false), []);
   const [showMatch, setShowMatch] = useState(false);
   const openMatch = useCallback(() => setShowMatch(true), []);
   const closeMatch = useCallback(() => setShowMatch(false), []);
@@ -1017,6 +1021,7 @@ export default function App() {
           onOpenContact={openContact}
           onOpenMatch={openMatch}
           onShare={handleShare}
+          onOpenHow={openHow}
           onClear={handleClearChat}
           onOpenBooking={CONTACT_ACTIONS.booking ? () => window.open(CONTACT_ACTIONS.booking, "_blank", "noopener") : null}
           language={currentLang}
@@ -1033,6 +1038,7 @@ export default function App() {
           bookingUrl={CONTACT_ACTIONS.booking}
         />
         <JobMatchModal isOpen={showMatch} onClose={closeMatch} onDownloadResume={handleDownloadTailoredResume} />
+        <HowItWorksModal isOpen={showHow} onClose={closeHow} githubUrl={CONTACT_ACTIONS.github} />
       </>
     );
   }
@@ -1264,6 +1270,9 @@ export default function App() {
             <button type="button" onClick={openMatch} className="action-button">
               🎯 Check role fit
             </button>
+            <button type="button" onClick={openHow} className="action-button">
+              🧠 How Chikki works
+            </button>
             {CONTACT_ACTIONS.booking && (
               <a href={CONTACT_ACTIONS.booking} target="_blank" rel="noreferrer" className="action-button">
                 📅 Book a call
@@ -1317,6 +1326,7 @@ export default function App() {
         bookingUrl={CONTACT_ACTIONS.booking}
       />
       <JobMatchModal isOpen={showMatch} onClose={closeMatch} onDownloadResume={handleDownloadTailoredResume} />
+      <HowItWorksModal isOpen={showHow} onClose={closeHow} githubUrl={CONTACT_ACTIONS.github} />
     </div>
   );
 }

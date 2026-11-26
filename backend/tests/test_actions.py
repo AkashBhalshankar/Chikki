@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import main
-from actions import ActionTagFilter
+from actions import ActionTagFilter, filter_actions
 
 
 def run(chunks):
@@ -71,3 +71,21 @@ def test_unexpected_turn_error_still_replies(client, monkeypatch):
         ws.send_json({"message": "hello there", "voice": False, "turn_id": "t9"})
         data = ws.receive_json()
     assert data["meta"]["isError"] is True and data["meta"]["kind"] == "internal"
+
+
+@pytest.mark.parametrize("message,action,allowed", [
+    ("How can I contact Akash?", "contact", True),
+    ("I want to hire him", "contact", True),
+    ("Can I get his resume?", "resume", True),
+    ("send me the CV", "resume", True),
+    ("Would Akash fit this role? Job description: ...", "role_fit", True),
+    ("Can we schedule a call?", "booking", True),
+    ("\u0906\u0915\u093e\u0936 \u0938\u0947 \u0938\u0902\u092a\u0930\u094d\u0915 \u0915\u0948\u0938\u0947 \u0915\u0930\u0942\u0901?", "contact", True),
+    ("What happens if a provider goes down?", "contact", False),
+    ("Did Akash work at Google?", "resume", False),
+    ("What security protections does Chikki have?", "resume", False),
+    ("What was his role at UBS?", "role_fit", False),
+    ("Tell me about his projects", "booking", False),
+])
+def test_actions_are_filtered_by_the_visitors_request(message, action, allowed):
+    assert (filter_actions([action], message) == [action]) is allowed

@@ -147,12 +147,17 @@ def detail_max_tokens(language: str, voice_mode: bool) -> int:
     return base * 2 if language in {"te-IN", "hi-IN"} else base
 
 
+# The script is spelled out because models otherwise answer Telugu or Hindi
+# questions in English or in romanized letters, which the matching voice cannot read.
+RESPONSE_LANGUAGES = {
+    "en-IN": "English",
+    "te-IN": "Telugu, written in Telugu script (తెలుగు లిపి) and never in English letters; your whole reply must be Telugu even though the profile is in English",
+    "hi-IN": "Hindi, written in Devanagari script (देवनागरी) and never romanized or Hinglish; your whole reply must be Hindi even though the profile is in English",
+}
+
+
 def _prepare_message(message: str, language: str = "en-IN", detail: bool = False, voice_mode: bool = True) -> str:
-    response_language = {
-        "en-IN": "English",
-        "te-IN": "Telugu",
-        "hi-IN": "Hindi",
-    }.get(language, "English")
+    response_language = RESPONSE_LANGUAGES.get(language, "English")
     if detail and voice_mode:
         length_rule = (
             "The visitor asked for more depth, so ignore any earlier length limit and answer in 4 to 5 clear, "
@@ -319,11 +324,7 @@ def stream_chikki(
     request_message = message.strip() if is_joke else _prepare_message(message, language, detail, voice_mode)
     max_tokens_override = detail_max_tokens(language, voice_mode) if detail and not is_joke else None
     if is_joke:
-        response_language = {
-            "en-IN": "English",
-            "te-IN": "Telugu",
-            "hi-IN": "Hindi",
-        }.get(language, "English")
+        response_language = RESPONSE_LANGUAGES.get(language, "English")
         system_prompt = (
             f"Tell one original, speakable software joke in {response_language}. "
             "Use at most two short sentences. Do not explain the joke, add an intro, "

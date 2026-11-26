@@ -45,6 +45,7 @@ export default function ChatPanel({
   onOpenMatch,
   onOpenBooking,
   onShare,
+  onOpenHow,
   onClear,
   language = "en-IN",
   onLanguageChange,
@@ -198,6 +199,11 @@ export default function ChatPanel({
             {onOpenMatch && (
               <button type="button" onClick={onOpenMatch} className="action-button">
                 🎯 Check role fit
+              </button>
+            )}
+            {onOpenHow && (
+              <button type="button" onClick={onOpenHow} className="action-button">
+                🧠 How Chikki works
               </button>
             )}
             {onShare && (

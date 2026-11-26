@@ -61,6 +61,17 @@ cd frontend && npm run build            # expect: built, no errors
 | Digest | `curl -H "X-Admin-Token: local-test-token" localhost:8000/digest/preview` | digest text |
 | Knowledge index | `curl -X POST -H "X-Admin-Token: local-test-token" localhost:8000/knowledge/refresh` | `"chunks"` greater than 0 |
 
+## 4b. Answer-quality evals (uses real model calls, about 1 minute)
+
+```bash
+cd backend
+uv run python evals.py              # all cases; expect 13/13 passed
+uv run python evals.py --id rag     # a single case
+```
+
+A failure prints what was wrong and the reply. Add your own cases to `backend/evals/cases.json`.
+If Groq reports a rate limit the run falls back to the next provider; just re-run a failed case.
+
 ## 5. Click-through checklist in the browser
 
 1. **Text chat:** click "Use text chat instead", ask *"What is Chikki?"*. You get a short answer with **Sources** chips under it.
@@ -77,7 +88,13 @@ cd frontend && npm run build            # expect: built, no errors
    You see a "Someone shared this with you" card; click it and the answer starts automatically. In chat, **Copy link** copies a link for your last question.
 8. **Voice:** go back to the start screen, click "Click to start", allow the microphone, say *"Hey Chikki"*, then ask something. You should hear the voice and see captions.
 9. **Dashboard:** click **Analytics**, enter `local-test-token`. The **Usage** tab shows the questions you just asked, language, voice vs text, reply times and any knowledge gaps. **Feedback** and **Messages** tabs also load.
-10. **Limits (optional):** send 6 role-fit checks in an hour, or 5 messages in an hour, and the last one should be refused politely.
+10. **Voice quality:** in voice mode, say *"Does he know fast API and lang graph?"*:
+    - while you speak, a line **"I'm hearing..."** shows your words, and technical terms appear correctly spelled (FastAPI, LangGraph);
+    - mumble or whisper something unclear: Chikki should ask you to repeat instead of answering;
+    - switch the language selector to **Telugu** or **Hindi** and ask in that language: the reply is in that script and the voice matches;
+    - ask in English with the selector on Telugu: the English reply is spoken with the English voice, not garbled.
+11. **How it works:** click **🧠 How Chikki works** and check the page opens and closes (Esc works too).
+12. **Limits (optional):** send 6 role-fit checks in an hour, or 5 messages in an hour, and the last one should be refused politely.
 
 ## 6. If something looks wrong
 

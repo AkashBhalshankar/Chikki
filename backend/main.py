@@ -12,7 +12,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from ai import ChikkiAIError, _is_joke_request, is_detail_request, stream_chikki
-from actions import ActionTagFilter
+from actions import ActionTagFilter, filter_actions
 from analytics_store import record_event, summary as analytics_summary
 from jd_match import analyze_job
 from digest import run_ops_check, send_digest, build_digest
@@ -440,7 +440,7 @@ async def process_chikki_turn(
                 "turn_id": turn_id,
                 "kind": "joke" if is_joke else None,
                 "sources": sources_for(retrieved),
-                "actions": tag_filter.actions,
+                "actions": filter_actions(tag_filter.actions, user_msg),
             },
             "turn_id": turn_id,
         })

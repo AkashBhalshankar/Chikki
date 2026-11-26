@@ -10,6 +10,11 @@
 - Chikki project details moved from the hardcoded system prompt into `knowledge/chikki.md`.
 - Added admin endpoint `POST /knowledge/refresh`.
 
+### New: answer-quality evals and "How Chikki works"
+- `backend/evals.py` runs 13 known questions through the real pipeline (retrieval, models, actions) and checks the replies: expected facts, no invented claims, resistance to prompt injection, correct button offered, correct language and script, spoken-answer length and clean formatting. Run it with `uv run python evals.py` (real model calls).
+- The evals found and fixed two bugs: buttons offered when nobody asked (now also checked against the visitor's own words, in English, Hindi and Telugu), and Telugu or Hindi questions answered in English or romanized letters (the reply script is now required).
+- A "How Chikki works" page explains the flow and engineering principles to recruiters.
+
 ### Voice: clearer listening and speaking
 - Live "I'm hearing..." text while the visitor speaks, so recognition problems are visible immediately.
 - Common mishearings are corrected (Akash, Chikki, FastAPI, LangGraph, LangChain, Langfuse, RAG, LLM, GitHub, WebSockets, and similar).
