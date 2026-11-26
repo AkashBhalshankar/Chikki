@@ -2,7 +2,12 @@
 
 Channels (each is used only when configured):
   Telegram: TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID
-  Email:    RESEND_API_KEY + CONTACT_TO (comma separated), optional CONTACT_FROM
+  Email:    CONTACT_TO (comma separated) plus either or both of:
+              Resend: RESEND_API_KEY, optional CONTACT_FROM (works over HTTPS, so it
+                      also works on hosts that block SMTP, such as Render's free tier)
+              SMTP:   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, optional SMTP_FROM
+                      (for example Gmail with an App Password)
+              Resend is tried first, then SMTP as a fallback.
   Webhook:  CONTACT_WEBHOOK_URL (JSON body with "text" and "content", which
             covers Slack- and Discord-style incoming webhooks)
 
@@ -13,6 +18,8 @@ Resend and set CONTACT_FROM to an address on it.
 
 import logging
 import os
+import smtplib
+from email.message import EmailMessage
 
 import requests
 
@@ -31,8 +38,18 @@ def _recipients() -> list[str]:
     return [address.strip() for address in os.getenv("CONTACT_TO", "").split(",") if address.strip()]
 
 
-def email_configured() -> bool:
+def resend_configured() -> bool:
     return bool(_resend_key() and _recipients())
+
+
+def smtp_configured() -> bool:
+    return bool(
+        os.getenv("SMTP_HOST") and os.getenv("SMTP_USER") and os.getenv("SMTP_PASS") and _recipients()
+    )
+
+
+def email_configured() -> bool:
+    return resend_configured() or smtp_configured()
 
 
 def telegram_configured() -> bool:
@@ -58,7 +75,40 @@ def _send_telegram(text: str) -> bool:
         return False
 
 
-def _send_email(subject: str, text: str, reply_to: str | None) -> bool:
+def _send_smtp(subject: str, text: str, reply_to: str | None) -> bool:
+    user = os.getenv("SMTP_USER", "")
+    message = EmailMessage()
+    message["From"] = os.getenv("SMTP_FROM") or f"Chikki <{user}>"
+    message["To"] = ", ".join(_recipients())
+    message["Subject"] = subject[:200]
+    if reply_to:
+        message["Reply-To"] = reply_to
+    message.set_content(text)
+
+    host = os.getenv("SMTP_HOST", "")
+    try:
+        port = int(os.getenv("SMTP_PORT") or 587)
+    except ValueError:
+        port = 587
+    try:
+        if port == 465:
+            server = smtplib.SMTP_SSL(host, port, timeout=15)
+        else:
+            server = smtplib.SMTP(host, port, timeout=15)
+            server.starttls()
+        with server:
+            server.login(user, os.getenv("SMTP_PASS", ""))
+            server.send_message(message)
+        return True
+    except smtplib.SMTPAuthenticationError:
+        logger.warning("SMTP login was rejected. For Gmail, use an App Password, not your normal password.")
+    except (smtplib.SMTPException, OSError) as error:
+        # Hosts such as Render's free tier block outbound SMTP; the error type is enough to tell.
+        logger.warning("SMTP email failed: %s", type(error).__name__)
+    return False
+
+
+def _send_resend(subject: str, text: str, reply_to: str | None) -> bool:
     payload = {
         "from": os.getenv("CONTACT_FROM") or DEFAULT_FROM,
         "to": _recipients(),
@@ -81,6 +131,13 @@ def _send_email(subject: str, text: str, reply_to: str | None) -> bool:
     except requests.RequestException as error:
         logger.warning("Resend email failed: %s", type(error).__name__)
         return False
+
+
+def _send_email(subject: str, text: str, reply_to: str | None) -> bool:
+    """Resend first (HTTPS), then SMTP as a fallback. True if either delivered."""
+    if resend_configured() and _send_resend(subject, text, reply_to):
+        return True
+    return smtp_configured() and _send_smtp(subject, text, reply_to)
 
 
 def _send_webhook(text: str) -> bool:

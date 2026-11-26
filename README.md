@@ -82,7 +82,9 @@ prompt as the ground truth.
   Messages appear in the dashboard's **Messages** tab.
   - Notifications (also used for the weekly digest and health alerts): Telegram
     (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`), email through Resend
-    (`RESEND_API_KEY`, `CONTACT_TO`, optional `CONTACT_FROM`), and/or `CONTACT_WEBHOOK_URL`.
+    (`RESEND_API_KEY`, `CONTACT_TO`, optional `CONTACT_FROM`) and/or SMTP such as Gmail with an
+    App Password (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`), and/or `CONTACT_WEBHOOK_URL`.
+    Resend is tried first, SMTP is the fallback. Render's free tier blocks SMTP, so use Resend there.
     Emails use the visitor as Reply-To, so replying answers them directly.
   - Resend's default sender can only email your own Resend account address. To email any
     address, verify a domain at resend.com/domains and set `CONTACT_FROM`.

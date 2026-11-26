@@ -12,6 +12,7 @@
 
 ### New: email notifications (Resend) and delivery test
 - Visitor messages, the weekly digest and health alerts can now also go to your inbox through Resend, next to Telegram and webhooks. Email replies go straight to the visitor.
+- SMTP (for example Gmail with an App Password) works as an email fallback after Resend.
 - `POST /notify/test` (admin) sends a test to every configured channel and reports which delivered.
 - Tests never send real messages, even when a local `.env` has live credentials.
 

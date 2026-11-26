@@ -8,6 +8,7 @@ import notifier
 ALL_VARS = (
     "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "RESEND_API_KEY", "Resend_API_KEY",
     "CONTACT_TO", "CONTACT_FROM", "CONTACT_WEBHOOK_URL",
+    "SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS", "SMTP_FROM",
 )
 
 
@@ -128,3 +129,95 @@ def test_notify_test_endpoint(calls, feedback_db, clean_env):
     clean_env.setenv("CONTACT_TO", "owner@example.com")
     body = client.post("/notify/test", headers={"X-Admin-Token": "tok"}).json()
     assert body == {"configured": ["email"], "delivered": {"email": True}, "ok": True}
+
+
+class FakeSMTP:
+    instances = []
+
+    def __init__(self, host, port, timeout=None):
+        self.host, self.port, self.tls, self.login_args, self.sent = host, port, False, None, []
+        FakeSMTP.instances.append(self)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def starttls(self):
+        self.tls = True
+
+    def login(self, user, password):
+        self.login_args = (user, password)
+
+    def send_message(self, message):
+        self.sent.append(message)
+
+
+@pytest.fixture
+def smtp_env(clean_env):
+    FakeSMTP.instances.clear()
+    clean_env.setenv("SMTP_HOST", "smtp.example.com")
+    clean_env.setenv("SMTP_PORT", "587")
+    clean_env.setenv("SMTP_USER", "me@example.com")
+    clean_env.setenv("SMTP_PASS", "app-password")
+    clean_env.setenv("CONTACT_TO", "owner@example.com")
+    clean_env.setattr(notifier.smtplib, "SMTP", FakeSMTP)
+    return clean_env
+
+
+def test_smtp_needs_all_settings(clean_env):
+    clean_env.setenv("SMTP_HOST", "smtp.example.com")
+    clean_env.setenv("SMTP_USER", "me@example.com")
+    clean_env.setenv("CONTACT_TO", "owner@example.com")
+    assert not notifier.smtp_configured()  # no password yet
+    clean_env.setenv("SMTP_PASS", "pw")
+    assert notifier.smtp_configured() and notifier.email_configured()
+
+
+def test_smtp_email_message(smtp_env):
+    assert notifier.send_all("Hello body", subject="Hi", reply_to="visitor@acme.com") == {"email": True}
+    server = FakeSMTP.instances[0]
+    assert server.tls and server.login_args == ("me@example.com", "app-password")
+    message = server.sent[0]
+    assert message["To"] == "owner@example.com" and message["Reply-To"] == "visitor@acme.com"
+    assert message["Subject"] == "Hi" and message["From"] == "Chikki <me@example.com>"
+    assert "Hello body" in message.get_content()
+
+
+def test_smtp_is_the_fallback_when_resend_fails(smtp_env, monkeypatch):
+    monkeypatch.setenv("RESEND_API_KEY", "re_key")
+    monkeypatch.setattr(notifier.requests, "post", lambda *a, **k: FakeResponse(False, 403, "domain not verified"))
+    assert notifier.send_all("x") == {"email": True}
+    assert len(FakeSMTP.instances) == 1
+
+
+def test_smtp_not_used_when_resend_succeeds(smtp_env, monkeypatch):
+    monkeypatch.setenv("RESEND_API_KEY", "re_key")
+    monkeypatch.setattr(notifier.requests, "post", lambda *a, **k: FakeResponse())
+    assert notifier.send_all("x") == {"email": True}
+    assert FakeSMTP.instances == []
+
+
+def test_smtp_failures_are_reported_without_raising(smtp_env, monkeypatch):
+    def broken(*args, **kwargs):
+        raise OSError("network unreachable")
+
+    monkeypatch.setattr(notifier.smtplib, "SMTP", broken)
+    assert notifier.send_all("x") == {"email": False}
+
+
+def test_smtp_bad_login_is_reported(smtp_env, monkeypatch):
+    class RejectingSMTP(FakeSMTP):
+        def login(self, user, password):
+            raise notifier.smtplib.SMTPAuthenticationError(535, b"bad credentials")
+
+    monkeypatch.setattr(notifier.smtplib, "SMTP", RejectingSMTP)
+    assert notifier.send_all("x") == {"email": False}
+
+
+def test_smtp_port_465_uses_ssl(smtp_env, monkeypatch):
+    smtp_env.setenv("SMTP_PORT", "465")
+    seen = []
+    monkeypatch.setattr(notifier.smtplib, "SMTP_SSL", lambda host, port, timeout=None: seen.append(port) or FakeSMTP(host, port))
+    assert notifier.send_all("x") == {"email": True} and seen == [465]

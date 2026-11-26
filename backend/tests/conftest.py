@@ -10,6 +10,7 @@ for key in (
     # Never send real Telegram messages or emails from tests, even when a local .env has them.
     "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "RESEND_API_KEY", "Resend_API_KEY",
     "CONTACT_TO", "CONTACT_FROM", "CONTACT_WEBHOOK_URL", "GITHUB_USERNAME",
+    "SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS", "SMTP_FROM",
 ):
     os.environ[key] = ""
 
