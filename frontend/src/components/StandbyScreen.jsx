@@ -5,6 +5,7 @@ export default function StandbyScreen({
   state,
   onEnableMic,
   onTypeInstead,
+  sharedLabel,
 }) {
   return (
     <div className="min-h-screen dot-grid px-5 py-6 sm:px-8">
@@ -26,6 +27,16 @@ export default function StandbyScreen({
             <span className="text-gray-800">/</span>
             <span>Standby</span>
           </div>
+
+          {sharedLabel && typeof onTypeInstead === "function" && (
+            <div className="mt-8 max-w-md rounded-xl border border-chikki-purple/50 bg-chikki-purple/10 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-gray-400">Someone shared this with you</p>
+              <p className="mt-1 text-sm text-gray-200">{sharedLabel}</p>
+              <button type="button" onClick={onTypeInstead} className="action-button primary-action mt-3 px-5">
+                See Chikki&apos;s answer
+              </button>
+            </div>
+          )}
 
           <p className="mt-8 text-sm text-gray-400">Say <span className="text-chikki-purpleLight">“Hey Chikki”</span> to begin.</p>
 

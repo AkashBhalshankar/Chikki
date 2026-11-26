@@ -44,6 +44,7 @@ export default function ChatPanel({
   onOpenContact,
   onOpenMatch,
   onOpenBooking,
+  onShare,
   language = "en-IN",
   onLanguageChange,
 }) {
@@ -55,6 +56,15 @@ export default function ChatPanel({
   const [feedbackVote, setFeedbackVote] = useState(null);
   const [commentText, setCommentText] = useState("");
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const handleShareClick = async () => {
+    const copied = await onShare?.();
+    if (copied) {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  };
 
   const latestAssistantIndex = messages.reduce(
     (latest, message, index) => (message.role === "assistant" ? index : latest),
@@ -156,6 +166,11 @@ export default function ChatPanel({
             {onOpenMatch && (
               <button type="button" onClick={onOpenMatch} className="action-button">
                 🎯 Check role fit
+              </button>
+            )}
+            {onShare && (
+              <button type="button" onClick={handleShareClick} className="action-button">
+                {linkCopied ? "✓ Link copied" : "🔗 Copy link"}
               </button>
             )}
             {actions.booking && (

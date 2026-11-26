@@ -8,7 +8,6 @@ notifications are sent to:
 """
 
 import logging
-import os
 import sqlite3
 import uuid
 from datetime import datetime, timezone
@@ -17,6 +16,7 @@ from typing import Any, Dict, List
 import requests
 
 from feedback_store import get_connection
+from notifier import channels_configured, send_notification
 
 logger = logging.getLogger("chikki.contact")
 
@@ -68,40 +68,14 @@ def _format_notification(entry: Dict[str, Any]) -> str:
 
 
 def notify_contact(entry: Dict[str, Any]) -> bool:
-    """Sends notifications. Runs as a background task; never raises."""
-    text = _format_notification(entry)
-    delivered = False
-
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
-    if bot_token and chat_id:
-        try:
-            response = requests.post(
-                f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                json={"chat_id": chat_id, "text": text[:4000], "disable_web_page_preview": True},
-                timeout=10,
-            )
-            response.raise_for_status()
-            delivered = True
-        except requests.RequestException as error:
-            # Do not log the URL: it contains the bot token.
-            logger.warning("Telegram notification failed: %s", type(error).__name__)
-
-    webhook_url = os.getenv("CONTACT_WEBHOOK_URL", "")
-    if webhook_url:
-        try:
-            response = requests.post(webhook_url, json={"text": text, "content": text[:2000]}, timeout=10)
-            response.raise_for_status()
-            delivered = True
-        except requests.RequestException as error:
-            logger.warning("Contact webhook notification failed: %s", type(error).__name__)
-
+    """Sends the notification. Runs as a background task; never raises."""
+    delivered = send_notification(_format_notification(entry))
     if delivered:
         try:
             with get_connection() as conn:
                 conn.execute("UPDATE contacts SET notified = 1 WHERE id = ?", (entry["id"],))
         except sqlite3.Error:
             logger.exception("Failed to mark contact as notified")
-    elif bot_token or webhook_url:
+    elif channels_configured():
         logger.warning("Contact %s stored but no notification was delivered", entry["id"])
     return delivered

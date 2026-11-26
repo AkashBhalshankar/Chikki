@@ -6,6 +6,7 @@ import AppFooter from "./components/AppFooter.jsx";
 import FeedbackDashboard from "./components/FeedbackDashboard.jsx";
 import ContactModal from "./components/ContactModal.jsx";
 import JobMatchModal from "./components/JobMatchModal.jsx";
+import { buildShareUrl, readSharedLink } from "./sharedLink.js";
 import LanguageSelector from "./components/LanguageSelector.jsx";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition.js";
 import { connectVoiceSocket, downloadResumePdf, fetchGreetingAudio, sendFeedback } from "./services/api.js";
@@ -297,6 +298,16 @@ const audioQueue = {
 };
 export default function App() {
   const [active, setActive] = useState(false);
+  const [sharedLink] = useState(() => {
+    const link = readSharedLink(window.location.search);
+    if (link) {
+      try {
+        window.history.replaceState({}, "", window.location.pathname);
+      } catch (_) {}
+    }
+    return link;
+  });
+  const sharedPendingRef = useRef(sharedLink?.question || null);
   const [chikkiState, setChikkiState] = useState("idle");
   const [isAssistantSpeaking, setIsAssistantSpeaking] = useState(false);
   const [micError, setMicError] = useState(false);
@@ -680,6 +691,18 @@ export default function App() {
     }
   }, [returnToVoiceHome]);
 
+  const handleShare = useCallback(async () => {
+    const lastQuestion = [...messagesRef.current].reverse().find((m) => m.role === "user")?.content;
+    const url = buildShareUrl(lastQuestion);
+    try {
+      await navigator.clipboard.writeText(url);
+      return true;
+    } catch (_) {
+      window.prompt("Copy this link:", url);
+      return false;
+    }
+  }, []);
+
   const handleDownloadTailoredResume = useCallback(async (focus) => {
     try {
       await downloadResumePdf(CONTACT_ACTIONS.resume, focus || "", CONTACT_ACTIONS);
@@ -738,6 +761,14 @@ export default function App() {
   const handleSwitchToVoice = useCallback(() => {
     returnToVoiceHome();
   }, [returnToVoiceHome]);
+
+  useEffect(() => {
+    if (active && inputMode === "chat" && sharedPendingRef.current) {
+      const question = sharedPendingRef.current;
+      sharedPendingRef.current = null;
+      handleChatSend(question);
+    }
+  }, [active, inputMode, handleChatSend]);
 
   useEffect(() => {
     if (!supported) setMicError(true);
@@ -925,6 +956,7 @@ export default function App() {
         onEnableMic={handleEnableMic}
         onActivate={handleWake}
         onTypeInstead={handleSwitchToChat}
+        sharedLabel={sharedLink?.label}
       />
     );
   }
@@ -945,6 +977,7 @@ export default function App() {
           onOpenDashboard={() => setShowDashboard(true)}
           onOpenContact={openContact}
           onOpenMatch={openMatch}
+          onShare={handleShare}
           onOpenBooking={CONTACT_ACTIONS.booking ? () => window.open(CONTACT_ACTIONS.booking, "_blank", "noopener") : null}
           language={currentLang}
           onLanguageChange={setCurrentLang}

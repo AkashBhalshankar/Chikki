@@ -10,6 +10,15 @@
 - Chikki project details moved from the hardcoded system prompt into `knowledge/chikki.md`.
 - Added admin endpoint `POST /knowledge/refresh`.
 
+### New: shareable links and company intros
+- `?q=<question>` opens Chikki with that question; `?company=<name>` opens a tailored introduction for that company. A "Copy link" button in text chat shares the latest question.
+
+### New: owner tools
+- Weekly digest (`/digest/preview`, `/digest/send`): questions, messages, role-fit checks, feedback, top questions and knowledge gaps, sent to Telegram or your webhook.
+- Health check (`/ops/check`): alerts you if the Drive resume stops syncing or no model key is configured.
+- A GitHub Actions schedule runs both automatically (add `BACKEND_URL` and `ADMIN_TOKEN` as repository secrets).
+- Live GitHub activity: set `GITHUB_USERNAME` and Chikki can mention your latest public repositories.
+
 ### New: "tell me more" mode
 - Phrases like "tell me more", "in detail" or "elaborate" (also Hindi and Telugu) now get a deeper answer: 4-5 sentences in voice, up to 8 in text, with more knowledge excerpts retrieved.
 - A "Tell me more about that" suggestion appears after each reply (not jokes).

@@ -15,6 +15,8 @@ from ai import ChikkiAIError, _is_joke_request, is_detail_request, stream_chikki
 from actions import ActionTagFilter
 from analytics_store import record_event, summary as analytics_summary
 from jd_match import analyze_job
+from digest import run_ops_check, send_digest, build_digest
+from github_activity import github_context
 from contact_store import notify_contact, read_contacts, save_contact
 from feedback_store import feedback_analytics, read_feedback, record_feedback
 from generate_resume_pdf import build_resume_pdf
@@ -97,6 +99,23 @@ class ResumeDownloadRequest(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok", "version": APP_VERSION}
+
+
+@app.get("/digest/preview", dependencies=[Depends(require_admin)])
+def digest_preview(days: int = Query(7, ge=1, le=90)):
+    return {"text": build_digest(days)}
+
+
+@app.post("/digest/send", dependencies=[Depends(require_admin)])
+def digest_send(days: int = Query(7, ge=1, le=90)):
+    text, sent = send_digest(days)
+    return {"sent": sent, "text": text}
+
+
+@app.post("/ops/check", dependencies=[Depends(require_admin)])
+def ops_check():
+    problems, alerted = run_ops_check()
+    return {"ok": not problems, "problems": problems, "alerted": alerted}
 
 
 @app.post("/knowledge/refresh", dependencies=[Depends(require_admin)])
@@ -281,6 +300,11 @@ async def process_chikki_turn(
         except Exception:
             logger.exception("Knowledge retrieval failed; answering without it")
     knowledge_context = format_context(retrieved)
+    if not is_joke:
+        try:
+            knowledge_context += await asyncio.to_thread(github_context, user_msg)
+        except Exception:
+            logger.exception("GitHub context failed; answering without it")
     turn_started = time.monotonic()
     first_token_ms: int | None = None
     turn_meta: dict = {}
