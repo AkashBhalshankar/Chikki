@@ -1,5 +1,10 @@
 # Changelog
 
+## Text chat replies
+- Replies are short and direct: the answer in the first sentence, usually 1 to 2 sentences, **bold** on key terms, and up to 4 bullets when naming three or more things. Voice replies stay plain.
+- The chat renders that formatting safely (no HTML), shows Chikki's answer as a soft card, copies answers without the formatting marks, and offers a "Show more detail" button.
+- The resume guard ignores bold marks and bullet dashes when checking a sentence.
+
 ## Chikki's expressions
 - The model now names the mood of every reply with a hidden `[[mood:x]]` tag (22 moods) at the start, sent to the page as soon as it is known; keyword rules remain as the fallback, and the resume guard's "not in the resume" notice shows the apologetic face.
 - All 35 faces are now reachable: celebrate after a contact message, grateful after a thumbs-up, interrupted when talked over, confused when speech is unclear, ready after the greeting, sleepy after a minute of silence, plus richer faces from the visitor's words.

@@ -28,7 +28,9 @@ def test_prepare_message_length_rules():
     assert "at most 2 punchy sentences" in _prepare_message("hi")
     voice = _prepare_message("hi", detail=True, voice_mode=True)
     text = _prepare_message("hi", detail=True, voice_mode=False)
-    assert "4 to 5" in voice and "up to 8 sentences" in text
+    assert "4 to 5" in voice and "about 150 words" in text
+    short = _prepare_message("hi", voice_mode=False)
+    assert "40 words" in short and "**bold**" in short and "at most 2 punchy" not in short
 
 
 def test_detail_token_budget():
@@ -51,7 +53,7 @@ def test_stream_uses_detail_budget(monkeypatch):
     monkeypatch.setattr(ai, "_stream_provider", fake_stream)
     list(ai.stream_chikki("Tell me more", [], detail=True, voice_mode=False))
     assert seen["max_tokens_override"] == detail_max_tokens("en-IN", False)
-    assert "up to 8 sentences" in seen["message"]
+    assert "about 150 words" in seen["message"]
 
     seen.clear()
     list(ai.stream_chikki("What does he do?", []))

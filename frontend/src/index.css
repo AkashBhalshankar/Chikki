@@ -604,3 +604,9 @@ html[data-theme="light"] textarea:focus {
 html[data-theme="light"] .chikki-stage svg rect[fill="#3A3A3A"] { fill: #4a5273; }
 html[data-theme="light"] .chikki-stage svg rect[fill="#2A2A2A"] { fill: #3f4766; }
 html[data-theme="light"] .chikki-stage svg rect[stroke="#444"] { stroke: #7c86ad; }
+
+/* Formatting inside Chikki's replies (bold key terms and code) */
+.answer-card strong { color: #fafafa; }
+.answer-card code { background: rgba(255, 255, 255, 0.1); }
+html[data-theme="light"] .answer-card strong { color: #0f172a; }
+html[data-theme="light"] .answer-card code { background: rgba(15, 23, 42, 0.08); color: #1e293b; }

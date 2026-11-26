@@ -91,6 +91,12 @@ def pop_early_phrase(buffer: str) -> tuple[str, str]:
     return "", buffer
 
 
+def strip_markdown(text: str) -> str:
+    """Removes bold markers, backticks and bullet dashes so formatting never affects the checks."""
+    text = re.sub(r"^[ 	]*[-*•][ 	]+", "", text, flags=re.MULTILINE)
+    return text.replace("**", "").replace("`", "")
+
+
 def pop_sentences(buffer: str) -> tuple[list[str], str]:
     """Splits finished sentences off a growing buffer.
 
@@ -187,7 +193,7 @@ class GroundingGuard:
         return list(dict.fromkeys(found))
 
     def check_sentence(self, sentence: str) -> tuple[bool, list[str]]:
-        bad = self.unsupported_terms(sentence)
+        bad = self.unsupported_terms(strip_markdown(sentence))
         return not bad, bad
 
     @property

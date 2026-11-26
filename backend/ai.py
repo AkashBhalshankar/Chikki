@@ -165,9 +165,19 @@ def _prepare_message(message: str, language: str = "en-IN", detail: bool = False
         )
     elif detail:
         length_rule = (
-            "The visitor asked for more depth, so ignore any earlier length limit and give a thorough answer of up "
-            "to 8 sentences in short plain-text paragraphs (no markdown, bullets or emojis), using the retrieved "
-            "knowledge for specifics."
+            "The visitor asked for more depth, so ignore any earlier length limit. This reply is read on screen, "
+            "so the no-markdown audio rules do not apply: give a clear answer of up to about 150 words as short "
+            "paragraphs and up to 6 short bullet lines (each starting with \"- \"), with **bold** on key terms such "
+            "as companies and technologies. No headings, tables, code blocks or emojis."
+        )
+    elif not voice_mode:
+        length_rule = (
+            "This reply is read on screen, so the no-markdown audio rules do not apply. Lead with the direct "
+            "answer in the first sentence (no greeting, no restating the question) and stop as soon as it is "
+            "answered: usually 1 or 2 sentences, never more than 3, about 40 words at most. Put **bold** on key "
+            "terms such as companies and technologies. When you name 3 or more things (skills, projects, "
+            "companies), use up to 4 short bullet lines, each starting with \"- \", instead of a paragraph. "
+            "Never repeat yourself or add a closing summary. No headings, tables, code blocks or emojis."
         )
     else:
         length_rule = "Keep the spoken reply to at most 2 punchy sentences."
@@ -332,6 +342,12 @@ def stream_chikki(
         )
     else:
         system_prompt = build_system_prompt() + knowledge_context
+        if not voice_mode:
+            system_prompt += (
+                "\n\nTEXT CHAT MODE: this reply is read on screen and not spoken, so the audio-formatting rules "
+                "above do not apply here. Follow the formatting in the instruction after the visitor's message "
+                "(short, **bold** key terms, optional '- ' bullets)."
+            )
     if is_joke and previous_jokes:
         joke_memory = "\n".join(f"- {joke[:180]}" for joke in previous_jokes[-5:])
         system_prompt += (

@@ -3,6 +3,8 @@ import AppFooter from "./AppFooter.jsx";
 import LanguageSelector from "./LanguageSelector.jsx";
 import { isMobileDevice, telHref } from "../device.js";
 import MoreMenu from "./MoreMenu.jsx";
+import RichText from "./RichText.jsx";
+import { plainText } from "../markdown.js";
 import { ProfileLine } from "./ProfileBadge.jsx";
 
 const QUICK_PROMPTS = {
@@ -272,16 +274,16 @@ export default function ChatPanel({
               </div>
 
               <div
-                className={`max-w-[88%] sm:max-w-[78%] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm leading-relaxed shadow-sm ${
+                className={`${m.role === "user" ? "max-w-[88%] sm:max-w-[78%]" : "max-w-[96%] sm:max-w-[88%]"} rounded-xl px-3.5 py-2.5 text-xs sm:text-sm leading-relaxed ${
                   m.role === "user"
-                    ? "user-bubble bg-chikki-purple/20 border border-chikki-purple text-gray-100 rounded-br-none"
+                    ? "user-bubble bg-chikki-purple/20 border border-chikki-purple text-gray-100 rounded-br-none shadow-sm"
                     : m.isError
                     ? "bg-red-950/40 border border-red-800 text-red-200 rounded-bl-none"
-                    : "answer-card bg-chikki-panel border border-gray-800 text-gray-200 rounded-bl-none"
+                    : "answer-card bg-chikki-panel/60 text-gray-200 rounded-bl-none"
                 }`}
               >
-                <div className="whitespace-pre-wrap break-words">
-                  {m.content}
+                <div className="break-words">
+                  {m.role === "assistant" && !m.isError ? <RichText text={m.content} /> : <span className="whitespace-pre-wrap">{m.content}</span>}
                   {m.isStreaming && (
                     <span className="inline-block ml-1 animate-pulse text-chikki-purpleLight font-bold">▊</span>
                   )}
@@ -291,10 +293,20 @@ export default function ChatPanel({
               {m.role === "assistant" && m.final && !m.isError && m.content?.trim() && (
                 <button
                   type="button"
-                  onClick={() => handleCopyAnswer(i, m.history_content || m.content)}
+                  onClick={() => handleCopyAnswer(i, plainText(m.history_content || m.content))}
                   className="mt-1 ml-1 text-[11px] text-gray-500 transition-colors hover:text-chikki-purpleLight"
                 >
                   {copiedIndex === i ? "✓ Copied" : "📋 Copy answer"}
+                </button>
+              )}
+
+              {m.role === "assistant" && i === latestAssistantIndex && m.final && !m.isError && m.content?.trim() && !thinking && !/in detail/i.test(messages[i - 1]?.content || "") && (
+                <button
+                  type="button"
+                  onClick={() => onSend("Tell me more about that in detail.")}
+                  className="mt-1 ml-1 text-[11px] text-gray-500 transition-colors hover:text-chikki-purpleLight"
+                >
+                  ➕ Show more detail
                 </button>
               )}
 

@@ -211,3 +211,14 @@ def test_grounded_reply_is_untouched_and_history_keeps_guarded_text(client, monk
     tokens, data = run_turn(client, monkeypatch, ["He works with Python and Docker."])
     assert data["reply"] == "He works with Python and Docker."
     assert data["meta"]["isError"] is False
+
+
+def test_markdown_formatting_does_not_trigger_the_guard():
+    from grounding import GroundingGuard, strip_markdown
+
+    guard = GroundingGuard("Akash works at UBS and built LangGraph agents with FastAPI.")
+    assert strip_markdown("- **UBS** and `FastAPI`") == "UBS and FastAPI"
+    ok, bad = guard.check_sentence("- Strong **LangGraph** skills at **UBS**\n- Built agents with **FastAPI**")
+    assert ok, bad
+    ok, bad = guard.check_sentence("- Also uses **Kubernetes** daily")
+    assert not ok and "Kubernetes" in bad
