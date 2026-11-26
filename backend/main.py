@@ -11,14 +11,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from ai import ChikkiAIError, _is_joke_request, stream_chikki
+from ai import ChikkiAIError, _is_joke_request, is_detail_request, stream_chikki
 from actions import ActionTagFilter
 from analytics_store import record_event, summary as analytics_summary
 from jd_match import analyze_job
 from contact_store import notify_contact, read_contacts, save_contact
 from feedback_store import feedback_analytics, read_feedback, record_feedback
 from generate_resume_pdf import build_resume_pdf
-from knowledge import format_context, knowledge_base, sources_for
+from knowledge import TOP_K, format_context, knowledge_base, sources_for
 from models import ContactRequest, FeedbackRequest, JobMatchRequest
 from resume import sync_resume as sync_resume_profile
 from resume_loader import sync_drive_resume
@@ -257,6 +257,7 @@ async def process_chikki_turn(
     turn_id: str | None,
     conversation_history: list[dict],
     conversation_jokes: list[str],
+    detail: bool = False,
 ):
     full_reply = []
     sentence_buffer = ""
@@ -273,7 +274,9 @@ async def process_chikki_turn(
         )
         try:
             retrieved = await asyncio.to_thread(
-                knowledge_base.retrieve, f"{user_msg}\n{previous_question[:300]}"
+                knowledge_base.retrieve,
+                f"{user_msg}\n{previous_question[:300]}",
+                5 if detail else TOP_K,
             )
         except Exception:
             logger.exception("Knowledge retrieval failed; answering without it")
@@ -309,6 +312,8 @@ async def process_chikki_turn(
                 previous_jokes=conversation_jokes,
                 knowledge_context=knowledge_context,
                 meta=turn_meta,
+                detail=detail,
+                voice_mode=voice_mode,
             ):
                 event_loop.call_soon_threadsafe(token_queue.put_nowait, ("token", token_pair))
         except Exception as stream_error:
@@ -427,6 +432,13 @@ async def process_chikki_turn(
             "meta": {"isError": True, "kind": error.kind, "turn_id": turn_id},
             "turn_id": turn_id,
         })
+    except WebSocketDisconnect:
+        raise
+    except Exception:
+        # Never leave the visitor waiting on a turn that crashed unexpectedly.
+        logger.exception("Conversation turn crashed")
+        await log_turn(False, "internal")
+        await _send_error(websocket, "Something went wrong on my side. Please try asking again.", "internal", turn_id)
 
 
 async def _send_error(websocket: WebSocket, message: str, kind: str, turn_id: str | None) -> None:
@@ -543,6 +555,7 @@ async def handle_chikki_ws(websocket: WebSocket):
                 turn_id,
                 conversation_history,
                 conversation_jokes,
+                bool(data.get("detail")) or is_detail_request(user_msg),
             ))
 
     except WebSocketDisconnect:

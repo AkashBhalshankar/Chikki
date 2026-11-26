@@ -130,15 +130,45 @@ def _classify_error(e: Exception) -> str:
     return "unknown"
 
 
-def _prepare_message(message: str, language: str = "en-IN") -> str:
+DETAIL_PATTERN = re.compile(
+    r"\b(?:tell me more|more details?|in detail|in depth|elaborate|explain (?:more|further)|go deeper|"
+    r"deep dive|dig deeper|expand on)\b|विस्तार से|विस्तार में|और बताओ|और बताइए|వివరంగా|ఇంకా చెప్పు|ఇంకా చెప్పండి",
+    re.IGNORECASE,
+)
+
+
+def is_detail_request(message: str) -> bool:
+    """True when the visitor asks for a deeper, longer answer than the default."""
+    return bool(DETAIL_PATTERN.search(message))
+
+
+def detail_max_tokens(language: str, voice_mode: bool) -> int:
+    base = 340 if voice_mode else 650
+    return base * 2 if language in {"te-IN", "hi-IN"} else base
+
+
+def _prepare_message(message: str, language: str = "en-IN", detail: bool = False, voice_mode: bool = True) -> str:
     response_language = {
         "en-IN": "English",
         "te-IN": "Telugu",
         "hi-IN": "Hindi",
     }.get(language, "English")
+    if detail and voice_mode:
+        length_rule = (
+            "The visitor asked for more depth, so ignore any earlier length limit and answer in 4 to 5 clear, "
+            "specific sentences that sound natural aloud, using the retrieved knowledge when relevant."
+        )
+    elif detail:
+        length_rule = (
+            "The visitor asked for more depth, so ignore any earlier length limit and give a thorough answer of up "
+            "to 8 sentences in short plain-text paragraphs (no markdown, bullets or emojis), using the retrieved "
+            "knowledge for specifics."
+        )
+    else:
+        length_rule = "Keep the spoken reply to at most 2 punchy sentences."
     return f"""{message}
 
-INSTRUCTION: Reply in {response_language}. Preserve technical product and programming terms in English where that is natural. Speak about Akash in the 3rd person and keep answers grounded strictly in the verified profile. Keep the spoken reply to at most 2 punchy sentences. Output complete words and sentences; never stop midway through a word."""
+INSTRUCTION: Reply in {response_language}. Preserve technical product and programming terms in English where that is natural. Speak about Akash in the 3rd person and keep answers grounded strictly in the verified profile. {length_rule} Output complete words and sentences; never stop midway through a word."""
 
 
 def _is_joke_request(message: str) -> bool:
@@ -177,6 +207,7 @@ def _stream_provider(
     message: str,
     language: str = "en-IN",
     request_timeout: float = 12.0,
+    max_tokens_override: int | None = None,
 ) -> Iterator[Tuple[str, str]]:
     cfg = PROVIDERS.get(provider_name)
     if not cfg or not cfg["api_key"]:
@@ -190,6 +221,8 @@ def _stream_provider(
     is_joke = _is_joke_request(message)
     temperature = 0.85 if is_joke else 0.2
     max_tokens = 110 if is_joke else (360 if language in {"te-IN", "hi-IN"} else 180)
+    if max_tokens_override and not is_joke:
+        max_tokens = max_tokens_override
 
     messages = [{"role": "system", "content": system_prompt}]
     for turn in clean_history:
@@ -273,6 +306,8 @@ def stream_chikki(
     previous_jokes: list[str] | None = None,
     knowledge_context: str = "",
     meta: dict | None = None,
+    detail: bool = False,
+    voice_mode: bool = True,
 ) -> Iterator[Tuple[str, str]]:
     """Yields (token, trace_id) pairs with priority failover across all providers.
 
@@ -281,7 +316,8 @@ def stream_chikki(
     """
     previous_jokes = previous_jokes or []
     is_joke = _is_joke_request(message)
-    request_message = message.strip() if is_joke else _prepare_message(message, language)
+    request_message = message.strip() if is_joke else _prepare_message(message, language, detail, voice_mode)
+    max_tokens_override = detail_max_tokens(language, voice_mode) if detail and not is_joke else None
     if is_joke:
         response_language = {
             "en-IN": "English",
@@ -344,7 +380,10 @@ def stream_chikki(
                     break
                 continue
 
-            iterator = _stream_provider(provider, system_prompt, history, request_message, language)
+            iterator = _stream_provider(
+                provider, system_prompt, history, request_message, language,
+                max_tokens_override=max_tokens_override,
+            )
             first_token_pair = next(iterator, ("", ""))
 
             if first_token_pair[0]:

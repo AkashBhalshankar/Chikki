@@ -42,7 +42,7 @@ def client(feedback_db, monkeypatch):
 
 
 def test_websocket_returns_actions_and_hides_tag(client, monkeypatch):
-    def fake_stream(message, history, language, previous_jokes=None, knowledge_context="", meta=None):
+    def fake_stream(message, history, language, previous_jokes=None, knowledge_context="", meta=None, **kwargs):
         for piece in ["You can message him ", "right here. ", "[[action:", "contact]]"]:
             yield piece, "trace"
 
@@ -59,3 +59,15 @@ def test_websocket_returns_actions_and_hides_tag(client, monkeypatch):
     assert "[[" not in "".join(tokens) and "[[" not in data["reply"]
     assert data["reply"] == "You can message him right here. "
     assert data["meta"]["actions"] == ["contact"]
+
+
+def test_unexpected_turn_error_still_replies(client, monkeypatch):
+    def broken_stream(*args, **kwargs):
+        raise RuntimeError("boom")
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(main, "stream_chikki", broken_stream)
+    with client.websocket_connect("/ws/voice") as ws:
+        ws.send_json({"message": "hello there", "voice": False, "turn_id": "t9"})
+        data = ws.receive_json()
+    assert data["meta"]["isError"] is True and data["meta"]["kind"] == "internal"

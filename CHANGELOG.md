@@ -10,6 +10,11 @@
 - Chikki project details moved from the hardcoded system prompt into `knowledge/chikki.md`.
 - Added admin endpoint `POST /knowledge/refresh`.
 
+### New: "tell me more" mode
+- Phrases like "tell me more", "in detail" or "elaborate" (also Hindi and Telugu) now get a deeper answer: 4-5 sentences in voice, up to 8 in text, with more knowledge excerpts retrieved.
+- A "Tell me more about that" suggestion appears after each reply (not jokes).
+- Fixed: a crash in the middle of a turn now sends an error reply instead of leaving the visitor waiting.
+
 ### New: in-chat actions (tool calling)
 - Chikki can offer app actions (leave a message, download resume, check role fit, book a call) when a visitor clearly asks; the reply shows a button the visitor confirms.
 - Implemented with hidden `[[action:x]]` tags that are stripped from the text and speech stream and returned as `meta.actions`, so it works with every provider, adds no extra model call, and the model cannot run anything by itself. Only whitelisted actions are accepted.

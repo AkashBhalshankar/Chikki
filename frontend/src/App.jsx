@@ -432,7 +432,7 @@ export default function App() {
     };
   }, []);
 
-  const suggestionsForReply = (reply) => {
+  const baseSuggestionsForReply = (reply) => {
     const text = reply.toLowerCase();
     if (currentLang === "te-IN") {
       return ["ఆకాశ్ ప్రాజెక్ట్ టెక్నాలజీలు ఏమిటి?", "ఆకాశ్ డెవలపర్ కథ చెప్పండి."];
@@ -444,6 +444,16 @@ export default function App() {
     if (/skill|python|langgraph|fastapi|ai engineer/.test(text)) return ["Tell me about a project using that skill.", "Can you explain this technically?"];
     if (/joke|funny|laugh/.test(text)) return ["Tell me another tech joke.", "What is Akash's developer story?"];
     return ["Tell me more about Akash's experience.", "Why should a company hire him?"];
+  };
+
+  const suggestionsForReply = (reply) => {
+    const base = baseSuggestionsForReply(reply);
+    if (/joke|funny|laugh/i.test(reply)) return base;
+    const more = {
+      "te-IN": "దీని గురించి వివరంగా చెప్పు.",
+      "hi-IN": "इसके बारे में विस्तार से बताओ।",
+    }[currentLang] || "Tell me more about that.";
+    return [more, base[0]];
   };
 
   const unlockAudioContext = () => {
