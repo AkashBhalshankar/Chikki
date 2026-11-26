@@ -19,6 +19,7 @@ import { ProfileLine } from "./components/ProfileBadge.jsx";
 import LanguageSelector from "./components/LanguageSelector.jsx";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition.js";
 import { voiceLogLines } from "./voiceLog.js";
+import { attachLevelMeter } from "./voiceLevel.js";
 import { ThinkingWord } from "./components/ThinkingIndicator.jsx";
 import { expressionForTurn, expressionForUserInput } from "./expressions.js";
 import { connectVoiceSocket, downloadResumePdf, fetchGreetingAudio, sendFeedback, sendVoiceMetric, wakeServer } from "./services/api.js";
@@ -175,6 +176,7 @@ const audioQueue = {
   isPlaying: false,
   currentAudio: null,
   currentText: "",
+  stopMeter: null,
   progressFrame: null,
   onPlayChunk: null,
   onPlayStateChange: null,
@@ -233,6 +235,8 @@ const audioQueue = {
     };
 
     audio.onplaying = () => {
+      this.stopMeter?.();
+      this.stopMeter = attachLevelMeter(audio);
       if (wordCount > 0) {
         revealedWordCount = 1;
         this.onPlayChunk?.(item.text, 1 / wordCount, item.turnId);
@@ -241,6 +245,8 @@ const audioQueue = {
     };
 
     audio.onended = () => {
+      this.stopMeter?.();
+      this.stopMeter = null;
       if (this.progressFrame !== null) {
         cancelAnimationFrame(this.progressFrame);
         this.progressFrame = null;
@@ -254,6 +260,8 @@ const audioQueue = {
     };
 
     audio.onerror = () => {
+      this.stopMeter?.();
+      this.stopMeter = null;
       if (this.progressFrame !== null) {
         cancelAnimationFrame(this.progressFrame);
         this.progressFrame = null;
@@ -277,6 +285,8 @@ const audioQueue = {
   },
 
   stopAll() {
+    this.stopMeter?.();
+    this.stopMeter = null;
     // Revoke any pending queued blob URLs
     this.queue.forEach((item) => {
       if (item.src?.startsWith("blob:")) {

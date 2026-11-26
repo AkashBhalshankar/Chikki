@@ -1,5 +1,10 @@
 # Changelog
 
+## Smoother Chikki
+- Expressions now blend instead of cutting: colours fade, the mouth morphs, eyes grow and slide, closed eyes fade in, and decorations (blush, hearts, confetti...) fade in and out.
+- Everyone blinks now, not just the idle face.
+- While speaking, the mouth follows the real loudness of the voice (Chrome and Firefox); browsers that cannot measure it keep the timed flapping. The audio is never rerouted, so this cannot silence Chikki.
+
 ## Text chat replies
 - Replies are short and direct: the answer in the first sentence, usually 1 to 2 sentences, **bold** on key terms, and up to 4 bullets when naming three or more things. Voice replies stay plain.
 - The chat renders that formatting safely (no HTML), shows Chikki's answer as a soft card, copies answers without the formatting marks, and offers a "Show more detail" button.

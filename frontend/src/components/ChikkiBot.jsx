@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion, useTransform } from "framer-motion";
+import { mouthLevel } from "../voiceLevel.js";
 
 // Central style config per state - drives colors, eye shape, mouth path, and pose.
 const STATES = {
@@ -40,9 +41,50 @@ const STATES = {
   sleepy: { stroke: "#3C3489", eyeFill: "#7F77DD", mouth: "M 82 63 Q 90 65 98 63", coreFill: "#1c1c1c", dim: true, closedEyes: true, zzz: true },
 };
 
+
+// ---- smoothing helpers -------------------------------------------------------------------------
+// Every mouth is stored as one quadratic curve so Framer Motion can blend between any two faces.
+// Round mouths (surprised, interrupted) are an ellipse that fades in instead.
+function parseMouth(d) {
+  const nums = d.match(/-?\d+(\.\d+)?/g).map(Number);
+  if (d.includes(" A ")) {
+    const [x1, y1, rx, ry, , , , x2] = nums;
+    return { d: `M ${x1} ${y1} Q ${(x1 + x2) / 2} ${y1} ${x2} ${y1}`, round: { cx: (x1 + x2) / 2, cy: y1, rx, ry } };
+  }
+  if (d.includes(" L ")) {
+    const [x1, y1, x2, y2] = nums;
+    return { d: `M ${x1} ${y1} Q ${(x1 + x2) / 2} ${(y1 + y2) / 2} ${x2} ${y2}`, round: null };
+  }
+  return { d, round: null };
+}
+
+const SPRING = { type: "spring", stiffness: 260, damping: 26 };
+const COLOR = { duration: 0.4, ease: "easeInOut" };
+const FADE = { duration: 0.25 };
+
+// A decoration that fades and scales in and out as the face changes.
+function Pop({ show, children, id }) {
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.g key={id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={FADE}>
+          {children}
+        </motion.g>
+      )}
+    </AnimatePresence>
+  );
+}
+
+const ARC_CLOSED = ["M 74 50 Q 78 54 82 50", "M 98 50 Q 102 54 106 50"];
+const ARC_WINK = "M 73 50 Q 77 46 81 50";
+
 export default function ChikkiBot({ state = "idle", expression = "confident", size, className, onClick, faceOnly = false }) {
   const [isHovered, setIsHovered] = useState(false);
   const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
+  const [liveMouth, setLiveMouth] = useState(mouthLevel.get() >= 0);
+  useEffect(() => mouthLevel.on("change", (v) => setLiveMouth((was) => (v >= 0) !== was ? v >= 0 : was)), []);
+  const talkPath = useTransform(mouthLevel, (v) => `M 80 59 Q 90 ${60 + Math.max(0, v) * 15} 100 59 Z`);
+
   const safeState = typeof state === "string" && STATES[state] ? state : "idle";
   const safeExpression = typeof expression === "string" && STATES[expression] ? expression : "confident";
   const isSpeaking = safeState === "speaking";
@@ -59,6 +101,16 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
       : {}),
   };
   const fluid = Boolean(className);
+
+  const mouth = parseMouth(cfg.mouth);
+  const hasEyes = cfg.eyeFill !== "none";
+  const eyeColor = hasEyes ? cfg.eyeFill : "#AFA9EC";
+  const eyeR = cfg.wideEyes ? 7 : cfg.ready ? 6.5 : 5;
+  const leftClosed = hasEyes && (cfg.closedEyes || cfg.wink);
+  const rightClosed = hasEyes && cfg.closedEyes;
+  const blinks = cfg.blink || (!cfg.closedEyes && !cfg.wink && hasEyes); // everyone blinks now and then
+  const talkingLive = cfg.talking && liveMouth;
+  const armColor = safeState === "error" ? "#8a8a8a" : "#D85A30";
 
   return (
     <motion.svg
@@ -86,144 +138,165 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
       transition={{ duration: cfg.jump ? 0.5 : 2.2, repeat: Infinity, ease: "easeInOut" }}
     >
       {/* speaking rings from behind the head */}
-      {cfg.ringsOutHead && (
-        <>
-          <motion.circle cx="90" cy="50" r="16" fill="none" stroke="#7F77DD" strokeWidth="2"
-            animate={{ scale: [1, 2.625], opacity: [0.8, 0] }} style={{ transformOrigin: "90px 50px" }} transition={{ duration: 1.2, repeat: Infinity }} />
-          <motion.circle cx="90" cy="50" r="16" fill="none" stroke="#AFA9EC" strokeWidth="2"
-            animate={{ scale: [1, 2.625], opacity: [0.8, 0] }} style={{ transformOrigin: "90px 50px" }} transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }} />
-        </>
-      )}
+      <Pop show={cfg.ringsOutHead} id="rings">
+        <motion.circle cx="90" cy="50" r="16" fill="none" stroke="#7F77DD" strokeWidth="2"
+          animate={{ scale: [1, 2.625], opacity: [0.8, 0] }} style={{ transformOrigin: "90px 50px" }} transition={{ duration: 1.2, repeat: Infinity }} />
+        <motion.circle cx="90" cy="50" r="16" fill="none" stroke="#AFA9EC" strokeWidth="2"
+          animate={{ scale: [1, 2.625], opacity: [0.8, 0] }} style={{ transformOrigin: "90px 50px" }} transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }} />
+      </Pop>
 
-      <motion.g animate={cfg.headDip ? { y: [0, 5, 0, 5, 0] } : { y: 0 }} transition={cfg.headDip ? { duration: 1.1, repeat: Infinity } : {}}>
-      <motion.rect x="65" y="30" width="50" height="42" rx="8" fill="#3A3A3A" stroke={cfg.stroke} strokeWidth="2"
-        animate={{ rotate: cfg.headTilt || 0 }} style={{ transformOrigin: "90px 50px" }} />
+      <motion.g animate={cfg.headDip ? { y: [0, 5, 0, 5, 0] } : { y: 0 }} transition={cfg.headDip ? { duration: 1.1, repeat: Infinity } : SPRING}>
+        <motion.rect x="65" y="30" width="50" height="42" rx="8" fill="#3A3A3A" strokeWidth="2"
+          initial={false} animate={{ rotate: cfg.headTilt || 0, stroke: cfg.stroke }}
+          transition={{ rotate: SPRING, stroke: COLOR }} style={{ transformOrigin: "90px 50px" }} />
 
-      {cfg.browsAngry && (
-        <>
+        <Pop show={cfg.browsAngry} id="browsAngry">
           <path d="M 71 36 L 82 41" stroke="#F0A078" strokeWidth="2.2" strokeLinecap="round" />
           <path d="M 98 41 L 109 36" stroke="#F0A078" strokeWidth="2.2" strokeLinecap="round" />
-        </>
-      )}
-      {cfg.browRaised && (
-        <>
+        </Pop>
+        <Pop show={cfg.browRaised} id="browRaised">
           <path d="M 71 35 Q 77 31 83 34" fill="none" stroke="#E4CE83" strokeWidth="2" strokeLinecap="round" />
           <path d="M 98 40 L 108 41" stroke="#E4CE83" strokeWidth="2" strokeLinecap="round" />
-        </>
-      )}
-
-      {cfg.brows && (
-        <>
+        </Pop>
+        <Pop show={cfg.brows} id="brows">
           <path d="M 72 40 L 80 38" stroke="#AFA9EC" strokeWidth="1.8" strokeLinecap="round" />
           <path d="M 100 38 L 108 40" stroke="#AFA9EC" strokeWidth="1.8" strokeLinecap="round" />
-        </>
-      )}
+        </Pop>
 
-      <motion.g style={{ transformOrigin: "90px 50px" }} animate={cfg.blink ? { scaleY: [1, 1, 0.1, 1, 1] } : { scaleY: 1 }} transition={cfg.blink ? { duration: 4, repeat: Infinity, times: [0, 0.9, 0.94, 0.98, 1] } : {}}>
-      {cfg.eyeFill !== "none" ? (
-        <>
-          {cfg.closedEyes ? <><path d="M 74 50 Q 78 54 82 50" fill="none" stroke={cfg.eyeFill} strokeWidth="2" strokeLinecap="round" /><path d="M 98 50 Q 102 54 106 50" fill="none" stroke={cfg.eyeFill} strokeWidth="2" strokeLinecap="round" /></> : cfg.wink ? <path d="M 73 50 Q 77 46 81 50" fill="none" stroke={cfg.eyeFill} strokeWidth="2.5" strokeLinecap="round" /> : <circle cx={80 + eyeOffset.x} cy={50 + eyeOffset.y} r={cfg.wideEyes ? 7 : cfg.ready ? 6.5 : 5} fill={cfg.eyeFill} />}
-          {!cfg.closedEyes && <circle cx={(cfg.sideEyes ? 103 : 100) + eyeOffset.x} cy={50 + eyeOffset.y} r={cfg.wideEyes ? 7 : cfg.ready ? 6.5 : 5} fill={cfg.eyeFill} />}
-        </>
-      ) : (
-        <>
+        {/* Eyes: open eyes slide, grow and recolour smoothly; closed eyes fade in over them. */}
+        <motion.g style={{ transformOrigin: "90px 50px" }}
+          animate={blinks ? { scaleY: [1, 1, 1, 0.1, 1] } : { scaleY: 1 }}
+          transition={blinks ? { duration: 4.5, repeat: Infinity, times: [0, 0.88, 0.92, 0.96, 1] } : SPRING}>
+          <motion.circle initial={false} animate={{ cx: 80 + eyeOffset.x, cy: 50 + eyeOffset.y, r: eyeR, fill: eyeColor, opacity: hasEyes && !leftClosed ? 1 : 0 }}
+            transition={{ cx: { type: "spring", stiffness: 300, damping: 24 }, cy: { type: "spring", stiffness: 300, damping: 24 }, r: SPRING, fill: COLOR, opacity: FADE }} />
+          <motion.circle initial={false} animate={{ cx: (cfg.sideEyes ? 103 : 100) + eyeOffset.x, cy: 50 + eyeOffset.y, r: eyeR, fill: eyeColor, opacity: hasEyes && !rightClosed ? 1 : 0 }}
+            transition={{ cx: { type: "spring", stiffness: 300, damping: 24 }, cy: { type: "spring", stiffness: 300, damping: 24 }, r: SPRING, fill: COLOR, opacity: FADE }} />
+          <motion.path d={cfg.closedEyes ? ARC_CLOSED[0] : ARC_WINK} fill="none" strokeLinecap="round"
+            initial={false} animate={{ stroke: eyeColor, opacity: leftClosed ? 1 : 0, strokeWidth: cfg.closedEyes ? 2 : 2.5 }} transition={{ stroke: COLOR, opacity: FADE }} />
+          <motion.path d={ARC_CLOSED[1]} fill="none" strokeLinecap="round" strokeWidth="2"
+            initial={false} animate={{ stroke: eyeColor, opacity: rightClosed ? 1 : 0 }} transition={{ stroke: COLOR, opacity: FADE }} />
+        </motion.g>
+        <Pop show={!hasEyes} id="xeyes">
           <path d="M 73 42 L 81 48 M 81 42 L 73 48" stroke="#E24B4A" strokeWidth="2" />
           <path d="M 99 42 L 107 48 M 107 42 L 99 48" stroke="#E24B4A" strokeWidth="2" />
-        </>
-      )}
-      </motion.g>
+        </Pop>
 
-      <motion.path
-        d={cfg.mouth}
-        fill="none"
-        stroke={cfg.eyeFill !== "none" ? cfg.eyeFill : "#AFA9EC"}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        animate={cfg.talking ? { d: [cfg.mouth, "M 80 59 Q 90 70 100 59", cfg.mouth] } : {}}
-        transition={cfg.talking ? { duration: 0.35, repeat: Infinity } : {}}
-      />
+        {/* Mouth: one curve that morphs; a round mouth fades in for "oh"; the voice drives it when speaking. */}
+        <motion.path
+          fill="none" strokeWidth="2.5" strokeLinecap="round"
+          initial={false}
+          animate={{ d: mouth.d, stroke: eyeColor, opacity: mouth.round || talkingLive ? 0 : 1 }}
+          transition={{ d: SPRING, stroke: COLOR, opacity: FADE }}
+        />
+        {cfg.talking && !liveMouth && (
+          <motion.path d={mouth.d} fill="none" stroke={eyeColor} strokeWidth="2.5" strokeLinecap="round"
+            animate={{ d: [mouth.d, "M 80 59 Q 90 70 100 59", mouth.d] }} transition={{ duration: 0.35, repeat: Infinity }} />
+        )}
+        {talkingLive && (
+          <motion.path d={talkPath} stroke={eyeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill={eyeColor} fillOpacity="0.4" />
+        )}
+        <motion.ellipse initial={false}
+          animate={{ cx: mouth.round?.cx ?? 90, cy: mouth.round?.cy ?? 62, rx: mouth.round?.rx ?? 4, ry: mouth.round?.ry ?? 4, opacity: mouth.round ? 1 : 0, stroke: eyeColor }}
+          transition={{ default: SPRING, opacity: FADE, stroke: COLOR }} fill="none" strokeWidth="2.5" />
 
-      {cfg.dots && (
-        <>
+        <Pop show={cfg.dots} id="dots">
           {[[120, 35], [130, 30], [140, 27]].map(([x, y], i) => (
             <motion.circle key={i} cx={x} cy={y} r="3" fill="#AFA9EC"
               animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }} />
           ))}
-        </>
-      )}
+        </Pop>
 
-      {cfg.sparkles && (
-        <>
+        <Pop show={cfg.sparkles} id="sparkles">
           {[[50, 40], [135, 45], [90, 15]].map(([x, y], i) => (
             <motion.circle key={i} cx={x} cy={y} r="3" fill="#97C459"
               animate={{ opacity: [0, 1, 0], scale: [0.3, 1, 0.3] }} transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.2 }} />
           ))}
-        </>
-      )}
+        </Pop>
 
-      {cfg.blush && <><circle cx="73" cy="59" r="4" fill="#D85A78" opacity="0.55" /><circle cx="107" cy="59" r="4" fill="#D85A78" opacity="0.55" /></>}
+        <Pop show={cfg.blush} id="blush">
+          <circle cx="73" cy="59" r="4" fill="#D85A78" opacity="0.55" />
+          <circle cx="107" cy="59" r="4" fill="#D85A78" opacity="0.55" />
+        </Pop>
 
-      {cfg.tears && <><motion.path d="M 78 56 Q 76 63 78 65" fill="#7DB7E8" stroke="#7DB7E8" strokeWidth="2" animate={{ y: [0, 4, 0], opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }} /><motion.path d="M 102 56 Q 104 63 102 65" fill="#7DB7E8" stroke="#7DB7E8" strokeWidth="2" animate={{ y: [0, 4, 0], opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0.3 }} /></>}
+        <Pop show={cfg.tears} id="tears">
+          <motion.path d="M 78 56 Q 76 63 78 65" fill="#7DB7E8" stroke="#7DB7E8" strokeWidth="2" animate={{ y: [0, 4, 0], opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }} />
+          <motion.path d="M 102 56 Q 104 63 102 65" fill="#7DB7E8" stroke="#7DB7E8" strokeWidth="2" animate={{ y: [0, 4, 0], opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0.3 }} />
+        </Pop>
 
-      {cfg.hearts && <motion.g animate={{ y: [0, -7, 0], opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.2, repeat: Infinity }}><text x="40" y="35" fill="#F28BA5" fontSize="13">&#9829;</text><text x="132" y="28" fill="#F28BA5" fontSize="11">&#9829;</text></motion.g>}
+        <Pop show={cfg.hearts} id="hearts">
+          <motion.g animate={{ y: [0, -7, 0], opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.2, repeat: Infinity }}>
+            <text x="40" y="35" fill="#F28BA5" fontSize="13">&#9829;</text>
+            <text x="132" y="28" fill="#F28BA5" fontSize="11">&#9829;</text>
+          </motion.g>
+        </Pop>
 
-      {cfg.sweat && <motion.path d="M 119 38 Q 115 44 119 47 Q 123 44 119 38" fill="#7DB7E8" animate={{ y: [0, 5, 0], opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.4, repeat: Infinity }} />}
+        <Pop show={cfg.sweat} id="sweat">
+          <motion.path d="M 119 38 Q 115 44 119 47 Q 123 44 119 38" fill="#7DB7E8" animate={{ y: [0, 5, 0], opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.4, repeat: Infinity }} />
+        </Pop>
 
-      {cfg.puff && [[112, 66, 0], [118, 62, 0.3], [124, 58, 0.6]].map(([x, y, d], i) => (
-        <motion.circle key={i} cx={x} cy={y} r={2 + i} fill="#97C459" animate={{ opacity: [0, 0.8, 0], x: [0, 4, 8] }} transition={{ duration: 1.6, repeat: Infinity, delay: d }} />
-      ))}
+        <Pop show={cfg.puff} id="puff">
+          {[[112, 66, 0], [118, 62, 0.3], [124, 58, 0.6]].map(([x, y, d], i) => (
+            <motion.circle key={i} cx={x} cy={y} r={2 + i} fill="#97C459" animate={{ opacity: [0, 0.8, 0], x: [0, 4, 8] }} transition={{ duration: 1.6, repeat: Infinity, delay: d }} />
+          ))}
+        </Pop>
 
-      {cfg.question && <motion.text x="118" y="34" fill="#AFA9EC" fontSize="20" fontWeight="bold" animate={{ y: [0, -4, 0], rotate: [0, 8, 0] }} transition={{ duration: 1.2, repeat: Infinity }}>?</motion.text>}
+        <Pop show={cfg.question} id="question">
+          <motion.text x="118" y="34" fill="#AFA9EC" fontSize="20" fontWeight="bold" animate={{ y: [0, -4, 0], rotate: [0, 8, 0] }} transition={{ duration: 1.2, repeat: Infinity }}>?</motion.text>
+        </Pop>
 
-      {cfg.bang && <motion.text x="119" y="34" fill="#E24B4A" fontSize="22" fontWeight="bold" animate={{ scale: [1, 1.25, 1] }} style={{ transformOrigin: "122px 28px" }} transition={{ duration: 0.5, repeat: Infinity }}>!</motion.text>}
+        <Pop show={cfg.bang} id="bang">
+          <motion.text x="119" y="34" fill="#E24B4A" fontSize="22" fontWeight="bold" animate={{ scale: [1, 1.25, 1] }} style={{ transformOrigin: "122px 28px" }} transition={{ duration: 0.5, repeat: Infinity }}>!</motion.text>
+        </Pop>
 
-      {cfg.zzz && [[116, 38, 11, 0], [126, 28, 14, 0.5], [136, 17, 17, 1]].map(([x, y, size, d], i) => (
-        <motion.text key={i} x={x} y={y} fill="#7F77DD" fontSize={size} fontWeight="bold" animate={{ opacity: [0, 1, 0], y: [y + 4, y - 4] }} transition={{ duration: 2.4, repeat: Infinity, delay: d }}>z</motion.text>
-      ))}
+        <Pop show={cfg.zzz} id="zzz">
+          {[[116, 38, 11, 0], [126, 28, 14, 0.5], [136, 17, 17, 1]].map(([x, y, fontSize, d], i) => (
+            <motion.text key={i} x={x} y={y} fill="#7F77DD" fontSize={fontSize} fontWeight="bold" animate={{ opacity: [0, 1, 0], y: [y + 4, y - 4] }} transition={{ duration: 2.4, repeat: Infinity, delay: d }}>z</motion.text>
+          ))}
+        </Pop>
 
-      {cfg.confetti && [[40, 18, "#F4D77A"], [64, 8, "#F28BA5"], [116, 10, "#97C459"], [142, 22, "#8FE1D8"], [90, 4, "#D85A30"], [28, 52, "#AFA9EC"], [152, 56, "#F4D77A"]].map(([x, y, color], i) => (
-        <motion.rect key={i} x={x} y={y} width="5" height="5" rx="1" fill={color}
-          animate={{ y: [0, 26], rotate: [0, 180], opacity: [1, 0] }} transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.18 }} />
-      ))}
+        <Pop show={cfg.confetti} id="confetti">
+          {[[40, 18, "#F4D77A"], [64, 8, "#F28BA5"], [116, 10, "#97C459"], [142, 22, "#8FE1D8"], [90, 4, "#D85A30"], [28, 52, "#AFA9EC"], [152, 56, "#F4D77A"]].map(([x, y, color], i) => (
+            <motion.rect key={i} x={x} y={y} width="5" height="5" rx="1" fill={color}
+              animate={{ y: [0, 26], rotate: [0, 180], opacity: [1, 0] }} transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.18 }} />
+          ))}
+        </Pop>
       </motion.g>
-
 
       {!faceOnly && (
-      <>
-      <rect x="67" y="75" width="46" height="55" rx="6" fill="#2A2A2A" stroke="#444" strokeWidth="1" />
-
-      {cfg.ringsIn && (
         <>
-          <motion.circle cx="90" cy="100" r="24" fill="none" stroke="#7F77DD" strokeWidth="2"
-            animate={{ scale: [1.58, 0.58], opacity: [0, 0.9] }} style={{ transformOrigin: "90px 100px" }} transition={{ duration: 1.3, repeat: Infinity }} />
-          <motion.circle cx="90" cy="100" r="24" fill="none" stroke="#AFA9EC" strokeWidth="2"
-            animate={{ scale: [1.58, 0.58], opacity: [0, 0.9] }} style={{ transformOrigin: "90px 100px" }} transition={{ duration: 1.3, repeat: Infinity, delay: 0.45 }} />
+          <rect x="67" y="75" width="46" height="55" rx="6" fill="#2A2A2A" stroke="#444" strokeWidth="1" />
+
+          <Pop show={cfg.ringsIn} id="ringsIn">
+            <motion.circle cx="90" cy="100" r="24" fill="none" stroke="#7F77DD" strokeWidth="2"
+              animate={{ scale: [1.58, 0.58], opacity: [0, 0.9] }} style={{ transformOrigin: "90px 100px" }} transition={{ duration: 1.3, repeat: Infinity }} />
+            <motion.circle cx="90" cy="100" r="24" fill="none" stroke="#AFA9EC" strokeWidth="2"
+              animate={{ scale: [1.58, 0.58], opacity: [0, 0.9] }} style={{ transformOrigin: "90px 100px" }} transition={{ duration: 1.3, repeat: Infinity, delay: 0.45 }} />
+          </Pop>
+
+          <motion.circle cx="90" cy="100" r="10" strokeWidth="1.5" initial={false}
+            animate={{ fill: cfg.coreFill, stroke: cfg.stroke, opacity: cfg.dim ? [0.3, 0.6, 0.3] : cfg.ringsIn ? [0.5, 1, 0.5] : 1 }}
+            transition={{ fill: COLOR, stroke: COLOR, opacity: { duration: cfg.dim ? 3 : 1, repeat: cfg.dim || cfg.ringsIn ? Infinity : 0 } }} />
+
+          <Pop show={cfg.medal} id="medal">
+            <path d="M 90 114 L 92.4 119 L 98 119.7 L 94 123.5 L 95 129 L 90 126.3 L 85 129 L 86 123.5 L 82 119.7 L 87.6 119 Z" fill="#F4D77A" stroke="#D8A52F" strokeWidth="0.8" />
+          </Pop>
+
+          <motion.g style={{ transformOrigin: "53px 80px" }} initial={false}
+            animate={cfg.wave ? { rotate: [0, -25, 0, -25, 0], y: 0 } : cfg.jump || cfg.armsUp ? { y: -16, rotate: 0 } : cfg.stretch ? { y: [-8, 0], rotate: [-10, 0] } : { y: 0, rotate: 0 }}
+            transition={cfg.wave ? { duration: 0.6, repeat: 3 } : cfg.stretch ? { duration: 0.9, repeat: Infinity } : SPRING}>
+            <rect x="45" y="85" width="16" height="26" rx="4" fill="#2A2A2A" />
+            <motion.circle cx="53" cy="80" r="14" initial={false} animate={{ fill: armColor }} transition={COLOR} />
+          </motion.g>
+
+          <motion.g style={{ transformOrigin: "127px 80px" }} initial={false}
+            animate={cfg.jump || cfg.armUp || cfg.armsUp ? { y: -16 } : { y: 0 }} transition={SPRING}>
+            <rect x="119" y="85" width="16" height="26" rx="4" fill="#2A2A2A" />
+            <motion.circle cx="127" cy="80" r="14" initial={false} animate={{ fill: armColor }} transition={COLOR} />
+          </motion.g>
+
+          <rect x="73" y="130" width="14" height="30" rx="4" fill="#2A2A2A" />
+          <rect x="93" y="130" width="14" height="30" rx="4" fill="#2A2A2A" />
         </>
-      )}
-
-      <motion.circle cx="90" cy="100" r="10" fill={cfg.coreFill} stroke={cfg.stroke} strokeWidth="1.5"
-        initial={{ opacity: cfg.dim ? 0.3 : cfg.ringsIn ? 0.5 : 1 }}
-        animate={{ opacity: cfg.dim ? [0.3, 0.6, 0.3] : cfg.ringsIn ? [0.5, 1, 0.5] : 1 }}
-        transition={{ duration: cfg.dim ? 3 : 1, repeat: Infinity }} />
-
-      {cfg.medal && <path d="M 90 114 L 92.4 119 L 98 119.7 L 94 123.5 L 95 129 L 90 126.3 L 85 129 L 86 123.5 L 82 119.7 L 87.6 119 Z" fill="#F4D77A" stroke="#D8A52F" strokeWidth="0.8" />}
-
-      <motion.g style={{ transformOrigin: "53px 80px" }}
-        animate={cfg.wave ? { rotate: [0, -25, 0, -25, 0] } : cfg.jump || cfg.armsUp ? { y: -16 } : cfg.stretch ? { y: [-8, 0], rotate: [-10, 0] } : {}}
-        transition={cfg.wave ? { duration: 0.6, repeat: 3 } : cfg.stretch ? { duration: 0.9, repeat: Infinity } : {}}>
-        <rect x="45" y="85" width="16" height="26" rx="4" fill="#2A2A2A" />
-        <circle cx="53" cy="80" r="14" fill={safeState === "error" ? "#8a8a8a" : "#D85A30"} />
-      </motion.g>
-
-      <motion.g style={{ transformOrigin: "127px 80px" }}
-        animate={cfg.jump || cfg.armUp || cfg.armsUp ? { y: -16 } : {}}>
-        <rect x="119" y="85" width="16" height="26" rx="4" fill="#2A2A2A" />
-        <circle cx="127" cy="80" r="14" fill={safeState === "error" ? "#8a8a8a" : "#D85A30"} />
-      </motion.g>
-
-      <rect x="73" y="130" width="14" height="30" rx="4" fill="#2A2A2A" />
-      <rect x="93" y="130" width="14" height="30" rx="4" fill="#2A2A2A" />
-      </>
       )}
     </motion.svg>
   );
