@@ -34,10 +34,15 @@ def init_events_table(conn: sqlite3.Connection) -> None:
             ok INTEGER NOT NULL DEFAULT 1,
             error_kind TEXT,
             source_count INTEGER NOT NULL DEFAULT 0,
-            is_joke INTEGER NOT NULL DEFAULT 0
+            is_joke INTEGER NOT NULL DEFAULT 0,
+            blocked INTEGER NOT NULL DEFAULT 0
         )
         """
     )
+    try:  # databases created before the guard existed
+        conn.execute("ALTER TABLE events ADD COLUMN blocked INTEGER NOT NULL DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_at ON events(at)")
 
 
@@ -53,13 +58,14 @@ def record_event(
     error_kind: Optional[str] = None,
     source_count: int = 0,
     is_joke: bool = False,
+    blocked: int = 0,
 ) -> None:
     try:
         with get_connection() as conn:
             init_events_table(conn)
             conn.execute(
                 "INSERT INTO events (id, at, type, question, language, mode, provider, latency_ms, "
-                "first_token_ms, ok, error_kind, source_count, is_joke) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "first_token_ms, ok, error_kind, source_count, is_joke, blocked) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     f"ev_{uuid.uuid4().hex}",
                     datetime.now(timezone.utc).isoformat(),
@@ -74,6 +80,7 @@ def record_event(
                     error_kind,
                     source_count,
                     int(is_joke),
+                    blocked,
                 ),
             )
     except sqlite3.Error:
@@ -132,6 +139,7 @@ def summary(days: int = 30) -> Dict[str, Any]:
             "jd_matches": len(matches),
             "contact_messages": contacts,
             "jokes": sum(1 for r in turns if r["is_joke"]),
+            "blocked_claims": sum(r["blocked"] for r in turns),
         },
         "latency_ms": {
             "avg": int(sum(latencies) / len(latencies)) if latencies else None,

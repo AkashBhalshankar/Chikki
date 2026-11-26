@@ -92,3 +92,27 @@ def test_stream_raises_friendly_error_when_all_providers_fail(monkeypatch):
     with pytest.raises(ChikkiAIError) as error:
         list(ai.stream_chikki("hello", []))
     assert error.value.kind == "timeout"
+
+
+def test_probe_providers_reports_each_outcome(monkeypatch):
+    for name in ai.PROVIDERS:
+        monkeypatch.setitem(ai.PROVIDERS[name], "api_key", None)
+    for name in ("groq", "gemini", "nvidia"):
+        monkeypatch.setitem(ai.PROVIDERS[name], "api_key", "k")
+
+    class FakeClient:
+        def __init__(self, error):
+            self.chat = type("Chat", (), {"completions": type("C", (), {"create": staticmethod(self._create)})()})()
+            self.error = error
+
+        def _create(self, **kwargs):
+            if self.error:
+                raise RuntimeError(self.error)
+
+    clients = {"groq": FakeClient(None), "gemini": FakeClient("429 rate limit"), "nvidia": FakeClient("410 end of life")}
+    monkeypatch.setattr(ai, "_get_client", lambda provider: clients[provider])
+    assert ai.probe_providers() == {
+        "groq": (True, "ok"),
+        "gemini": (False, "rate_limit"),
+        "nvidia": (False, "model_retired"),
+    }

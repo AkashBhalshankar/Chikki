@@ -4,7 +4,7 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 
-from ai import PROVIDERS
+from ai import PROVIDERS, probe_providers
 from analytics_store import summary
 from contact_store import read_contacts
 from feedback_store import read_feedback
@@ -34,6 +34,8 @@ def build_digest(days: int = 7) -> str:
         f"Role-fit checks: {totals['jd_matches']}",
         f"Resume downloads: {totals['resume_downloads']}",
     ]
+    if totals["blocked_claims"]:
+        lines.append(f"Unverified claims blocked by the resume guard: {totals['blocked_claims']}")
     if feedback:
         lines.append(f"Feedback: {liked} helpful, {len(feedback) - liked} needs improvement")
     latency = data["latency_ms"]["p50"]
@@ -62,6 +64,21 @@ def check_health() -> list[str]:
     problems = []
     if not any(cfg.get("api_key") for cfg in PROVIDERS.values()):
         problems.append("No LLM provider API key is configured; Chikki cannot answer.")
+
+    # Config problems (bad key, retired model) always need action; an exhausted quota only
+    # matters when no provider is left to answer.
+    probes = probe_providers()
+    working = [name for name, (ok, _) in probes.items() if ok]
+    for name, (ok, kind) in probes.items():
+        model = PROVIDERS[name]["model"]
+        if kind == "model_retired":
+            problems.append(f"{name}: the model '{model}' has been retired. Set a current model for it.")
+        elif kind == "auth":
+            problems.append(f"{name}: the API key was rejected. Check or replace the key.")
+        elif not ok and not working:
+            problems.append(f"{name}: not responding ({kind}).")
+    if probes and not working:
+        problems.append("No AI provider is answering right now, so Chikki cannot reply to visitors.")
 
     drive_configured = any(
         os.getenv(name) for name in ("GOOGLE_DRIVE_RESUME_URL", "GOOGLE_DRIVE_FILE_ID", "DRIVE_RESUME_URL")

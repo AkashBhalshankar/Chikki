@@ -67,6 +67,7 @@ def format_message(
     error_kind: str | None = None,
     suppressed: int = 0,
     now: datetime | None = None,
+    blocked: list[str] | None = None,
 ) -> str:
     when = (now or datetime.now(IST)).astimezone(IST).strftime("%d %b, %H:%M IST")
     header = f"🆕 New visitor #{code}" if turn == 1 else f"💬 #{code} · turn {turn}"
@@ -82,6 +83,8 @@ def format_message(
     lines.append(" · ".join(meta))
     if gap:
         lines.append("⚠️ Knowledge gap: nothing in the resume or write-ups matched this question")
+    if blocked:
+        lines.append(f"🛡️ Blocked unverified claim(s) not in the resume: {', '.join(blocked[:6])}")
     if suppressed:
         lines.append(f"(+{suppressed} messages skipped since the hourly limit was reached)")
     return "\n".join(lines)
@@ -140,6 +143,7 @@ class ConversationAlerts:
         latency_ms: int | None = None,
         gap: bool = False,
         error_kind: str | None = None,
+        blocked: list[str] | None = None,
     ) -> None:
         """Queues a notification and returns immediately. Never raises."""
         if not enabled() or not question.strip():
@@ -158,7 +162,9 @@ class ConversationAlerts:
                         False,
                     )
                 return
-            text = format_message(code, turn, question, answer, language, mode, latency_ms, gap, error_kind, suppressed)
+            text = format_message(
+                code, turn, question, answer, language, mode, latency_ms, gap, error_kind, suppressed, blocked=blocked
+            )
             self._pool.submit(self._deliver, text, turn > 1)
         except Exception:
             logger.exception("Could not queue a conversation alert")

@@ -53,6 +53,7 @@ def test_ops_check_alerts_when_drive_fails(client, monkeypatch):
     monkeypatch.setattr(digest, "sync_drive_resume", lambda: "")
     monkeypatch.setattr(digest, "send_notification", lambda text, **kw: sent.append(text) or True)
     monkeypatch.setitem(digest.PROVIDERS["groq"], "api_key", "k")
+    monkeypatch.setattr(digest, "probe_providers", lambda: {"groq": (True, "ok")})
     body = client.post("/ops/check", headers=ADMIN).json()
     assert body["ok"] is False and body["alerted"] is True
     assert "Google Drive" in body["problems"][0] and "Drive" in sent[0]
@@ -63,6 +64,7 @@ def test_ops_check_healthy_sends_nothing(client, monkeypatch):
     monkeypatch.setattr(digest, "sync_drive_resume", lambda: "resume text")
     monkeypatch.setattr(digest, "send_notification", lambda text, **kw: pytest.fail("should not alert"))
     monkeypatch.setitem(digest.PROVIDERS["groq"], "api_key", "k")
+    monkeypatch.setattr(digest, "probe_providers", lambda: {"groq": (True, "ok")})
     assert client.post("/ops/check", headers=ADMIN).json() == {"ok": True, "problems": [], "alerted": False}
 
 
@@ -113,3 +115,29 @@ def test_recent_repos_filters_forks_and_caches(monkeypatch):
     assert [r["name"] for r in github_activity.recent_repos("u")] == ["a"]
     github_activity.recent_repos("u")
     assert len(calls) == 1
+
+
+# ---- provider health probe ----
+
+def _health(monkeypatch, probes):
+    for key in ("GOOGLE_DRIVE_RESUME_URL", "GOOGLE_DRIVE_FILE_ID", "DRIVE_RESUME_URL"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setattr(digest, "probe_providers", lambda: probes)
+    monkeypatch.setitem(digest.PROVIDERS["groq"], "api_key", "k")
+    monkeypatch.setitem(digest.PROVIDERS["nvidia"], "api_key", "k")
+    monkeypatch.setitem(digest.PROVIDERS["nvidia"], "model", "old/model")
+    return digest.check_health()
+
+
+def test_retired_model_and_bad_key_always_raise_a_problem(monkeypatch):
+    problems = _health(monkeypatch, {"groq": (True, "ok"), "nvidia": (False, "model_retired")})
+    assert problems == ["nvidia: the model 'old/model' has been retired. Set a current model for it."]
+    problems = _health(monkeypatch, {"groq": (True, "ok"), "nvidia": (False, "auth")})
+    assert problems == ["nvidia: the API key was rejected. Check or replace the key."]
+
+
+def test_quota_problems_only_matter_when_nothing_is_left(monkeypatch):
+    assert _health(monkeypatch, {"groq": (True, "ok"), "nvidia": (False, "rate_limit")}) == []
+    problems = _health(monkeypatch, {"groq": (False, "rate_limit"), "nvidia": (False, "rate_limit")})
+    assert any("not responding (rate_limit)" in p for p in problems)
+    assert "No AI provider is answering right now, so Chikki cannot reply to visitors." in problems

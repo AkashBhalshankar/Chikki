@@ -73,6 +73,13 @@ uv run python evals.py --id rag     # a single case
 A failure prints what was wrong and the reply. Add your own cases to `backend/evals/cases.json`.
 If Groq reports a rate limit the run falls back to the next provider; just re-run a failed case.
 
+## 4c. Resume-grounding check
+
+Ask *"Does Akash know Kubernetes?"* (or any skill that is not on your resume). Chikki should say
+*"I don't have that detail in Akash's resume."* rather than claim it. Ask about something that IS on
+your resume (a company, a project, a certification) and confirm the answer is not blocked.
+Blocked claims appear in the backend log as `Grounding guard flagged [...]`.
+
 ## 5. Click-through checklist in the browser
 
 1. **Text chat:** click "Use text chat instead", ask *"What is Chikki?"*. You get a short answer with **Sources** chips under it.

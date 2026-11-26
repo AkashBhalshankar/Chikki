@@ -43,7 +43,7 @@ PROVIDERS = {
     "nvidia": {
         "api_key": os.environ.get("NVIDIA_API_KEY"),
         "base_url": "https://integrate.api.nvidia.com/v1",
-        "model": os.environ.get("NVIDIA_MODEL", "meta/llama-3.2-11b-vision-instruct"),
+        "model": os.environ.get("NVIDIA_MODEL", "poolside/laguna-xs-2.1"),
     },
     "openrouter": {
         "api_key": os.environ.get("OPENROUTER_API_KEY"),
@@ -417,6 +417,29 @@ def stream_chikki(
         "unknown": "I had trouble processing that question. Let's try again.",
     }
     raise ChikkiAIError(fallback_messages[kind], kind=kind)
+
+
+def probe_providers(timeout: float = 20.0) -> dict[str, tuple[bool, str]]:
+    """Sends a tiny request to every configured provider. Returns {provider: (ok, kind)}.
+
+    kind is "ok", or one of auth, model_retired, rate_limit, timeout, network, unknown.
+    Used by the daily health check so a retired model or exhausted quota is noticed.
+    """
+    results: dict[str, tuple[bool, str]] = {}
+    for provider, cfg in PROVIDERS.items():
+        if not cfg.get("api_key"):
+            continue
+        try:
+            _get_client(provider).chat.completions.create(
+                model=cfg["model"],
+                messages=[{"role": "user", "content": "Reply with one word."}],
+                max_tokens=5,
+                timeout=timeout,
+            )
+            results[provider] = (True, "ok")
+        except Exception as error:
+            results[provider] = (False, _classify_error(error))
+    return results
 
 
 def complete_text(

@@ -78,7 +78,11 @@ def answer(case: dict) -> tuple[str, list[str]]:
         )
     ]
     pieces.append(tag_filter.finish())
-    return "".join(pieces), filter_actions(tag_filter.actions, case["question"])
+    # The visitor sees the guarded text, so that is what gets checked.
+    from grounding import build_guard, sanitize_text
+
+    reply, _ = sanitize_text(build_guard(context, language), "".join(pieces))
+    return reply, filter_actions(tag_filter.actions, case["question"])
 
 
 def run(cases: list[dict], responder=answer, delay: float = 0.0) -> list[dict]:

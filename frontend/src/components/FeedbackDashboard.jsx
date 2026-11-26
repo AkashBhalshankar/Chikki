@@ -413,6 +413,7 @@ function UsagePanel({ usage }) {
     ["Messages left", totals.contact_messages],
     ["Role-fit checks", totals.jd_matches],
     ["Failed answers", totals.failed_turns],
+    ["Unverified claims blocked", totals.blocked_claims],
     ["Median reply", latency.p50 != null ? `${(latency.p50 / 1000).toFixed(1)}s` : "–"],
     ["Slow (p95)", latency.p95 != null ? `${(latency.p95 / 1000).toFixed(1)}s` : "–"],
   ];

@@ -20,6 +20,7 @@ from digest import run_ops_check, send_digest, build_digest
 from conversation_alerts import alerts as conversation_alerts
 from notifier import route_for, send_all
 from github_activity import github_context
+from grounding import build_guard, mode as grounding_mode, pop_sentences
 from contact_store import notify_contact, read_contacts, save_contact
 from feedback_store import feedback_analytics, read_feedback, record_feedback
 from generate_resume_pdf import build_resume_pdf
@@ -337,6 +338,7 @@ async def process_chikki_turn(
             latency,
             gap=ok and not is_joke and not retrieved,
             error_kind=error_kind if not ok else None,
+            blocked=list(dict.fromkeys(blocked_terms)),
         )
         await asyncio.to_thread(
             record_event,
@@ -351,6 +353,7 @@ async def process_chikki_turn(
             error_kind,
             len(retrieved),
             is_joke,
+            len(blocked_terms),
         )
 
     def pump_tokens():
@@ -371,6 +374,53 @@ async def process_chikki_turn(
         finally:
             event_loop.call_soon_threadsafe(token_queue.put_nowait, ("done", None))
 
+    guard = None
+    if not is_joke and grounding_mode() != "off":
+        try:
+            guard = await asyncio.to_thread(build_guard, knowledge_context, language)
+        except Exception:
+            logger.exception("Could not build the grounding guard; answering without it")
+    blocked_terms: list[str] = []
+    notice_given = False
+    pending = ""
+
+    async def emit(sentence: str, trace: str):
+        """Shows (and, in voice mode, speaks) one finished sentence."""
+        full_reply.append(sentence)
+        await websocket.send_json({
+            "type": "token",
+            "token": sentence,
+            "trace_id": trace,
+            "turn_id": turn_id,
+        })
+        spoken = sentence.strip()
+        if voice_mode and spoken:
+            b64_audio = await synthesize_b64(spoken, user_msg=user_msg, language=language)
+            if b64_audio:
+                await websocket.send_json({
+                    "type": "audio_chunk",
+                    "data": b64_audio,
+                    "mime": "audio/mpeg",
+                    "text": clean_for_speech(spoken, language),
+                    "trace_id": trace,
+                    "turn_id": turn_id,
+                })
+
+    async def release(sentence: str, trace: str):
+        """Checks a sentence against the allowed documents before it goes out."""
+        nonlocal notice_given
+        if guard is not None and sentence.strip():
+            ok, bad = guard.check_sentence(sentence)
+            if not ok:
+                blocked_terms.extend(bad)
+                logger.warning("Grounding guard flagged %s in: %s", bad, sentence.strip()[:120])
+                if grounding_mode() == "block":
+                    if notice_given:
+                        return
+                    notice_given = True
+                    sentence = guard.notice + " "
+        await emit(sentence, trace)
+
     stream_task = asyncio.create_task(asyncio.to_thread(pump_tokens))
     try:
         while True:
@@ -388,64 +438,19 @@ async def process_chikki_turn(
             delta = tag_filter.feed(delta)
             if not delta:
                 continue
-            full_reply.append(delta)
-            sentence_buffer += delta
-
-            await websocket.send_json({
-                "type": "token",
-                "token": delta,
-                "trace_id": trace_id,
-                "turn_id": turn_id,
-            })
-
-            splits = SENTENCE_END.split(sentence_buffer)
-            if len(splits) > 1 and voice_mode:
-                complete_sentence = "".join(splits[:-1]).strip()
-                sentence_buffer = splits[-1]
-                if complete_sentence:
-                    b64_audio = await synthesize_b64(
-                        complete_sentence,
-                        user_msg=user_msg,
-                        language=language,
-                    )
-                    if b64_audio:
-                        await websocket.send_json({
-                            "type": "audio_chunk",
-                            "data": b64_audio,
-                            "mime": "audio/mpeg",
-                            "text": clean_for_speech(complete_sentence, language),
-                            "trace_id": trace_id,
-                            "turn_id": turn_id,
-                        })
+            pending += delta
+            sentences, pending = pop_sentences(pending)
+            for sentence in sentences:
+                await release(sentence, last_trace_id)
 
         await stream_task
 
-        tail = tag_filter.finish()
-        if tail:
-            full_reply.append(tail)
-            sentence_buffer += tail
-            await websocket.send_json({
-                "type": "token",
-                "token": tail,
-                "trace_id": last_trace_id,
-                "turn_id": turn_id,
-            })
-
-        if sentence_buffer.strip() and voice_mode:
-            b64_audio = await synthesize_b64(
-                sentence_buffer.strip(),
-                user_msg=user_msg,
-                language=language,
-            )
-            if b64_audio:
-                await websocket.send_json({
-                    "type": "audio_chunk",
-                    "data": b64_audio,
-                    "mime": "audio/mpeg",
-                    "text": clean_for_speech(sentence_buffer.strip(), language),
-                    "trace_id": last_trace_id,
-                    "turn_id": turn_id,
-                })
+        pending += tag_filter.finish()
+        sentences, pending = pop_sentences(pending)
+        for sentence in sentences:
+            await release(sentence, last_trace_id)
+        if pending.strip():
+            await release(pending, last_trace_id)
 
         final_text = "".join(full_reply)
         conversation_history.extend([

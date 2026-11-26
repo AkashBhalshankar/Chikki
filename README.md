@@ -76,6 +76,22 @@ prompt as the ground truth.
   Embedding errors fall back to keyword search automatically.
 - Admins can force a rebuild with `POST /knowledge/refresh` (needs `X-Admin-Token`).
 
+## 4b. Resume grounding (no invented facts)
+
+Chikki's answers must come from your Google Drive resume. No AI model can be trusted to
+never slip, so a guard checks **every sentence before it is shown or spoken**: each number,
+company name and technology in it must appear in the allowed documents. A sentence with
+anything unverified is replaced by "I don't have that detail in Akash's resume." (once per reply).
+
+- `GROUNDING_SOURCES=resume,knowledge` (default) allows your resume plus Chikki's own write-ups in
+  `backend/knowledge`; set `GROUNDING_SOURCES=resume` to allow the resume only (strictest).
+- `GROUNDING_MODE=block` (default), `flag` (report but still show) or `off`.
+- Blocked claims are shown in the Telegram conversation feed (🛡️), the Usage tab and the weekly digest.
+- It is a safety net, not a proof: it checks numbers and capitalised names/terms, not whether a
+  sentence is logically accurate, and it does not check a plain capitalised word that starts a
+  sentence. Real answers are tested against your actual resume (`python evals.py`).
+- Because sentences are checked first, text now appears a sentence at a time instead of word by word.
+
 ## 5. Contact and booking
 
 - **Contact Akash:** one button opens a window where visitors send their name, email, company and a message.

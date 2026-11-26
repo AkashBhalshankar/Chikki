@@ -10,6 +10,17 @@
 - Chikki project details moved from the hardcoded system prompt into `knowledge/chikki.md`.
 - Added admin endpoint `POST /knowledge/refresh`.
 
+### New: resume-grounding guard
+- Every sentence is checked before it is shown or spoken: numbers, company names and technologies must appear in the Google Drive resume (and by default Chikki's own write-ups; `GROUNDING_SOURCES=resume` is strictest). Unverified sentences are replaced by "I don't have that detail in Akash's resume."
+- Abbreviations are accepted only when their long form is in the documents (for example P2P and Peer-to-Peer); the computed tenure is allowed because the prompt provides it.
+- Blocked claims show in the Telegram feed, the Usage tab and the weekly digest. Modes: block, flag, off.
+- Tested on real answers against the real resume: 27 of 29 sentences passed, the 2 blocked were Kubernetes (correct) and a "P2P" abbreviation (now handled). Four new eval cases cover invented skills, years and metrics.
+- Text now appears a sentence at a time. Decimals such as 1.5 are no longer split while streaming (this also fixes spoken sentences being cut at "1.").
+
+### Fix: provider failures were silent
+- The daily health check now sends a tiny test to every AI provider and alerts you when a model is retired, a key is rejected, or no provider is answering.
+- The NVIDIA default model was retired; it is now `poolside/laguna-xs-2.1`.
+
 ### UI refresh
 - The 📊 Analytics button is hidden from visitors; reveal it with `?admin=1` or Ctrl+Shift+A.
 - Fewer buttons: Resume, Contact Akash and Role fit stay visible; everything else moved into a **More** menu.

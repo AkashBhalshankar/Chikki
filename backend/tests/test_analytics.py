@@ -14,7 +14,7 @@ def test_summary_aggregates_turns(feedback_db):
     analytics.record_event("resume_download", "rag")
 
     data = analytics.summary(days=7)
-    assert data["totals"] == {"turns": 5, "failed_turns": 1, "resume_downloads": 1, "jd_matches": 0, "contact_messages": 0, "jokes": 1}
+    assert data["totals"] == {"turns": 5, "failed_turns": 1, "resume_downloads": 1, "jd_matches": 0, "contact_messages": 0, "jokes": 1, "blocked_claims": 0}
     assert data["top_questions"][0] == {"question": "what is langgraph", "count": 2}
     assert data["languages"] == {"en-IN": 4, "hi-IN": 1}
     assert data["modes"] == {"text": 4, "voice": 1}

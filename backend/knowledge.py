@@ -241,6 +241,15 @@ class KnowledgeBase:
             len(documents), len(chunks), bool(embeddings),
         )
 
+    def all_text(self) -> str:
+        """Every indexed chunk, used as the allowed corpus for the grounding guard."""
+        try:
+            self.refresh()
+        except Exception:
+            logger.exception("Knowledge refresh failed; using the previous index")
+        with self._lock:
+            return "\n".join(f"{c.title} {c.heading} {c.text}" for c in self._chunks)
+
     @property
     def chunk_count(self) -> int:
         return len(self._chunks)
