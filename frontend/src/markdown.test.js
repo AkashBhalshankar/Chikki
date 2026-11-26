@@ -28,3 +28,15 @@ test("html in a reply stays text and copy drops the formatting marks", () => {
   assert.deepEqual(parseInline("<b>x</b>"), [{ type: "text", value: "<b>x</b>" }]);
   assert.equal(plainText("- **UBS** and `FastAPI`"), "• UBS and FastAPI");
 });
+
+test("a markdown table becomes a table block with header and rows", () => {
+  const [intro, table] = parseBlocks("Compare them.\n\n| Aspect | **UBS** |\n|---|---|\n| Role | AI Engineer |\n| Tool | LangGraph |\n");
+  assert.equal(intro.type, "p");
+  assert.equal(table.type, "table");
+  assert.deepEqual(table.header, ["Aspect", "**UBS**"]);
+  assert.deepEqual(table.rows, [["Role", "AI Engineer"], ["Tool", "LangGraph"]]);
+});
+
+test("copying a table drops the separator row", () => {
+  assert.equal(plainText("| A | B |\n|---|---|\n| 1 | 2 |").includes("---"), false);
+});

@@ -4,6 +4,9 @@ import LanguageSelector from "./LanguageSelector.jsx";
 import { isMobileDevice, telHref } from "../device.js";
 import MoreMenu from "./MoreMenu.jsx";
 import RichText from "./RichText.jsx";
+import { ProjectCard } from "./ProjectsModal.jsx";
+import { projectsMentioned } from "../projects.js";
+import { nextStep } from "../interview.js";
 import ThinkingIndicator from "./ThinkingIndicator.jsx";
 import { plainText } from "../markdown.js";
 import { ProfileLine } from "./ProfileBadge.jsx";
@@ -52,6 +55,11 @@ export default function ChatPanel({
   onOpenBooking,
   onShare,
   onOpenHow,
+  onOpenProjects,
+  onOpenInterview,
+  interview = null,
+  onInterviewNext,
+  onInterviewEnd,
   onClear,
   adminUi = false,
   theme = "dark",
@@ -214,6 +222,8 @@ export default function ChatPanel({
             <MoreMenu
               direction="down"
               items={[
+                onOpenProjects && { key: "projects", label: "🗂️ Projects", onClick: onOpenProjects },
+                onOpenInterview && { key: "interview", label: "🎤 Interview mode", onClick: onOpenInterview },
                 onOpenHow && { key: "how", label: "🧠 How Chikki works", onClick: onOpenHow },
                 onShare && { key: "share", label: linkCopied ? "✓ Link copied" : "🔗 Copy link", onClick: handleShareClick, keepOpen: true },
                 canCall && actions.phone && { key: "call", label: "📞 Call Akash", href: telHref(actions.phone) },
@@ -327,6 +337,14 @@ export default function ChatPanel({
                 </div>
               )}
 
+              {m.role === "assistant" && i === latestAssistantIndex && m.final && !m.isError && projectsMentioned(m.content).length > 0 && (
+                <div className="mt-2 ml-1 grid max-w-[96%] gap-2 sm:max-w-[88%] sm:grid-cols-2">
+                  {projectsMentioned(m.content).map((project) => (
+                    <ProjectCard key={project.id} project={project} compact />
+                  ))}
+                </div>
+              )}
+
               {m.role === "assistant" && m.final && !m.isError && m.sources?.length > 0 && (
                 <div className="mt-1.5 ml-1 flex max-w-[88%] flex-wrap items-center gap-1 text-[10px] text-gray-500">
                   <span className="uppercase tracking-wider">Sources:</span>
@@ -428,6 +446,26 @@ export default function ChatPanel({
 
           {thinking && <ThinkingIndicator />}
         </div>
+
+        {interview && (() => {
+          const step = nextStep(interview.role, interview.asked);
+          return (
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-chikki-purple/40 bg-chikki-purple/10 px-3 py-2 text-xs">
+              <span className="text-gray-200">
+                🎤 Interview: <strong className="font-semibold">{interview.role.label}</strong>
+                {step.kind === "done" ? " · finished" : ""}
+              </span>
+              <span className="flex gap-2">
+                {step.kind !== "done" && (
+                  <button type="button" disabled={thinking} onClick={onInterviewNext} className="action-button primary-action text-xs disabled:opacity-50">
+                    {step.label} →
+                  </button>
+                )}
+                <button type="button" onClick={onInterviewEnd} className="action-button text-xs">{step.kind === "done" ? "Close" : "End"}</button>
+              </span>
+            </div>
+          );
+        })()}
 
         {/* Quick Suggestion Chips */}
         <div className={`mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2 ${messages.length === 0 ? "hidden" : ""}`}>

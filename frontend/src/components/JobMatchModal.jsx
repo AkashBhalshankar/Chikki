@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { matchJobDescription } from "../services/api.js";
+import { draftPitch, matchJobDescription } from "../services/api.js";
 
 function Section({ title, items, tone }) {
   if (!items?.length) return null;
@@ -22,6 +22,9 @@ export default function JobMatchModal({ isOpen, onClose, onDownloadResume }) {
   const [status, setStatus] = useState("idle"); // idle | loading | done | error
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const [pitch, setPitch] = useState(null);
+  const [pitchStatus, setPitchStatus] = useState("idle"); // idle | loading | error
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -49,6 +52,28 @@ export default function JobMatchModal({ isOpen, onClose, onDownloadResume }) {
   const reset = () => {
     setResult(null);
     setStatus("idle");
+    setPitch(null);
+    setPitchStatus("idle");
+  };
+
+  const handlePitch = async () => {
+    if (pitchStatus === "loading") return;
+    setPitchStatus("loading");
+    try {
+      setPitch(await draftPitch(text));
+      setPitchStatus("idle");
+    } catch (err) {
+      setError(err.message);
+      setPitchStatus("error");
+    }
+  };
+
+  const copyPitch = async () => {
+    try {
+      await navigator.clipboard.writeText(pitch.cover_note);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch (_) {}
   };
 
   const scoreColor =
@@ -90,10 +115,26 @@ export default function JobMatchModal({ isOpen, onClose, onDownloadResume }) {
             <Section title="Strong matches" items={result.matching_skills} tone="text-emerald-300" />
             <Section title="Gaps (honest view)" items={result.gaps} tone="text-amber-200" />
             <Section title="What Akash would highlight" items={result.talking_points} tone="text-gray-200" />
+            {pitch && (
+              <div className="rounded-lg border border-gray-800 bg-zinc-900/50 p-3">
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Draft cover note</div>
+                <p className="whitespace-pre-wrap text-xs leading-relaxed text-gray-200">{pitch.cover_note}</p>
+                <Section title="Talking points" items={pitch.talking_points} tone="text-gray-300" />
+                <button type="button" onClick={copyPitch} className="action-button mt-2 text-xs">{copied ? "✓ Copied" : "📋 Copy note"}</button>
+              </div>
+            )}
+            {pitchStatus === "error" && error && (
+              <div role="alert" className="border border-rose-800/60 bg-rose-950/30 px-3 py-2 text-xs text-rose-200">{error}</div>
+            )}
             <div className="flex flex-wrap justify-end gap-2 pt-1">
               <button type="button" onClick={reset} className="action-button text-xs">
                 Try another role
               </button>
+              {!pitch && (
+                <button type="button" onClick={handlePitch} disabled={pitchStatus === "loading"} className="action-button text-xs disabled:opacity-50">
+                  {pitchStatus === "loading" ? "Drafting..." : "✍️ Draft a cover note"}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => onDownloadResume?.(result.resume_focus)}

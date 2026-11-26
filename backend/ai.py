@@ -184,9 +184,10 @@ def _prepare_message(message: str, language: str = "en-IN", detail: bool = False
     follow_up = ""
     if not voice_mode:
         follow_up = (
-            f" At the very end, after your answer, add one hidden tag holding 2 short follow-up questions the visitor "
-            f"might ask next, written in {response_language}, only about things in the resume, like "
-            f"[[next:First question?|Second question?]]. Never mention the tag."
+            f"\n\nREQUIRED FINAL LINE: after your answer, on a new line, write exactly one hidden tag with 2 short "
+            f"follow-up questions the visitor might ask next (in {response_language}, only about things in the resume), "
+            f"in this exact form: [[next:First question?|Second question?]]. Every reply must end with this tag. "
+            f"Never mention the tag."
         )
     return f"""{message}
 

@@ -238,6 +238,8 @@ export function connectVoiceSocket({
             turn_id: data.turn_id ?? (data.meta ? data.meta.turn_id : null),
             sources: Array.isArray(data.meta?.sources) ? data.meta.sources : [],
             actions: Array.isArray(data.meta?.actions) ? data.meta.actions : [],
+            mood: data.meta?.mood ?? null,
+            suggestions: Array.isArray(data.meta?.suggestions) ? data.meta.suggestions : [],
           });
           return;
         }
@@ -331,6 +333,20 @@ export async function matchJobDescription(jobDescription) {
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));
     throw new Error(detail.detail || "Could not analyse that right now. Please try again.");
+  }
+  return res.json();
+}
+
+export async function draftPitch(jobDescription) {
+  const res = await fetch(`${BASE_URL}/match/pitch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ job_description: jobDescription }),
+  });
+  if (res.status === 429) throw new Error("You've reached the limit for now. Please try again later.");
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.detail || "Could not draft that right now. Please try again.");
   }
   return res.json();
 }

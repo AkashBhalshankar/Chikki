@@ -4,15 +4,37 @@
 const BULLET = /^\s*(?:[-*\u2022])\s+(.*)$/;
 const NUMBERED = /^\s*\d+[.)]\s+(.*)$/;
 
+const TABLE_ROW = /^\s*\|.*\|\s*$/;
+const TABLE_RULE = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
+
+function splitRow(line) {
+  return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+}
+
 export function parseBlocks(text = "") {
   const blocks = [];
   let list = null;
+  let table = null;
   const flushList = () => {
     if (list) blocks.push(list);
     list = null;
   };
+  const flushTable = () => {
+    if (table && table.rows.length + (table.header ? 1 : 0) > 0) blocks.push(table);
+    table = null;
+  };
   for (const raw of text.replace(/\r/g, "").split("\n")) {
     const line = raw.trimEnd();
+    if (TABLE_ROW.test(line)) {
+      flushList();
+      if (!table) table = { type: "table", header: null, rows: [] };
+      if (TABLE_RULE.test(line)) continue;
+      const cells = splitRow(line);
+      if (!table.header && table.rows.length === 0) table.header = cells;
+      else table.rows.push(cells);
+      continue;
+    }
+    flushTable();
     if (!line.trim()) {
       flushList();
       continue;
@@ -37,6 +59,7 @@ export function parseBlocks(text = "") {
     }
   }
   flushList();
+  flushTable();
   // A blank line ends a paragraph; lines inside one paragraph were already joined above.
   return blocks.map(({ openParagraph, ...block }) => block);
 }
@@ -60,6 +83,8 @@ export function parseInline(text = "") {
 // The same reply without formatting marks, for "Copy answer".
 export function plainText(text = "") {
   return text
+    .replace(/^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/gm, "")
+    .replace(/^\s*\|(.*)\|\s*$/gm, (_, row) => row.split("|").map((cell) => cell.trim()).join("  |  "))
     .replace(/\*\*([^*]+?)\*\*/g, "$1")
     .replace(/`([^`]+?)`/g, "$1")
     .replace(/^\s*[-*\u2022]\s+/gm, "• ");

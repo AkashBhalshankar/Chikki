@@ -21,6 +21,9 @@ import { useSpeechRecognition } from "./hooks/useSpeechRecognition.js";
 import { voiceLogLines } from "./voiceLog.js";
 import { attachLevelMeter } from "./voiceLevel.js";
 import { ThinkingWord } from "./components/ThinkingIndicator.jsx";
+import ProjectsModal from "./components/ProjectsModal.jsx";
+import InterviewModal from "./components/InterviewModal.jsx";
+import { nextStep, roleById } from "./interview.js";
 import { expressionForTurn, expressionForUserInput } from "./expressions.js";
 import { connectVoiceSocket, downloadResumePdf, fetchGreetingAudio, sendFeedback, sendVoiceMetric, wakeServer } from "./services/api.js";
 
@@ -401,6 +404,13 @@ export default function App() {
   const [showHow, setShowHow] = useState(false);
   const openHow = useCallback(() => setShowHow(true), []);
   const closeHow = useCallback(() => setShowHow(false), []);
+  const [showProjects, setShowProjects] = useState(false);
+  const openProjects = useCallback(() => setShowProjects(true), []);
+  const closeProjects = useCallback(() => setShowProjects(false), []);
+  const [showInterview, setShowInterview] = useState(false);
+  const openInterview = useCallback(() => setShowInterview(true), []);
+  const closeInterview = useCallback(() => setShowInterview(false), []);
+  const [interview, setInterview] = useState(null); // { role, asked }
   const [showMatch, setShowMatch] = useState(false);
   const openMatch = useCallback(() => setShowMatch(true), []);
   const closeMatch = useCallback(() => setShowMatch(false), []);
@@ -756,6 +766,28 @@ export default function App() {
     }
   }, [sessionId, stopAudioImmediate]);
 
+  const startInterview = useCallback((roleId) => {
+    const role = roleById(roleId);
+    if (!role) return;
+    setShowInterview(false);
+    setInputMode("chat");
+    setActive(true);
+    setInterview({ role, asked: 1 });
+    handleChatSend(role.questions[0]);
+  }, [handleChatSend]);
+
+  const interviewNext = useCallback(() => {
+    setInterview((current) => {
+      if (!current) return current;
+      const step = nextStep(current.role, current.asked);
+      if (step.kind === "done") return current;
+      handleChatSend(step.text);
+      return { ...current, asked: current.asked + 1 };
+    });
+  }, [handleChatSend]);
+
+  const interviewEnd = useCallback(() => setInterview(null), []);
+
   const handleFeedback = useCallback((value, comment = null) => {
     const lastAssistantMsg = [...messagesRef.current]
       .reverse()
@@ -1109,7 +1141,7 @@ export default function App() {
           return copy;
         });
 
-        setFollowUpSuggestions(suggestionsForReply(reply));
+        setFollowUpSuggestions(meta?.suggestions?.length ? meta.suggestions : suggestionsForReply(reply));
       },
 
       onError: () => {
@@ -1180,6 +1212,11 @@ export default function App() {
           onOpenMatch={openMatch}
           onShare={handleShare}
           onOpenHow={openHow}
+          onOpenProjects={openProjects}
+          onOpenInterview={openInterview}
+          interview={interview}
+          onInterviewNext={interviewNext}
+          onInterviewEnd={interviewEnd}
           adminUi={adminUi}
           theme={theme}
           onToggleTheme={toggleTheme}
@@ -1201,6 +1238,8 @@ export default function App() {
         />
         <JobMatchModal isOpen={showMatch} onClose={closeMatch} onDownloadResume={handleDownloadTailoredResume} />
         <HowItWorksModal isOpen={showHow} onClose={closeHow} githubUrl={CONTACT_ACTIONS.github} />
+        <ProjectsModal isOpen={showProjects} onClose={closeProjects} githubUrl={CONTACT_ACTIONS.github} />
+        <InterviewModal isOpen={showInterview} onClose={closeInterview} onStart={startInterview} />
       </>
     );
   }
@@ -1462,6 +1501,8 @@ export default function App() {
             <MoreMenu
               direction="up"
               items={[
+                { key: "projects", label: "🗂️ Projects", onClick: openProjects },
+                { key: "interview", label: "🎤 Interview mode", onClick: openInterview },
                 { key: "how", label: "🧠 How Chikki works", onClick: openHow },
                 canCall && CONTACT_ACTIONS.phone && { key: "call", label: "📞 Call Akash", href: telHref(CONTACT_ACTIONS.phone) },
                 CONTACT_ACTIONS.linkedin && { key: "linkedin", label: "💼 LinkedIn", href: CONTACT_ACTIONS.linkedin },
@@ -1488,6 +1529,8 @@ export default function App() {
       />
       <JobMatchModal isOpen={showMatch} onClose={closeMatch} onDownloadResume={handleDownloadTailoredResume} />
       <HowItWorksModal isOpen={showHow} onClose={closeHow} githubUrl={CONTACT_ACTIONS.github} />
+      <ProjectsModal isOpen={showProjects} onClose={closeProjects} githubUrl={CONTACT_ACTIONS.github} />
+      <InterviewModal isOpen={showInterview} onClose={closeInterview} onStart={startInterview} />
     </div>
   );
 }

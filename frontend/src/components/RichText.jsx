@@ -11,6 +11,32 @@ function Inline({ text }) {
 // Renders a chat reply with its light formatting (paragraphs, bullets, bold, code).
 export default function RichText({ text }) {
   return parseBlocks(text).map((block, index) => {
+    if (block.type === "table") {
+      return (
+        <div key={index} className="my-2 overflow-x-auto rounded-lg border border-gray-800">
+          <table className="w-full border-collapse text-left text-[0.92em]">
+            {block.header && (
+              <thead className="bg-white/5 text-gray-300">
+                <tr>
+                  {block.header.map((cell, i) => (
+                    <th key={i} className="px-2.5 py-1.5 font-semibold"><Inline text={cell} /></th>
+                  ))}
+                </tr>
+              </thead>
+            )}
+            <tbody>
+              {block.rows.map((row, r) => (
+                <tr key={r} className="border-t border-gray-800 align-top">
+                  {row.map((cell, i) => (
+                    <td key={i} className="px-2.5 py-1.5"><Inline text={cell} /></td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
     if (block.type === "ul" || block.type === "ol") {
       const List = block.type === "ul" ? "ul" : "ol";
       return (
