@@ -98,7 +98,7 @@ prompt as the ground truth.
   time, and a warning when it is a knowledge gap. A visitor's first message makes a sound and later
   ones are silent. It is capped at 60 messages an hour (`NOTIFY_CONVERSATIONS_PER_HOUR`).
   - Protected by a rate limit (5 per hour per IP) and a spam honeypot.
-  The same window shows your email and phone (with Copy buttons) from `VITE_CONTACT_EMAIL` and `VITE_CONTACT_PHONE`.
+  On phones and tablets a **Call** button also appears (from `VITE_CONTACT_PHONE`).
 - **Book a call:** set `VITE_BOOKING_URL` (Cal.com or Calendly) and the contact window shows a booking link.
 
 ## 6. Admin: feedback dashboard

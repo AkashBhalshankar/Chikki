@@ -1038,8 +1038,6 @@ export default function App() {
           onClose={closeContact}
           topics={resumeFocusFromMessages(messages).slice(0, 300)}
           bookingUrl={CONTACT_ACTIONS.booking}
-          email={CONTACT_ACTIONS.email}
-          phone={CONTACT_ACTIONS.phone}
         />
         <JobMatchModal isOpen={showMatch} onClose={closeMatch} onDownloadResume={handleDownloadTailoredResume} />
         <HowItWorksModal isOpen={showHow} onClose={closeHow} githubUrl={CONTACT_ACTIONS.github} />
@@ -1312,8 +1310,6 @@ export default function App() {
         onClose={closeContact}
         topics={resumeFocusFromMessages(messages).slice(0, 300)}
         bookingUrl={CONTACT_ACTIONS.booking}
-          email={CONTACT_ACTIONS.email}
-          phone={CONTACT_ACTIONS.phone}
       />
       <JobMatchModal isOpen={showMatch} onClose={closeMatch} onDownloadResume={handleDownloadTailoredResume} />
       <HowItWorksModal isOpen={showHow} onClose={closeHow} githubUrl={CONTACT_ACTIONS.github} />

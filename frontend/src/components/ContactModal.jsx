@@ -1,42 +1,9 @@
 import { useEffect, useState } from "react";
 import { sendContactMessage } from "../services/api.js";
-import { telHref } from "../device.js";
 
 const EMPTY_FORM = { name: "", email: "", company: "", message: "", website: "" };
 
-function DirectRow({ label, value, href }) {
-  const [copied, setCopied] = useState(false);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch (_) {
-      window.prompt(`Copy ${label.toLowerCase()}:`, value);
-    }
-  };
-
-  return (
-    <div className="flex items-center justify-between gap-2 text-xs">
-      <span className="min-w-0 truncate">
-        <span className="text-gray-500">{label}: </span>
-        <a href={href} className="text-gray-200 underline underline-offset-2 select-all">
-          {value}
-        </a>
-      </span>
-      <button
-        type="button"
-        onClick={copy}
-        className="shrink-0 rounded border border-gray-700 bg-zinc-800 px-2 py-0.5 text-[10px] text-gray-300 hover:bg-zinc-700"
-      >
-        {copied ? "✓ Copied" : "Copy"}
-      </button>
-    </div>
-  );
-}
-
-export default function ContactModal({ isOpen, onClose, topics = "", bookingUrl = "", email = "", phone = "" }) {
+export default function ContactModal({ isOpen, onClose, topics = "", bookingUrl = "" }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
   const [error, setError] = useState("");
@@ -188,13 +155,6 @@ export default function ContactModal({ isOpen, onClose, topics = "", bookingUrl 
           </form>
         )}
 
-        {(email || phone) && (
-          <div className="mt-5 space-y-2 border-t border-gray-800 pt-4">
-            <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Or reach Akash directly</div>
-            {email && <DirectRow label="Email" value={email} href={`mailto:${email}`} />}
-            {phone && <DirectRow label="Phone" value={phone} href={telHref(phone)} />}
-          </div>
-        )}
       </div>
     </div>
   );

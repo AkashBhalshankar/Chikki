@@ -77,7 +77,7 @@ If Groq reports a rate limit the run falls back to the next provider; just re-ru
 
 1. **Text chat:** click "Use text chat instead", ask *"What is Chikki?"*. You get a short answer with **Sources** chips under it.
 2. **Tell me more:** click the "Tell me more about that." suggestion. The answer is clearly longer.
-3. **Actions:** ask *"How can I contact Akash?"*. A **Contact Akash** button appears under the reply. Click it, fill the form, send (your email and phone are also shown there to copy). Check:
+3. **Actions:** ask *"How can I contact Akash?"*. A **Contact Akash** button appears under the reply. Click it, fill the form, send. Check:
    - the message appears in the dashboard **Messages** tab, and
    - (if Telegram is set) you get an alert.
 4. **Resume:** ask *"Can I get his resume?"*, click **Download resume**. The PDF should reflect the Drive resume.

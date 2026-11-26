@@ -11,8 +11,8 @@
 - Added admin endpoint `POST /knowledge/refresh`.
 
 ### Fix: one Contact Akash button
-- A **📞 Call** button is shown on phones and tablets only (a `tel:` link does nothing on desktop); the phone number is also in the Contact Akash window everywhere.
-- "Contact Akash" used a `mailto:` link that does nothing on computers without an email app, and "Call" a `tel:` link that does nothing on desktop, next to a separate "Leave a message" form. They are now one **Contact Akash** button that opens the form, with your email and phone shown there with Copy buttons, plus the booking link when configured.
+- A **📞 Call** button is shown on phones and tablets only (a `tel:` link does nothing on desktop).
+- "Contact Akash" used a `mailto:` link that does nothing on computers without an email app, and "Call" a `tel:` link that does nothing on desktop, next to a separate "Leave a message" form. They are now one **Contact Akash** button that opens the form, plus the booking link when configured. Your email address and phone number are not shown on the page.
 
 ### New: live conversation feed and notification routing
 - Telegram receives each visitor question in full with a one-line answer, a short anonymous visitor code, the time, reply time, and a warning for knowledge gaps. A visitor's first message makes a sound; later ones are silent. Off by default (`NOTIFY_CONVERSATIONS=true` to enable), sent in the background and capped at 60 an hour.
