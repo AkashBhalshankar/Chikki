@@ -44,7 +44,7 @@ from security import (
     tts_limiter,
     ws_connections,
 )
-from tts import clean_for_speech, synthesize_speech, speech_tone
+from tts import clean_for_speech, synthesize_speech, speech_tone, tts_health
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -102,7 +102,7 @@ class ResumeDownloadRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": APP_VERSION}
+    return {"status": "ok", "version": APP_VERSION, "voice": tts_health.snapshot()}
 
 
 @app.get("/digest/preview", dependencies=[Depends(require_admin)])
@@ -384,6 +384,27 @@ async def process_chikki_turn(
     notice_given = False
     pending = ""
 
+    audio_queue: asyncio.Queue = asyncio.Queue()
+
+    async def audio_sender():
+        while True:
+            item = await audio_queue.get()
+            if item is None:
+                return
+            task, spoken, trace = item
+            b64_audio = await task
+            if b64_audio:
+                await websocket.send_json({
+                    "type": "audio_chunk",
+                    "data": b64_audio,
+                    "mime": "audio/mpeg",
+                    "text": clean_for_speech(spoken, language),
+                    "trace_id": trace,
+                    "turn_id": turn_id,
+                })
+
+    sender_task = asyncio.create_task(audio_sender())
+
     async def emit(sentence: str, trace: str):
         """Shows (and, in voice mode, speaks) one finished sentence."""
         full_reply.append(sentence)
@@ -395,16 +416,13 @@ async def process_chikki_turn(
         })
         spoken = sentence.strip()
         if voice_mode and spoken:
-            b64_audio = await synthesize_b64(spoken, user_msg=user_msg, language=language)
-            if b64_audio:
-                await websocket.send_json({
-                    "type": "audio_chunk",
-                    "data": b64_audio,
-                    "mime": "audio/mpeg",
-                    "text": clean_for_speech(spoken, language),
-                    "trace_id": trace,
-                    "turn_id": turn_id,
-                })
+            # Start speaking this sentence's audio right away; it is sent in order by audio_sender,
+            # so the next sentence is already being prepared while this one plays.
+            audio_queue.put_nowait((
+                asyncio.create_task(synthesize_b64(spoken, user_msg=user_msg, language=language)),
+                spoken,
+                trace,
+            ))
 
     async def release(sentence: str, trace: str):
         """Checks a sentence against the allowed documents before it goes out."""
@@ -452,6 +470,9 @@ async def process_chikki_turn(
         if pending.strip():
             await release(pending, last_trace_id)
 
+        audio_queue.put_nowait(None)
+        await sender_task
+
         final_text = "".join(full_reply)
         conversation_history.extend([
             {"role": "user", "content": user_msg},
@@ -494,6 +515,13 @@ async def process_chikki_turn(
         logger.exception("Conversation turn crashed")
         await log_turn(False, "internal")
         await _send_error(websocket, "Something went wrong on my side. Please try asking again.", "internal", turn_id)
+    finally:
+        # Stop audio work if the turn ended early (error, interruption or disconnect).
+        sender_task.cancel()
+        while not audio_queue.empty():
+            queued = audio_queue.get_nowait()
+            if queued:
+                queued[0].cancel()
 
 
 async def _send_error(websocket: WebSocket, message: str, kind: str, turn_id: str | None) -> None:

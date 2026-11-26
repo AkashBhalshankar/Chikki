@@ -1,5 +1,6 @@
 """Weekly owner digest and operational health check."""
 
+import asyncio
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -10,6 +11,7 @@ from contact_store import read_contacts
 from feedback_store import read_feedback
 from notifier import send_notification
 from resume_loader import sync_drive_resume
+from tts import probe_tts
 
 logger = logging.getLogger("chikki.digest")
 
@@ -79,6 +81,11 @@ def check_health() -> list[str]:
             problems.append(f"{name}: not responding ({kind}).")
     if probes and not working:
         problems.append("No AI provider is answering right now, so Chikki cannot reply to visitors.")
+
+    # Voice is the main feature, so a broken speech service is reported with its likely cause.
+    tts_ok, tts_kind, tts_fix = asyncio.run(probe_tts())
+    if not tts_ok:
+        problems.append(f"Voice (text-to-speech) is failing [{tts_kind}]: {tts_fix}")
 
     drive_configured = any(
         os.getenv(name) for name in ("GOOGLE_DRIVE_RESUME_URL", "GOOGLE_DRIVE_FILE_ID", "DRIVE_RESUME_URL")

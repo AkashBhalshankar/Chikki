@@ -1,8 +1,19 @@
+import asyncio
 import html
+import logging
 import os
 import re
+import time
+from importlib import metadata
 
 import edge_tts
+
+logger = logging.getLogger("chikki")
+
+TTS_TIMEOUT_SECONDS = float(os.getenv("TTS_TIMEOUT_SECONDS", "8"))
+TTS_RETRIES = int(os.getenv("TTS_RETRIES", "1"))
+TTS_PAUSE_AFTER_FAILURES = 3   # consecutive failures before voice is paused
+TTS_PAUSE_SECONDS = 45         # while paused the browser voice speaks instead of stalling every turn
 
 
 # Strictly Female Neural Voices Only
@@ -185,7 +196,7 @@ def clean_for_speech(text: str, language: str | None = None) -> str:
     return text
 
 
-async def synthesize_speech(
+async def _synthesize_once(
     text: str,
     voice: str = None,
     tone: str = "natural",
@@ -229,3 +240,107 @@ async def synthesize_speech(
             audio_chunks.append(chunk["data"])
 
     return b"".join(audio_chunks)
+
+
+def edge_tts_version() -> str:
+    try:
+        return metadata.version("edge-tts")
+    except metadata.PackageNotFoundError:
+        return "unknown"
+
+
+def classify_tts_error(error: BaseException) -> tuple[str, str]:
+    """Turns a text-to-speech failure into (kind, what to do about it)."""
+    name = type(error).__name__
+    text = str(error)
+    status = getattr(error, "status", None)
+    if isinstance(error, (asyncio.TimeoutError, TimeoutError)):
+        return "timeout", "Microsoft's speech service did not answer in time. Usually a slow network or a service hiccup; it often clears by itself."
+    if status in (401, 403) or "403" in text or "401" in text:
+        return "rejected", (
+            "Microsoft rejected the request (403/401). This is the classic sign that Microsoft changed its "
+            f"speech service. Upgrade the library: `pip install -U edge-tts` (installed: {edge_tts_version()})."
+        )
+    if status in (404, 410) or "404" in text:
+        return "endpoint_changed", f"The speech endpoint moved or was retired. Upgrade edge-tts (installed: {edge_tts_version()})."
+    if name == "NoAudioReceived" or "No audio was received" in text:
+        return "no_audio", "The service answered but sent no audio. The voice name may be retired, or the service changed. Try upgrading edge-tts."
+    if "getaddrinfo" in text or "Cannot connect" in text or name in ("ClientConnectorError", "ClientConnectorDNSError"):
+        return "network", "The server cannot reach Microsoft's speech service. Check the host's outbound network access."
+    return "unknown", f"{name}: {text[:160]}"
+
+
+class TtsHealth:
+    """Tracks recent voice failures so a broken service cannot stall every reply."""
+
+    def __init__(self):
+        self.consecutive_failures = 0
+        self.paused_until = 0.0
+        self.last_error: tuple[str, str] | None = None
+        self.last_ok_at: float | None = None
+
+    @property
+    def paused(self) -> bool:
+        return time.monotonic() < self.paused_until
+
+    def record_ok(self) -> None:
+        self.consecutive_failures = 0
+        self.paused_until = 0.0
+        self.last_ok_at = time.time()
+
+    def record_failure(self, error: BaseException) -> None:
+        self.consecutive_failures += 1
+        self.last_error = classify_tts_error(error)
+        if self.consecutive_failures >= TTS_PAUSE_AFTER_FAILURES:
+            self.paused_until = time.monotonic() + TTS_PAUSE_SECONDS
+
+    def snapshot(self) -> dict:
+        return {
+            "ok": self.consecutive_failures == 0,
+            "paused": self.paused,
+            "consecutive_failures": self.consecutive_failures,
+            "last_error_kind": self.last_error[0] if self.last_error else None,
+            "last_error_fix": self.last_error[1] if self.last_error else None,
+            "edge_tts_version": edge_tts_version(),
+        }
+
+
+tts_health = TtsHealth()
+
+
+async def synthesize_speech(text: str, voice: str = None, tone: str = "natural", language: str = None) -> bytes:
+    """Speaks text with a timeout and a retry. Returns b"" when the voice service is down
+    (the browser then reads the reply aloud), and never blocks a reply for long."""
+    if tts_health.paused:
+        return b""
+    last_error: BaseException | None = None
+    for attempt in range(TTS_RETRIES + 1):
+        try:
+            audio = await asyncio.wait_for(
+                _synthesize_once(text, voice=voice, tone=tone, language=language), TTS_TIMEOUT_SECONDS
+            )
+            if audio:
+                tts_health.record_ok()
+            return audio
+        except asyncio.CancelledError:
+            raise
+        except Exception as error:
+            last_error = error
+            logger.warning("TTS attempt %d failed: %s: %s", attempt + 1, type(error).__name__, error)
+    tts_health.record_failure(last_error)
+    kind, fix = tts_health.last_error
+    logger.error("TTS failed (%s): %s", kind, fix)
+    raise last_error
+
+
+async def probe_tts() -> tuple[bool, str, str]:
+    """Speaks one word to check the voice service. Returns (ok, kind, advice)."""
+    try:
+        audio = await asyncio.wait_for(_synthesize_once("Hello", language="en-IN"), TTS_TIMEOUT_SECONDS)
+        if audio:
+            tts_health.record_ok()
+            return True, "ok", ""
+        return False, "no_audio", classify_tts_error(Exception("No audio was received"))[1]
+    except Exception as error:
+        kind, fix = classify_tts_error(error)
+        return False, kind, fix

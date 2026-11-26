@@ -40,3 +40,37 @@ def test_synthesize_uses_matching_voice_and_spoken_text(monkeypatch):
     assert audio == b"audio"
     assert captured["voice"] == "en-IN-NeerjaNeural"
     assert captured["text"] == "Akash uses Fast A P I."
+
+
+def test_tts_failure_is_classified_and_pauses_voice(monkeypatch):
+    import asyncio as aio
+
+    class Rejected(Exception):
+        status = 403
+
+    kind, fix = tts.classify_tts_error(Rejected("403"))
+    assert kind == "rejected" and "edge-tts" in fix
+    assert tts.classify_tts_error(aio.TimeoutError())[0] == "timeout"
+
+    health = tts.TtsHealth()
+    for _ in range(tts.TTS_PAUSE_AFTER_FAILURES):
+        health.record_failure(Rejected("403"))
+    assert health.paused and health.snapshot()["last_error_kind"] == "rejected"
+    health.record_ok()
+    assert not health.paused
+
+
+def test_synthesize_times_out_instead_of_hanging(monkeypatch):
+    import asyncio as aio
+
+    async def hang(*args, **kwargs):
+        await aio.sleep(30)
+
+    monkeypatch.setattr(tts, "_synthesize_once", hang)
+    monkeypatch.setattr(tts, "TTS_TIMEOUT_SECONDS", 0.05)
+    monkeypatch.setattr(tts, "TTS_RETRIES", 0)
+    monkeypatch.setattr(tts, "tts_health", tts.TtsHealth())
+    import pytest
+    with pytest.raises(Exception):
+        aio.run(tts.synthesize_speech("hello"))
+    assert tts.tts_health.last_error[0] == "timeout"
