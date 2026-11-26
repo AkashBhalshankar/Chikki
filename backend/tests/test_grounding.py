@@ -217,8 +217,17 @@ def test_markdown_formatting_does_not_trigger_the_guard():
     from grounding import GroundingGuard, strip_markdown
 
     guard = GroundingGuard("Akash works at UBS and built LangGraph agents with FastAPI.")
-    assert strip_markdown("- **UBS** and `FastAPI`") == "UBS and FastAPI"
+    assert strip_markdown("- **UBS** and `FastAPI`").replace("\u2063", "") == "UBS and FastAPI"
     ok, bad = guard.check_sentence("- Strong **LangGraph** skills at **UBS**\n- Built agents with **FastAPI**")
     assert ok, bad
     ok, bad = guard.check_sentence("- Also uses **Kubernetes** daily")
     assert not ok and "Kubernetes" in bad
+
+
+def test_unsupported_bullet_is_dropped_and_rest_of_list_kept():
+    from grounding import GroundingGuard, pop_sentences
+
+    guard = GroundingGuard("Akash uses Python and FastAPI at UBS.")
+    sentences, rest = pop_sentences("- **Python** and **FastAPI**\n- **Kubernetes** clusters\n- Works at **UBS**\n")
+    verdicts = [guard.check_sentence(s)[0] for s in sentences + ([rest] if rest.strip() else [])]
+    assert verdicts == [True, False, True]

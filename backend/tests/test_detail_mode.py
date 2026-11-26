@@ -30,7 +30,7 @@ def test_prepare_message_length_rules():
     text = _prepare_message("hi", detail=True, voice_mode=False)
     assert "4 to 5" in voice and "about 150 words" in text
     short = _prepare_message("hi", voice_mode=False)
-    assert "40 words" in short and "**bold**" in short and "at most 2 punchy" not in short
+    assert "50 words" in short and "**bold**" in short and "at most 2 punchy" not in short
 
 
 def test_detail_token_budget():

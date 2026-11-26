@@ -11,6 +11,7 @@ from langfuse import get_client, propagate_attributes
 from openai import OpenAI
 
 from resume import build_system_prompt
+from response_format import layout_hint
 
 load_dotenv()
 
@@ -173,11 +174,10 @@ def _prepare_message(message: str, language: str = "en-IN", detail: bool = False
     elif not voice_mode:
         length_rule = (
             "This reply is read on screen, so the no-markdown audio rules do not apply. Lead with the direct "
-            "answer in the first sentence (no greeting, no restating the question) and stop as soon as it is "
-            "answered: usually 1 or 2 sentences, never more than 3, about 40 words at most. Put **bold** on key "
-            "terms such as companies and technologies. When you name 3 or more things (skills, projects, "
-            "companies), use up to 4 short bullet lines, each starting with \"- \", instead of a paragraph. "
-            "Never repeat yourself or add a closing summary. No headings, tables, code blocks or emojis."
+            "answer, no greeting and no restating the question. Be brief: never more than about 50 words in "
+            "total, and stop as soon as the question is answered. Put **bold** on key terms such as companies "
+            "and technologies. Never repeat yourself, never add a closing summary or offer. No headings, tables, "
+            "code blocks or emojis. " + layout_hint(message)
         )
     else:
         length_rule = "Keep the spoken reply to at most 2 punchy sentences."

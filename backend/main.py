@@ -485,10 +485,14 @@ async def process_chikki_turn(
                 blocked_terms.extend(bad)
                 logger.warning("Grounding guard flagged %s in: %s", bad, sentence.strip()[:120])
                 if grounding_mode() == "block":
+                    if sentence.lstrip().startswith(("-", "*", "•")):
+                        return  # drop the unsupported bullet quietly; the rest of the list still stands
                     if notice_given:
                         return
                     notice_given = True
-                    sentence = guard.notice + " "
+                    # Keep the original line breaks so a following bullet list stays on its own lines.
+                    trailing = sentence[len(sentence.rstrip()):]
+                    sentence = guard.notice + (trailing or " ")
                     await send_mood("apologetic")
         await emit(sentence, trace)
 
@@ -533,6 +537,10 @@ async def process_chikki_turn(
         if pending.strip():
             await release(pending, last_trace_id)
 
+        if guard is not None and blocked_terms and not "".join(full_reply).strip():
+            # Every part of the reply was unsupported (for example a list of invented items).
+            await emit(guard.notice, last_trace_id)
+            await send_mood("apologetic")
         audio_queue.put_nowait(None)
         await sender_task
 

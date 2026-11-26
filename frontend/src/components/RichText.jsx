@@ -22,7 +22,7 @@ export default function RichText({ text }) {
       );
     }
     return (
-      <p key={index} className="break-words [&:not(:first-child)]:mt-2">
+      <p key={index} className="break-words [&:not(:first-child)]:mt-2.5">
         <Inline text={block.text} />
       </p>
     );

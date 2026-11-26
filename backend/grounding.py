@@ -91,10 +91,18 @@ def pop_early_phrase(buffer: str) -> tuple[str, str]:
     return "", buffer
 
 
+NAMED_MARK = "\u2063"
+
+
 def strip_markdown(text: str) -> str:
-    """Removes bold markers, backticks and bullet dashes so formatting never affects the checks."""
-    text = re.sub(r"^[ 	]*[-*•][ 	]+", "", text, flags=re.MULTILINE)
-    return text.replace("**", "").replace("`", "")
+    """Removes bullet dashes and backticks, and turns bold marks into an invisible marker.
+
+    A bold term is something the reply is naming (a technology, a company), so it must be
+    checked even at the start of a line, where a capital letter would otherwise be treated
+    as ordinary grammar. The marker keeps it from looking like the start of a sentence.
+    """
+    text = re.sub(r"^[ \t]*[-*\u2022][ \t]+", "", text, flags=re.MULTILINE)
+    return text.replace("**", NAMED_MARK).replace("`", "")
 
 
 def pop_sentences(buffer: str) -> tuple[list[str], str]:

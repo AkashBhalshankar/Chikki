@@ -3,6 +3,7 @@
 ## Text chat replies
 - Replies are short and direct: the answer in the first sentence, usually 1 to 2 sentences, **bold** on key terms, and up to 4 bullets when naming three or more things. Voice replies stay plain.
 - The chat renders that formatting safely (no HTML), shows Chikki's answer as a soft card, copies answers without the formatting marks, and offers a "Show more detail" button.
+- The layout now follows the question: skills as grouped bullets, companies and projects as one bullet each, yes/no as a one-line verdict, "why hire him" as a pitch plus three reasons, explanations as short one-line paragraphs. An unsupported bullet is dropped quietly instead of breaking the list.
 - The resume guard ignores bold marks and bullet dashes when checking a sentence.
 
 ## Chikki's expressions
