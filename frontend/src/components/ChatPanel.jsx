@@ -45,6 +45,7 @@ export default function ChatPanel({
   onOpenMatch,
   onOpenBooking,
   onShare,
+  onClear,
   language = "en-IN",
   onLanguageChange,
 }) {
@@ -57,6 +58,24 @@ export default function ChatPanel({
   const [commentText, setCommentText] = useState("");
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  useEffect(() => {
+    if (!confirmClear) return undefined;
+    const timer = setTimeout(() => setConfirmClear(false), 3000);
+    return () => clearTimeout(timer);
+  }, [confirmClear]);
+
+  const handleClearClick = () => {
+    if (!confirmClear) {
+      setConfirmClear(true);
+      return;
+    }
+    setConfirmClear(false);
+    setActiveFeedbackMsgId(null);
+    setFeedbackVote(null);
+    onClear?.();
+  };
 
   const handleShareClick = async () => {
     const copied = await onShare?.();
@@ -129,6 +148,19 @@ export default function ChatPanel({
             >
               📊 Analytics
             </button>
+
+            {onClear && messages.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearClick}
+                title="Delete this conversation"
+                className={`action-button text-[11px] ${
+                  confirmClear ? "border-rose-500/60 bg-rose-950/30 text-rose-200" : ""
+                }`}
+              >
+                {confirmClear ? "⚠️ Click again to confirm" : "🗑️ Clear chat"}
+              </button>
+            )}
 
             <span className="text-[10px] uppercase tracking-[0.18em] text-gray-400 hidden sm:inline">
               <span className="text-chikki-green mr-1">●</span> Online

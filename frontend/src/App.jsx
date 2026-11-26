@@ -691,6 +691,22 @@ export default function App() {
     }
   }, [returnToVoiceHome]);
 
+  const handleClearChat = useCallback(() => {
+    stopAudioImmediate();
+    socketRef.current?.interrupt();
+    activeTurnIdRef.current = null;
+    pendingMessageRef.current = null;
+    sharedPendingRef.current = null;
+    lastPromptRef.current = "";
+    resumeFocusRef.current = "";
+    messagesRef.current = [];
+    setMessages([]);
+    setFollowUpSuggestions([]);
+    setChatThinking(false);
+    // Forget the conversation on the server too, so replies start fresh.
+    socketRef.current?.sync([], []);
+  }, [stopAudioImmediate]);
+
   const handleShare = useCallback(async () => {
     const lastQuestion = [...messagesRef.current].reverse().find((m) => m.role === "user")?.content;
     const url = buildShareUrl(lastQuestion);
@@ -978,6 +994,7 @@ export default function App() {
           onOpenContact={openContact}
           onOpenMatch={openMatch}
           onShare={handleShare}
+          onClear={handleClearChat}
           onOpenBooking={CONTACT_ACTIONS.booking ? () => window.open(CONTACT_ACTIONS.booking, "_blank", "noopener") : null}
           language={currentLang}
           onLanguageChange={setCurrentLang}
