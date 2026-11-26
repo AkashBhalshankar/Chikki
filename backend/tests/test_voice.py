@@ -74,3 +74,22 @@ def test_synthesize_times_out_instead_of_hanging(monkeypatch):
     with pytest.raises(Exception):
         aio.run(tts.synthesize_speech("hello"))
     assert tts.tts_health.last_error[0] == "timeout"
+
+
+def test_stt_filters_phantom_phrases_and_endpoint_guards(monkeypatch):
+    import stt
+    from fastapi.testclient import TestClient
+    import main
+
+    assert stt.is_phantom("Thank you.", 0.5, -1.0)
+    assert stt.is_phantom("", 0.0, 0.0)
+    assert not stt.is_phantom("Tell me about LangGraph", 0.05, -0.2)
+
+    client = TestClient(main.app)
+    monkeypatch.setattr(stt, "configured", lambda: False)
+    assert client.post("/stt", content=b"abc").status_code == 503
+    monkeypatch.setattr(stt, "configured", lambda: True)
+    assert client.post("/stt", content=b"").status_code == 400
+    monkeypatch.setattr(stt, "transcribe", lambda *a, **k: {"text": "hello", "confident": True})
+    response = client.post("/stt?language=en-IN", content=b"abc", headers={"content-type": "audio/webm"})
+    assert response.json() == {"text": "hello", "confident": True}

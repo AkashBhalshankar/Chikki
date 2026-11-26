@@ -41,9 +41,11 @@ from security import (
     resume_limiter,
     sanitize_history,
     sanitize_jokes,
+    stt_limiter,
     tts_limiter,
     ws_connections,
 )
+import stt
 from tts import clean_for_speech, synthesize_speech, speech_tone, tts_health
 
 logging.basicConfig(
@@ -102,7 +104,7 @@ class ResumeDownloadRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": APP_VERSION, "voice": tts_health.snapshot()}
+    return {"status": "ok", "version": APP_VERSION, "voice": tts_health.snapshot(), "server_stt": stt.configured()}
 
 
 @app.get("/digest/preview", dependencies=[Depends(require_admin)])
@@ -137,6 +139,26 @@ def ops_check():
 def refresh_knowledge():
     knowledge_base.refresh()
     return {"status": "ok", "chunks": knowledge_base.chunk_count}
+
+
+@app.post("/stt")
+async def speech_to_text(request: Request, language: str = Query("en-IN", max_length=10)):
+    """Accurate transcription of a short recorded utterance (raw audio in the request body)."""
+    enforce_rate_limit(stt_limiter, request)
+    if not stt.configured():
+        raise HTTPException(status_code=503, detail="Server transcription is not configured")
+    audio = await request.body()
+    if not audio:
+        raise HTTPException(status_code=400, detail="No audio received")
+    if len(audio) > stt.MAX_AUDIO_BYTES:
+        raise HTTPException(status_code=413, detail="Audio is too long")
+    try:
+        return await asyncio.to_thread(
+            stt.transcribe, audio, request.headers.get("content-type", "audio/webm"), language
+        )
+    except Exception as error:
+        logger.warning("STT failed: %s: %s", type(error).__name__, error)
+        raise HTTPException(status_code=502, detail="Transcription failed") from error
 
 
 @app.post("/tts")

@@ -18,6 +18,29 @@ export async function fetchGreetingAudio(text, language = "en-IN") {
   return URL.createObjectURL(blob);
 }
 
+/**
+ * Sends a recorded utterance for accurate server-side transcription.
+ * Returns { text, confident } or null when unavailable, so callers keep the browser transcript.
+ */
+export async function transcribeAudio(blob, language = "en-IN", timeoutMs = 3500) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${BASE_URL}/stt?language=${encodeURIComponent(language)}`, {
+      method: "POST",
+      headers: { "Content-Type": blob.type || "audio/webm" },
+      body: blob,
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function downloadResumePdf(url, focus = "", profileLinks = {}) {
   const requestUrl = new URL(url, window.location.origin);
   const res = await fetch(requestUrl, {

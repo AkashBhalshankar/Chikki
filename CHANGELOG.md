@@ -1,5 +1,10 @@
 # Changelog
 
+## Voice reliability and accuracy
+- Server-side listening: each spoken question is transcribed by Groq Whisper (`POST /stt`), with a vocabulary hint for names like LangGraph and UBS and a filter for phantom phrases. The browser recogniser still gives live captions and is the fallback.
+- Speaking: text-to-speech now has a timeout, one retry and an automatic pause with browser-voice fallback; audio for the next sentence is prepared while the current one plays.
+- Health check reports a voice failure with its likely cause (for example, upgrade `edge-tts`), and `/health` shows voice status.
+
 ## 2.0.0 (in progress)
 
 ### New: retrieval-augmented answers (RAG)
