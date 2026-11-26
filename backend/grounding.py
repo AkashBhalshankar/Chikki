@@ -101,6 +101,8 @@ def strip_markdown(text: str) -> str:
     checked even at the start of a line, where a capital letter would otherwise be treated
     as ordinary grammar. The marker keeps it from looking like the start of a sentence.
     """
+    text = re.sub(r"^[ \t]*\|?[ \t]*:?-{2,}:?[ \t]*(\|[ \t]*:?-{2,}:?[ \t]*)*\|?[ \t]*$", "", text, flags=re.MULTILINE)
+    text = text.replace("|", ". ")
     text = re.sub(r"^[ \t]*[-*\u2022][ \t]+", "", text, flags=re.MULTILINE)
     return text.replace("**", NAMED_MARK).replace("`", "")
 

@@ -35,12 +35,17 @@ def init_events_table(conn: sqlite3.Connection) -> None:
             error_kind TEXT,
             source_count INTEGER NOT NULL DEFAULT 0,
             is_joke INTEGER NOT NULL DEFAULT 0,
-            blocked INTEGER NOT NULL DEFAULT 0
+            blocked INTEGER NOT NULL DEFAULT 0,
+            session TEXT
         )
         """
     )
     try:  # databases created before the guard existed
         conn.execute("ALTER TABLE events ADD COLUMN blocked INTEGER NOT NULL DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+    try:  # databases created before sessions were tracked
+        conn.execute("ALTER TABLE events ADD COLUMN session TEXT")
     except sqlite3.OperationalError:
         pass
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_at ON events(at)")
@@ -59,13 +64,14 @@ def record_event(
     source_count: int = 0,
     is_joke: bool = False,
     blocked: int = 0,
+    session: Optional[str] = None,
 ) -> None:
     try:
         with get_connection() as conn:
             init_events_table(conn)
             conn.execute(
                 "INSERT INTO events (id, at, type, question, language, mode, provider, latency_ms, "
-                "first_token_ms, ok, error_kind, source_count, is_joke, blocked) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "first_token_ms, ok, error_kind, source_count, is_joke, blocked, session) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     f"ev_{uuid.uuid4().hex}",
                     datetime.now(timezone.utc).isoformat(),
@@ -81,6 +87,7 @@ def record_event(
                     source_count,
                     int(is_joke),
                     blocked,
+                    session,
                 ),
             )
     except sqlite3.Error:
@@ -130,11 +137,16 @@ def summary(days: int = 30) -> Dict[str, Any]:
     ).most_common(12)
     gaps = Counter(_normalize(r["question"]) for r in questions if r["ok"] and r["source_count"] == 0).most_common(10)
 
+    per_session = Counter(r["session"] for r in turns if r.get("session"))
     voice = [r for r in rows if r["type"] == "voice"]
     first_audio = [r["latency_ms"] for r in voice if r["ok"] and r["latency_ms"] is not None]
 
     return {
         "days": days,
+        "visitors": {
+            "sessions": len(per_session),
+            "engaged": sum(1 for count in per_session.values() if count >= 3),
+        },
         "voice": {
             "turns": len(voice),
             "first_audio_p50_ms": _percentile(first_audio, 0.5),
@@ -165,3 +177,30 @@ def summary(days: int = 30) -> Dict[str, Any]:
         "top_topics": [{"topic": t, "count": c} for t, c in topics],
         "knowledge_gaps": [{"question": q, "count": c} for q, c in gaps],
     }
+
+
+def unanswered(days: int = 90) -> list[dict]:
+    """Questions Chikki could not answer from its sources, most asked first."""
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    try:
+        with get_connection() as conn:
+            init_events_table(conn)
+            rows = [
+                dict(r)
+                for r in conn.execute(
+                    "SELECT question, source_count, blocked, ok, is_joke FROM events WHERE type = 'turn' AND at >= ?", (since,)
+                )
+            ]
+    except sqlite3.Error:
+        logger.exception("Could not list unanswered questions")
+        return []
+    counts: Counter = Counter()
+    originals: dict[str, str] = {}
+    for row in rows:
+        if not row["question"] or row["is_joke"] or not row["ok"]:
+            continue
+        if row["source_count"] == 0 or row["blocked"]:
+            key = _normalize(row["question"])
+            counts[key] += 1
+            originals.setdefault(key, row["question"].strip())
+    return [{"question": originals[key], "key": key, "count": count} for key, count in counts.most_common(50)]

@@ -34,6 +34,10 @@ class JobMatchRequest(BaseModel):
     job_description: str = Field(min_length=40, max_length=6000)
 
 
+class PitchRequest(BaseModel):
+    job_description: str = Field(min_length=40, max_length=6000)
+
+
 class ContactRequest(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     email: str = Field(max_length=254, pattern=EMAIL_PATTERN)
@@ -55,3 +59,8 @@ class VoiceMetricRequest(BaseModel):
     outcome: Literal["ok", "tts_fallback", "stt_fallback", "text_only"] = "ok"
     first_audio_ms: Optional[int] = None
     language: str = Field(default="en-IN", max_length=10)
+
+
+class GapAnswerRequest(BaseModel):
+    question: str = Field(min_length=3, max_length=300)
+    answer: str = Field(min_length=3, max_length=1500)

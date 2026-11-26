@@ -26,6 +26,13 @@ FEMALE_VOICE_MAP = {
 
 DEFAULT_FEMALE_VOICE = "en-IN-NeerjaNeural"
 
+# English voices the visitor can choose between (all female, to match Chikki). Hindi and Telugu keep their own voice.
+VOICE_CHOICES = {
+    "neerja": "en-IN-NeerjaNeural",
+    "sonia": "en-GB-SoniaNeural",
+    "jenny": "en-US-JennyNeural",
+}
+
 DECIMAL_WORDS = {
     "en": {
         "whole": ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"],
@@ -197,11 +204,20 @@ def clean_for_speech(text: str, language: str | None = None) -> str:
     return text
 
 
+def _rate_string(base: str, speed: float) -> str:
+    """Combines a tone's own rate (like "+4%") with the visitor's speed setting (0.8 to 1.3)."""
+    percent = int(base.rstrip("%"))
+    percent += int(round((max(0.8, min(1.3, speed)) - 1.0) * 100))
+    return f"{percent:+d}%"
+
+
 async def _synthesize_once(
     text: str,
     voice: str = None,
     tone: str = "natural",
     language: str = None,
+    voice_pref: str = None,
+    speed: float = 1.0,
 ) -> bytes:
     """
     Synthesizes speech using strictly female neural voices (Neerja, Swara, Shruti).
@@ -213,6 +229,8 @@ async def _synthesize_once(
     # Pick the voice from the words actually spoken, so the audio matches the reply.
     lang = speech_language(clean_text, language)
     selected_voice = voice or FEMALE_VOICE_MAP.get(lang, DEFAULT_FEMALE_VOICE)
+    if lang == "en" and not voice and voice_pref in VOICE_CHOICES:
+        selected_voice = VOICE_CHOICES[voice_pref]
     spoken_text = apply_pronunciations(clean_text)
 
     # Female expressive vocal pitch and rate profiles
@@ -231,7 +249,7 @@ async def _synthesize_once(
     communicate = edge_tts.Communicate(
         spoken_text,
         selected_voice,
-        rate=config["rate"],
+        rate=_rate_string(config["rate"], speed),
         pitch=config["pitch"],
     )
 
@@ -337,10 +355,17 @@ def _cache_put(key: tuple, audio: bytes) -> None:
         _cache_bytes -= len(evicted)
 
 
-async def synthesize_speech(text: str, voice: str = None, tone: str = "natural", language: str = None) -> bytes:
+async def synthesize_speech(
+    text: str,
+    voice: str = None,
+    tone: str = "natural",
+    language: str = None,
+    voice_pref: str = None,
+    speed: float = 1.0,
+) -> bytes:
     """Speaks text with a cache, a timeout and a retry. Returns b"" when the voice service is
     down (the browser then reads the reply aloud), and never blocks a reply for long."""
-    key = (text.strip(), voice, tone, (language or "").split("-")[0])
+    key = (text.strip(), voice, tone, (language or "").split("-")[0], voice_pref, round(speed, 2))
     cached = _cache_get(key)
     if cached is not None:
         return cached
@@ -351,7 +376,7 @@ async def synthesize_speech(text: str, voice: str = None, tone: str = "natural",
     for attempt in range(TTS_RETRIES + 1):
         try:
             audio = await asyncio.wait_for(
-                _synthesize_once(text, voice=voice, tone=tone, language=language), TTS_TIMEOUT_SECONDS
+                _synthesize_once(text, voice=voice, tone=tone, language=language, voice_pref=voice_pref, speed=speed), TTS_TIMEOUT_SECONDS
             )
             if audio:
                 tts_health.record_ok()

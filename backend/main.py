@@ -14,8 +14,9 @@ from pydantic import BaseModel, Field
 
 from ai import ChikkiAIError, _is_joke_request, is_detail_request, stream_chikki
 from actions import ActionTagFilter, filter_actions
-from analytics_store import record_event, summary as analytics_summary
-from jd_match import analyze_job
+from conversation_alerts import visitor_code
+from analytics_store import record_event, summary as analytics_summary, unanswered
+from jd_match import analyze_job, draft_pitch
 from digest import run_ops_check, send_digest, build_digest
 from conversation_alerts import alerts as conversation_alerts
 from notifier import route_for, send_all
@@ -24,8 +25,10 @@ from grounding import build_guard, mode as grounding_mode, pop_sentences, pop_ea
 from contact_store import notify_contact, read_contacts, save_contact
 from feedback_store import feedback_analytics, read_feedback, record_feedback
 from generate_resume_pdf import build_resume_pdf
+from github_activity import recent_repos
+from owner_notes import add_note, delete_note, list_notes
 from knowledge import TOP_K, format_context, knowledge_base, sources_for
-from models import ContactRequest, FeedbackRequest, JobMatchRequest, VoiceMetricRequest
+from models import ContactRequest, FeedbackRequest, GapAnswerRequest, JobMatchRequest, PitchRequest, VoiceMetricRequest
 from resume import sync_resume as sync_resume_profile
 from resume_loader import sync_drive_resume
 from security import (
@@ -96,6 +99,8 @@ class TTSRequest(BaseModel):
     text: str = Field(max_length=MAX_TTS_CHARS)
     voice: str | None = Field(default=None, max_length=60)
     language: str | None = Field(default=None, max_length=10)
+    voice_pref: str | None = Field(default=None, max_length=20)
+    speed: float = Field(default=1.0, ge=0.5, le=2.0)
 
 
 class ResumeDownloadRequest(BaseModel):
@@ -176,6 +181,8 @@ async def text_to_speech(req: TTSRequest, request: Request):
             voice=req.voice,
             tone=tone,
             language=req.language,
+            voice_pref=req.voice_pref,
+            speed=req.speed,
         )
         return Response(content=audio_bytes, media_type="audio/mpeg")
     except Exception as error:
@@ -282,6 +289,51 @@ async def match_job(body: JobMatchRequest, request: Request):
     return result
 
 
+@app.post("/match/pitch")
+async def match_pitch(body: PitchRequest, request: Request):
+    enforce_rate_limit(match_limiter, request)
+    try:
+        return await asyncio.to_thread(draft_pitch, body.job_description)
+    except ChikkiAIError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+
+@app.get("/gaps", dependencies=[Depends(require_admin)])
+def list_gaps():
+    """Questions Chikki could not answer, minus the ones already answered with a note."""
+    notes = list_notes()
+    answered = {" ".join(n["question"].lower().strip(" ?!.").split()) for n in notes}
+    gaps = [g for g in unanswered() if g["key"] not in answered]
+    return {"gaps": gaps, "notes": notes}
+
+
+@app.post("/gaps/answer", dependencies=[Depends(require_admin)])
+def answer_gap(body: GapAnswerRequest):
+    note = add_note(body.question, body.answer)
+    knowledge_base.refresh()
+    return {"status": "ok", "note": note}
+
+
+@app.delete("/gaps/notes/{note_id}", dependencies=[Depends(require_admin)])
+def remove_note(note_id: str):
+    if not delete_note(note_id):
+        raise HTTPException(status_code=404, detail="Note not found")
+    knowledge_base.refresh()
+    return {"status": "ok"}
+
+
+@app.get("/github/activity")
+async def github_activity_route():
+    """The latest public repositories, for the activity strip. Empty when no username is set."""
+    username = os.getenv("GITHUB_USERNAME", "").strip()
+    if not username:
+        return {"username": "", "repos": []}
+    repos = await asyncio.to_thread(recent_repos, username, 3)
+    return {"username": username, "repos": repos}
+
+
 @app.post("/contact")
 def create_contact(body: ContactRequest, request: Request, background_tasks: BackgroundTasks):
     enforce_rate_limit(contact_limiter, request)
@@ -308,10 +360,12 @@ async def synthesize_b64(
     voice: str | None = None,
     user_msg: str = "",
     language: str | None = None,
+    voice_pref: str | None = None,
+    speed: float = 1.0,
 ) -> str:
     try:
         tone = speech_tone(user_text=user_msg, reply=text)
-        audio_bytes = await synthesize_speech(text, voice=voice, tone=tone, language=language)
+        audio_bytes = await synthesize_speech(text, voice=voice, tone=tone, language=language, voice_pref=voice_pref, speed=speed)
         if not audio_bytes:
             logger.warning("TTS returned empty audio for: %s", text[:60])
             return ""
@@ -331,6 +385,8 @@ async def process_chikki_turn(
     conversation_jokes: list[str],
     detail: bool = False,
     session_id: str = "",
+    voice_pref: str | None = None,
+    speed: float = 1.0,
 ):
     full_reply = []
     sentence_buffer = ""
@@ -392,6 +448,7 @@ async def process_chikki_turn(
             len(retrieved),
             is_joke,
             len(blocked_terms),
+            visitor_code(session_id) if session_id else None,
         )
 
     def pump_tokens():
@@ -471,7 +528,7 @@ async def process_chikki_turn(
             # Start speaking this sentence's audio right away; it is sent in order by audio_sender,
             # so the next sentence is already being prepared while this one plays.
             audio_queue.put_nowait((
-                asyncio.create_task(synthesize_b64(spoken, user_msg=user_msg, language=language)),
+                asyncio.create_task(synthesize_b64(spoken, user_msg=user_msg, language=language, voice_pref=voice_pref, speed=speed)),
                 spoken,
                 trace,
             ))
@@ -565,6 +622,7 @@ async def process_chikki_turn(
                 "sources": sources_for(retrieved),
                 "actions": filter_actions(tag_filter.actions, user_msg),
                 "mood": mood_sent or tag_filter.mood,
+                "suggestions": tag_filter.suggestions,
             },
             "turn_id": turn_id,
         })
@@ -715,6 +773,8 @@ async def handle_chikki_ws(websocket: WebSocket):
                 conversation_jokes,
                 bool(data.get("detail")) or is_detail_request(user_msg),
                 session_key,
+                voice_pref if isinstance(voice_pref := data.get("voice_pref"), str) else None,
+                max(0.8, min(1.3, float(data.get("speed") or 1.0))) if isinstance(data.get("speed"), (int, float)) else 1.0,
             ))
 
     except WebSocketDisconnect:

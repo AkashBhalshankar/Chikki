@@ -12,8 +12,10 @@ import re
 ALLOWED_ACTIONS = ("contact", "resume", "role_fit", "booking")
 MAX_ACTIONS = 2
 
-PREFIXES = ("[[action:", "[[mood:")
+PREFIXES = ("[[action:", "[[mood:", "[[next:")
 TAG_RE = re.compile(r"\[\[(action|mood):(\w+)\]\]")
+NEXT_RE = re.compile(r"\[\[next:([^\[\]]{1,300})\]\]")
+MAX_SUGGESTIONS = 2
 
 # Moods the model may choose; the page maps each to a face. Anything else is ignored.
 ALLOWED_MOODS = (
@@ -87,6 +89,7 @@ class ActionTagFilter:
         self.buffer = ""
         self.actions: list[str] = []
         self.mood: str | None = None
+        self.suggestions: list[str] = []
 
     @staticmethod
     def _could_become_tag(text: str) -> bool:
@@ -94,8 +97,11 @@ class ActionTagFilter:
             if len(text) <= len(prefix):
                 if prefix.startswith(text):
                     return True
-            elif text.startswith(prefix) and re.fullmatch(r"\w*\]?", text[len(prefix):]) is not None:
-                return True
+            elif text.startswith(prefix):
+                rest = text[len(prefix):]
+                pattern = r"[^\[\]]{0,300}\]{0,1}" if prefix == "[[next:" else r"\w*\]?"
+                if re.fullmatch(pattern, rest) is not None:
+                    return True
         return False
 
     def _record(self, kind: str, name: str) -> None:
@@ -104,6 +110,14 @@ class ActionTagFilter:
                 self.mood = name
         elif name in ALLOWED_ACTIONS and name not in self.actions and len(self.actions) < MAX_ACTIONS:
             self.actions.append(name)
+
+    def _record_suggestions(self, raw: str) -> None:
+        if self.suggestions:
+            return
+        for item in raw.split("|"):
+            question = " ".join(item.split()).strip(" \"'")[:90]
+            if len(question) >= 8 and question not in self.suggestions and len(self.suggestions) < MAX_SUGGESTIONS:
+                self.suggestions.append(question)
 
     def feed(self, delta: str) -> str:
         self.buffer += delta
@@ -120,6 +134,11 @@ class ActionTagFilter:
             if match:
                 self._record(match.group(1), match.group(2))
                 self.buffer = self.buffer[match.end():]
+                continue
+            next_match = NEXT_RE.match(self.buffer)
+            if next_match:
+                self._record_suggestions(next_match.group(1))
+                self.buffer = self.buffer[next_match.end():]
                 continue
             if self._could_become_tag(self.buffer):
                 return output

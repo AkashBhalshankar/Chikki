@@ -28,6 +28,10 @@ SHAPES = {
         r"walk me through|design)\b",
         re.IGNORECASE,
     ),
+    "compare": re.compile(
+        r"\b(compare|comparison|versus|vs\.?|difference between|differences between|better than|which is better)\b",
+        re.IGNORECASE,
+    ),
     "contact": re.compile(r"\b(contact|reach|email|hire|schedule|book|call|meeting|resume|cv)\b", re.IGNORECASE),
 }
 
@@ -51,6 +55,11 @@ LAYOUTS = {
         "between them, like: Core idea.<blank line>How it works.<blank line>Why it matters. Never join them into "
         "one paragraph. No bullets unless there are steps."
     ),
+    "compare": (
+        "Layout: one short lead-in line, then a small markdown table with a header row and a separator row, 2 or "
+        "3 columns (the aspect, then one column per thing compared) and at most 4 rows. Put **bold** on the named "
+        "technologies and companies inside the cells. No text after the table."
+    ),
     "pitch": (
         "Layout: one line with the core pitch, then a blank line, then up to 3 bullets of concrete reasons taken "
         "from the resume (each \"- **Strength:** evidence\"). No closing line."
@@ -72,7 +81,7 @@ def classify(message: str) -> str:
     if WHY_SHOULD.search(text):
         return "pitch"
     # Order matters: a contact request or a yes/no question beats the topic words inside it.
-    for shape in ("contact", "verdict", "explain", "list", "experience"):
+    for shape in ("compare", "contact", "verdict", "explain", "list", "experience"):
         if SHAPES[shape].search(text):
             return shape
     return "default"

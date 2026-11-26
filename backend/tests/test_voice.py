@@ -110,7 +110,7 @@ def test_audio_cache_serves_repeats_and_survives_service_failure(monkeypatch):
 
     calls = []
 
-    async def fake(text, voice=None, tone="natural", language=None):
+    async def fake(text, voice=None, tone="natural", language=None, **kwargs):
         calls.append(text)
         return b"AUDIO"
 

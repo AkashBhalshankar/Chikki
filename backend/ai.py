@@ -181,9 +181,16 @@ def _prepare_message(message: str, language: str = "en-IN", detail: bool = False
         )
     else:
         length_rule = "Keep the spoken reply to at most 2 punchy sentences."
+    follow_up = ""
+    if not voice_mode:
+        follow_up = (
+            f" At the very end, after your answer, add one hidden tag holding 2 short follow-up questions the visitor "
+            f"might ask next, written in {response_language}, only about things in the resume, like "
+            f"[[next:First question?|Second question?]]. Never mention the tag."
+        )
     return f"""{message}
 
-INSTRUCTION: Reply in {response_language}. Preserve technical product and programming terms in English where that is natural. Speak about Akash in the 3rd person and keep answers grounded strictly in the verified profile. {length_rule} Output complete words and sentences; never stop midway through a word."""
+INSTRUCTION: Reply in {response_language}. Preserve technical product and programming terms in English where that is natural. Speak about Akash in the 3rd person and keep answers grounded strictly in the verified profile. {length_rule} Output complete words and sentences; never stop midway through a word.{follow_up}"""
 
 
 def _is_joke_request(message: str) -> bool:

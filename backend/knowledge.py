@@ -187,6 +187,15 @@ class KnowledgeBase:
                 title = title_match.group(1).strip() if title_match else path.stem.replace("-", " ").title()
                 documents.append((path.name, title, text, ""))
 
+        try:
+            from owner_notes import notes_markdown
+
+            notes = notes_markdown()
+            if notes:
+                documents.append(("owner-notes", "Owner-added answers", notes, ""))
+        except Exception:
+            logger.exception("Could not load owner-added answers")
+
         for url in [u.strip() for u in os.getenv("KNOWLEDGE_URLS", "").split(",") if u.strip()]:
             text = self._fetch_url(url)
             if text:
