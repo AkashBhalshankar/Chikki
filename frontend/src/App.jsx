@@ -18,7 +18,7 @@ import ListeningWave from "./components/ListeningWave.jsx";
 import { ProfileLine } from "./components/ProfileBadge.jsx";
 import LanguageSelector from "./components/LanguageSelector.jsx";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition.js";
-import { connectVoiceSocket, downloadResumePdf, fetchGreetingAudio, sendFeedback } from "./services/api.js";
+import { connectVoiceSocket, downloadResumePdf, fetchGreetingAudio, sendFeedback, sendVoiceMetric, wakeServer } from "./services/api.js";
 
 const NO_SPEECH_FALLBACK_THRESHOLD = 3;
 const CHAT_HISTORY_KEY = "chikki_chat_history";
@@ -140,12 +140,16 @@ function loadStoredMessages() {
 // Browser text-to-speech fallback. Used only when the backend sends a text
 // reply but no audio (e.g. edge-tts is blocked/broken), so Chikki can still
 // speak. Free, built into the browser, and never rate-limited or blocked.
-function speakWithBrowser(rawText, lang, { onStart, onEnd } = {}) {
+let browserSpeechText = ""; // what the browser voice is saying now, so it is not mistaken for the visitor
+
+function speakWithBrowser(rawText, lang, { onStart, onEnd, onUnavailable } = {}) {
   const text = cleanForBrowserSpeech(rawText || "");
   if (!("speechSynthesis" in window) || !text) {
+    onUnavailable?.();
     onEnd?.();
     return;
   }
+  browserSpeechText = text;
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = lang || "en-IN";
@@ -154,10 +158,31 @@ function speakWithBrowser(rawText, lang, { onStart, onEnd } = {}) {
     voices.find((v) => v.lang === utterance.lang) ||
     voices.find((v) => v.lang.startsWith(utterance.lang.slice(0, 2)));
   if (match) utterance.voice = match;
-  utterance.onstart = () => onStart?.();
-  utterance.onend = () => onEnd?.();
-  utterance.onerror = () => onEnd?.();
+  let started = false;
+  utterance.onstart = () => {
+    started = true;
+    onStart?.();
+  };
+  utterance.onend = () => {
+    browserSpeechText = "";
+    onEnd?.();
+  };
+  utterance.onerror = () => {
+    browserSpeechText = "";
+    if (!started) onUnavailable?.();
+    onEnd?.();
+  };
   window.speechSynthesis.speak(utterance);
+}
+
+// True when most of the heard words are ones Chikki itself is saying (speaker bleed into the mic).
+function isEchoOfAssistant(heard, spokenSoFar) {
+  const words = (text) => (text.toLowerCase().match(/[\p{L}\p{N}]+/gu) || []);
+  const heardWords = words(heard);
+  if (heardWords.length === 0) return true;
+  const spoken = new Set(words(`${spokenSoFar} ${audioQueue.currentText} ${browserSpeechText}`));
+  const overlap = heardWords.filter((word) => spoken.has(word)).length;
+  return overlap / heardWords.length >= 0.6;
 }
 
 // Global Audio Queue
@@ -165,6 +190,7 @@ const audioQueue = {
   queue: [],
   isPlaying: false,
   currentAudio: null,
+  currentText: "",
   progressFrame: null,
   onPlayChunk: null,
   onPlayStateChange: null,
@@ -196,6 +222,7 @@ const audioQueue = {
     }
 
     const item = this.queue.shift();
+    this.currentText = item.text || "";
 
     // Reveal subtitle words in step with the current audio clip.
     if (this.onPlayChunk && item.text) {
@@ -287,6 +314,7 @@ const audioQueue = {
     }
 
     this.isPlaying = false;
+    this.currentText = "";
     if (this.onPlayStateChange) this.onPlayStateChange(false);
     if (this.onQueueEmpty) this.onQueueEmpty();
   },
@@ -312,6 +340,21 @@ export default function App() {
     } catch (_) {}
   });
   const toggleTheme = useCallback(() => setTheme((current) => applyTheme(nextTheme(current))), []);
+
+  // Free hosting sleeps when idle. Wake it as soon as the page opens and say so if it takes a while.
+  useEffect(() => {
+    let cancelled = false;
+    const slowTimer = window.setTimeout(() => {
+      if (!cancelled) setServerState((state) => (state === "checking" ? "waking" : state));
+    }, 2000);
+    wakeServer().then(() => {
+      if (!cancelled) setServerState("ready");
+    });
+    return () => {
+      cancelled = true;
+      window.clearTimeout(slowTimer);
+    };
+  }, []);
 
   useEffect(() => {
     writeAdminUi(adminUi);
@@ -357,6 +400,7 @@ export default function App() {
   const [liveTranscript, setLiveTranscript] = useState("");
   const [voiceNotice, setVoiceNotice] = useState("");
   const liveTranscriptTimerRef = useRef(null);
+  const liveTranscriptRef = useRef("");
   const voiceNoticeTimerRef = useRef(null);
   const openContact = useCallback(() => setShowContact(true), []);
   const closeContact = useCallback(() => setShowContact(false), []);
@@ -422,6 +466,9 @@ export default function App() {
   const spokenTextRef = useRef("");
   const receivedAudioForTurnRef = useRef(false);
   const noSpeechCountRef = useRef(0);
+  const voiceTurnStartRef = useRef(null);
+  const lastSttMetricRef = useRef(0);
+  const [serverState, setServerState] = useState("checking"); // checking | waking | ready
   const inputModeRef = useRef(inputMode);
   const currentLangRef = useRef(currentLang);
 
@@ -551,30 +598,32 @@ export default function App() {
     }, 250);
   }, [stopAudioImmediate]);
 
-  const handleInterimSpeech = useCallback((interimText) => {
-    if (!interimText) return;
+  // Returns true when the visitor interrupted Chikki.
+  const handleInterimSpeech = useCallback((interimText, whileSpeaking = false) => {
+    if (!interimText) return false;
+    const speakingNow = whileSpeaking || audioQueue.isPlaying || isAssistantSpeaking;
 
     // Show what Chikki is hearing so the visitor can see recognition problems early.
-    if (!audioQueue.isPlaying) {
+    if (!speakingNow) {
       setLiveTranscript(interimText);
       if (liveTranscriptTimerRef.current) window.clearTimeout(liveTranscriptTimerRef.current);
       liveTranscriptTimerRef.current = window.setTimeout(() => setLiveTranscript(""), 4000);
     }
 
-    // While Chikki is actively speaking, ignore single noise clicks and faint bleed
-    if (audioQueue.isPlaying || isAssistantSpeaking) {
+    // While Chikki is speaking, only a stop command or a real phrase that is not Chikki's own
+    // voice coming back through the microphone counts as the visitor talking over it.
+    if (speakingNow) {
       const trimmed = interimText.trim().toLowerCase();
       const words = trimmed.split(/\s+/).filter(Boolean);
       const isStopWord = /^(stop|wait|hold on|pause|listen|chikki|quiet|ఆగు|ఆపండి|రుకో|रुको|चुप)/i.test(trimmed);
-
-      // Only interrupt if the user explicitly says a stop command OR a real phrase (>= 3 words)
-      if (isStopWord || words.length >= 3) {
+      if ((isStopWord || words.length >= 4) && !isEchoOfAssistant(trimmed, spokenTextRef.current)) {
         activeTurnIdRef.current = null;
         stopAudioImmediate();
         socketRef.current?.interrupt();
         if (inputModeRef.current === "voice") setChikkiState("listening");
+        return true;
       }
-      return;
+      return false;
     }
 
     if (activeTurnIdRef.current || audioQueue.queue.length > 0) {
@@ -583,6 +632,7 @@ export default function App() {
       socketRef.current?.interrupt();
       if (inputModeRef.current === "voice") setChikkiState("listening");
     }
+    return false;
   }, [stopAudioImmediate, isAssistantSpeaking]);
 
   const handleUnclear = useCallback((heard) => {
@@ -626,6 +676,7 @@ export default function App() {
 
     const voice = inputModeRef.current === "voice";
     const language = currentLangRef.current;
+    voiceTurnStartRef.current = voice ? performance.now() : null;
 
     if (!socketRef.current || !socketReadyRef.current) {
       pendingMessageRef.current = { text: transcript, voice, language, turnId };
@@ -802,7 +853,13 @@ export default function App() {
     handleResult(transcript);
   }, [handleResult]);
 
-  const { supported, startListening } = useSpeechRecognition({
+  const handleServerSttFailed = useCallback(() => {
+    if (Date.now() - lastSttMetricRef.current < 60000) return;
+    lastSttMetricRef.current = Date.now();
+    sendVoiceMetric("stt_fallback", null, currentLangRef.current);
+  }, []);
+
+  const { supported, startListening, finishNow } = useSpeechRecognition({
     mode: inputMode === "chat" ? "off" : active ? "command" : "wake",
     lang: currentLang,
     isAssistantSpeaking,
@@ -811,6 +868,7 @@ export default function App() {
     onInterim: handleInterimSpeech,
     onUnclear: handleUnclear,
     onSpeechError: handleSpeechError,
+    onServerSttFailed: handleServerSttFailed,
   });
 
   const handleEnableMic = useCallback(() => {
@@ -821,6 +879,20 @@ export default function App() {
     setChikkiState("listening");
     startListening?.();
   }, [startListening, stopAudioImmediate]);
+
+  // One button for noisy rooms and phones: interrupt Chikki, start listening, or send right now.
+  const handleTapToTalk = useCallback(() => {
+    if (liveTranscriptRef.current && !audioQueue.isPlaying) {
+      finishNow?.();
+      return;
+    }
+    activeTurnIdRef.current = null;
+    stopAudioImmediate();
+    socketRef.current?.interrupt();
+    unlockAudioContext();
+    setChikkiState("listening");
+    startListening?.();
+  }, [finishNow, startListening, stopAudioImmediate]);
 
   const handleSwitchToChat = useCallback(() => {
     stopAudioImmediate();
@@ -915,6 +987,10 @@ export default function App() {
         const chunkText = (typeof data === "object" ? data.text : "") || "";
 
         if (!rawData) return;
+        if (!receivedAudioForTurnRef.current && voiceTurnStartRef.current !== null) {
+          sendVoiceMetric("ok", Math.round(performance.now() - voiceTurnStartRef.current), currentLangRef.current);
+          voiceTurnStartRef.current = null;
+        }
         receivedAudioForTurnRef.current = true;
 
         const audioSrc = `data:${mimeType};base64,${rawData}`;
@@ -940,7 +1016,15 @@ export default function App() {
           const fallbackExpression = expressionForReply(reply);
           replyExpressionRef.current = fallbackExpression;
           setVoiceExpression(fallbackExpression);
+          sendVoiceMetric("tts_fallback", null, currentLangRef.current);
+          voiceTurnStartRef.current = null;
           speakWithBrowser(reply, currentLangRef.current, {
+            onUnavailable: () => {
+              sendVoiceMetric("text_only", null, currentLangRef.current);
+              setVoiceNotice("Voice isn't available right now, so the answer is shown as text.");
+              if (voiceNoticeTimerRef.current) window.clearTimeout(voiceNoticeTimerRef.current);
+              voiceNoticeTimerRef.current = window.setTimeout(() => setVoiceNotice(""), 8000);
+            },
             onStart: () => {
               setIsAssistantSpeaking(true);
               setChikkiState("speaking");
@@ -1029,6 +1113,7 @@ export default function App() {
         onActivate={handleWake}
         onTypeInstead={handleSwitchToChat}
         sharedLabel={sharedLink?.label}
+        serverState={serverState}
         theme={theme}
         onToggleTheme={toggleTheme}
       />
@@ -1079,6 +1164,7 @@ export default function App() {
 
   const latestUser = [...messages].reverse().find((m) => m.role === "user");
   const latestAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+  liveTranscriptRef.current = liveTranscript;
   const hasVoiceAnswer = Boolean(latestAssistant?.final && !latestAssistant?.isError && latestAssistant?.content?.trim());
   const currentPrompts = QUICK_PROMPTS[currentLang] || QUICK_PROMPTS["en-IN"];
 
@@ -1199,6 +1285,19 @@ export default function App() {
               ? "Ready"
               : EXPRESSION_LABELS[chikkiState]?.[1] || "Listening"}
           </p>
+
+          <button
+            type="button"
+            onClick={handleTapToTalk}
+            className="action-button mt-3 px-5 text-xs"
+            title="Tap to talk, interrupt Chikki, or send what you have said"
+          >
+            {liveTranscript && chikkiState !== "speaking"
+              ? "✅ Done, send it"
+              : chikkiState === "speaking"
+              ? "✋ Tap to interrupt"
+              : "🎤 Tap to talk"}
+          </button>
 
           {/* Suggestion Rail */}
           <div className="suggestion-rail mt-6 w-full max-w-lg">

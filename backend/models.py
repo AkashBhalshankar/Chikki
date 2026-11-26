@@ -49,3 +49,9 @@ class ContactRequest(BaseModel):
         if not value.strip():
             raise ValueError("must not be blank")
         return value
+
+
+class VoiceMetricRequest(BaseModel):
+    outcome: Literal["ok", "tts_fallback", "stt_fallback", "text_only"] = "ok"
+    first_audio_ms: Optional[int] = None
+    language: str = Field(default="en-IN", max_length=10)

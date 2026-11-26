@@ -93,3 +93,59 @@ def test_stt_filters_phantom_phrases_and_endpoint_guards(monkeypatch):
     monkeypatch.setattr(stt, "transcribe", lambda *a, **k: {"text": "hello", "confident": True})
     response = client.post("/stt?language=en-IN", content=b"abc", headers={"content-type": "audio/webm"})
     assert response.json() == {"text": "hello", "confident": True}
+
+
+def test_early_phrase_speaks_first_clause_only_once_long_enough():
+    from grounding import pop_early_phrase
+
+    assert pop_early_phrase("Akash is an AI engineer")[0] == ""
+    assert pop_early_phrase("Well, yes")[0] == ""  # clause too short to be worth speaking alone
+    phrase, rest = pop_early_phrase("Akash is an AI engineer at UBS, where he builds agents")
+    assert phrase == "Akash is an AI engineer at UBS, " and rest == "where he builds agents"
+    assert pop_early_phrase("Version 1.5 of the platform shipped without any delay")[0] == ""
+
+
+def test_audio_cache_serves_repeats_and_survives_service_failure(monkeypatch):
+    import asyncio as aio
+
+    calls = []
+
+    async def fake(text, voice=None, tone="natural", language=None):
+        calls.append(text)
+        return b"AUDIO"
+
+    monkeypatch.setattr(tts, "_synthesize_once", fake)
+    tts._cache.clear()
+    assert aio.run(tts.synthesize_speech("Hello there", language="en-IN")) == b"AUDIO"
+    assert aio.run(tts.synthesize_speech("Hello there", language="en-IN")) == b"AUDIO"
+    assert calls == ["Hello there"]
+
+    async def broken(*a, **k):
+        raise RuntimeError("down")
+
+    monkeypatch.setattr(tts, "_synthesize_once", broken)
+    assert aio.run(tts.synthesize_speech("Hello there", language="en-IN")) == b"AUDIO"
+
+
+def test_backend_greetings_match_the_frontend():
+    from pathlib import Path
+
+    source = (Path(__file__).resolve().parents[2] / "frontend" / "src" / "App.jsx").read_text(encoding="utf-8")
+    for lines in tts.WAKE_GREETINGS.values():
+        for line in lines:
+            assert line in source
+
+
+def test_voice_metrics_endpoint_feeds_analytics(feedback_db, monkeypatch):
+    from fastapi.testclient import TestClient
+    import main
+    import security
+    from analytics_store import summary
+
+    monkeypatch.setattr(main, "feedback_limiter", security.RateLimiter(100, 60))
+    client = TestClient(main.app)
+    assert client.post("/analytics/voice", json={"outcome": "ok", "first_audio_ms": 900, "language": "en-IN"}).status_code == 200
+    assert client.post("/analytics/voice", json={"outcome": "tts_fallback", "language": "en-IN"}).status_code == 200
+    assert client.post("/analytics/voice", json={"outcome": "bogus"}).status_code == 422
+    voice = summary(7)["voice"]
+    assert voice["turns"] == 2 and voice["first_audio_p50_ms"] == 900 and voice["issues"] == {"tts_fallback": 1}

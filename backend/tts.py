@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import time
+from collections import OrderedDict
 from importlib import metadata
 
 import edge_tts
@@ -308,9 +309,42 @@ class TtsHealth:
 tts_health = TtsHealth()
 
 
+# Finished audio is kept so repeated lines (greetings, standard notices, repeated questions)
+# play instantly and keep working even if Microsoft's service is down.
+CACHE_MAX_ENTRIES = 300
+CACHE_MAX_BYTES = 24 * 1024 * 1024
+_cache: "OrderedDict[tuple, bytes]" = OrderedDict()
+_cache_bytes = 0
+cache_stats = {"hits": 0, "misses": 0}
+
+
+def _cache_get(key: tuple) -> bytes | None:
+    audio = _cache.get(key)
+    if audio is not None:
+        _cache.move_to_end(key)
+        cache_stats["hits"] += 1
+    return audio
+
+
+def _cache_put(key: tuple, audio: bytes) -> None:
+    global _cache_bytes
+    if key in _cache or not audio or len(audio) > CACHE_MAX_BYTES // 4:
+        return
+    _cache[key] = audio
+    _cache_bytes += len(audio)
+    while _cache and (len(_cache) > CACHE_MAX_ENTRIES or _cache_bytes > CACHE_MAX_BYTES):
+        _, evicted = _cache.popitem(last=False)
+        _cache_bytes -= len(evicted)
+
+
 async def synthesize_speech(text: str, voice: str = None, tone: str = "natural", language: str = None) -> bytes:
-    """Speaks text with a timeout and a retry. Returns b"" when the voice service is down
-    (the browser then reads the reply aloud), and never blocks a reply for long."""
+    """Speaks text with a cache, a timeout and a retry. Returns b"" when the voice service is
+    down (the browser then reads the reply aloud), and never blocks a reply for long."""
+    key = (text.strip(), voice, tone, (language or "").split("-")[0])
+    cached = _cache_get(key)
+    if cached is not None:
+        return cached
+    cache_stats["misses"] += 1
     if tts_health.paused:
         return b""
     last_error: BaseException | None = None
@@ -321,6 +355,7 @@ async def synthesize_speech(text: str, voice: str = None, tone: str = "natural",
             )
             if audio:
                 tts_health.record_ok()
+                _cache_put(key, audio)
             return audio
         except asyncio.CancelledError:
             raise
@@ -344,3 +379,36 @@ async def probe_tts() -> tuple[bool, str, str]:
     except Exception as error:
         kind, fix = classify_tts_error(error)
         return False, kind, fix
+
+
+# Fixed lines that are spoken often; they are prepared at startup so they play at once.
+# Keep identical to WAKE_GREETINGS in frontend/src/App.jsx (a test checks this).
+WAKE_GREETINGS = {
+    "en-IN": [
+        "Hey there! I'm Chikki. I'm here to help you learn about Akash - what would you like to know?",
+        "Hi! Great to have you here. I'm Chikki, Akash's AI assistant. Ask me anything about him.",
+        "Hey, I'm listening! I'm Chikki - happy to tell you about Akash's experience, skills, or projects.",
+    ],
+    "te-IN": [
+        "నమస్కారం! నేను చిక్కీని. ఆకాశ్ అనుభవం, స్కిల్స్ లేదా ప్రాజెక్ట్‌ల గురించి మీరు నన్ను అడగవచ్చు.",
+        "హలో! నేను చిక్కీ. ఆకాశ్ కెరీర్ మరియు ప్రాజెక్ట్స్ గురించి ఏం తెలుసుకోవాలనుకుంటున్నారు?",
+    ],
+    "hi-IN": [
+        "नमस्ते! मैं चिक्की हूँ। आकाश के अनुभव, स्किल्स या प्रोजेक्ट्स के बारे में आप कुछ भी पूछ सकते हैं।",
+        "हेलो! मैं चिक्की, आकाश की AI असिस्टेंट। बताइए मैं आपकी क्या मदद कर सकती हूँ?",
+    ],
+}
+
+
+async def prewarm_cache() -> int:
+    """Prepares the greeting audio in the background. Never raises; returns how many were stored."""
+    stored = 0
+    for language, lines in WAKE_GREETINGS.items():
+        for line in lines:
+            try:
+                if await synthesize_speech(line, tone=speech_tone(reply=line), language=language):
+                    stored += 1
+            except Exception:
+                logger.info("Could not prepare greeting audio for %s", language)
+                return stored  # service is struggling; do not keep hammering it
+    return stored

@@ -20,12 +20,12 @@ from digest import run_ops_check, send_digest, build_digest
 from conversation_alerts import alerts as conversation_alerts
 from notifier import route_for, send_all
 from github_activity import github_context
-from grounding import build_guard, mode as grounding_mode, pop_sentences
+from grounding import build_guard, mode as grounding_mode, pop_sentences, pop_early_phrase
 from contact_store import notify_contact, read_contacts, save_contact
 from feedback_store import feedback_analytics, read_feedback, record_feedback
 from generate_resume_pdf import build_resume_pdf
 from knowledge import TOP_K, format_context, knowledge_base, sources_for
-from models import ContactRequest, FeedbackRequest, JobMatchRequest
+from models import ContactRequest, FeedbackRequest, JobMatchRequest, VoiceMetricRequest
 from resume import sync_resume as sync_resume_profile
 from resume_loader import sync_drive_resume
 from security import (
@@ -46,7 +46,7 @@ from security import (
     ws_connections,
 )
 import stt
-from tts import clean_for_speech, synthesize_speech, speech_tone, tts_health
+from tts import clean_for_speech, prewarm_cache, synthesize_speech, speech_tone, tts_health
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -67,7 +67,9 @@ def _safe_refresh_knowledge():
 async def lifespan(_app: FastAPI):
     # Build the retrieval index in the background so the first question is fast.
     asyncio.get_running_loop().run_in_executor(None, _safe_refresh_knowledge)
+    prewarm_task = asyncio.create_task(prewarm_cache())
     yield
+    prewarm_task.cancel()
 
 
 app = FastAPI(title="Chikki AI Assistant", version=APP_VERSION, lifespan=lifespan)
@@ -241,6 +243,20 @@ def recent_feedback(limit: int = Query(50, ge=1, le=200)):
     return read_feedback(limit=limit)
 
 
+@app.post("/analytics/voice")
+def record_voice_metric(req: VoiceMetricRequest, request: Request):
+    """Records how a spoken turn went: time to first sound and any fallback used."""
+    enforce_rate_limit(feedback_limiter, request)
+    record_event(
+        "voice",
+        language=req.language[:10],
+        latency_ms=max(0, min(req.first_audio_ms, 120000)) if req.first_audio_ms is not None else None,
+        ok=req.outcome == "ok",
+        error_kind=None if req.outcome == "ok" else req.outcome,
+    )
+    return {"status": "ok"}
+
+
 @app.get("/analytics/summary", dependencies=[Depends(require_admin)])
 def analytics_summary_route(days: int = Query(30, ge=1, le=365)):
     return analytics_summary(days)
@@ -405,6 +421,7 @@ async def process_chikki_turn(
     blocked_terms: list[str] = []
     notice_given = False
     pending = ""
+    early_done = False
 
     audio_queue: asyncio.Queue = asyncio.Queue()
 
@@ -480,6 +497,15 @@ async def process_chikki_turn(
                 continue
             pending += delta
             sentences, pending = pop_sentences(pending)
+            if voice_mode and not early_done:
+                if sentences:
+                    early_done = True
+                else:
+                    # Speak the first clause as soon as it is ready instead of waiting for a full sentence.
+                    phrase, pending = pop_early_phrase(pending)
+                    if phrase:
+                        early_done = True
+                        sentences = [phrase]
             for sentence in sentences:
                 await release(sentence, last_trace_id)
 

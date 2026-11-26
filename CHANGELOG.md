@@ -3,6 +3,8 @@
 ## Voice reliability and accuracy
 - Server-side listening: each spoken question is transcribed by Groq Whisper (`POST /stt`), with a vocabulary hint for names like LangGraph and UBS and a filter for phantom phrases. The browser recogniser still gives live captions and is the fallback.
 - Speaking: text-to-speech now has a timeout, one retry and an automatic pause with browser-voice fallback; audio for the next sentence is prepared while the current one plays.
+- Faster start: in voice mode the first clause of a reply is spoken as soon as it is ready; greetings are prepared at startup and finished audio is cached, so repeated lines play instantly and survive a speech-service outage.
+- Talk over Chikki to interrupt it (own-voice echo is filtered out), a Tap to talk / Done / Interrupt button, a "Waking up Chikki" notice on cold starts, an on-screen note when no voice is available, and voice metrics (time to first sound, fallbacks) in Analytics and the weekly digest.
 - Health check reports a voice failure with its likely cause (for example, upgrade `edge-tts`), and `/health` shows voice status.
 
 ## 2.0.0 (in progress)

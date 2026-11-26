@@ -130,8 +130,17 @@ def summary(days: int = 30) -> Dict[str, Any]:
     ).most_common(12)
     gaps = Counter(_normalize(r["question"]) for r in questions if r["ok"] and r["source_count"] == 0).most_common(10)
 
+    voice = [r for r in rows if r["type"] == "voice"]
+    first_audio = [r["latency_ms"] for r in voice if r["ok"] and r["latency_ms"] is not None]
+
     return {
         "days": days,
+        "voice": {
+            "turns": len(voice),
+            "first_audio_p50_ms": _percentile(first_audio, 0.5),
+            "first_audio_p95_ms": _percentile(first_audio, 0.95),
+            "issues": dict(Counter(r["error_kind"] for r in voice if not r["ok"])),
+        },
         "totals": {
             "turns": len(turns),
             "failed_turns": len(turns) - len(ok_turns),

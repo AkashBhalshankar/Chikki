@@ -44,6 +44,15 @@ def build_digest(days: int = 7) -> str:
     if latency is not None:
         lines.append(f"Median reply time: {latency / 1000:.1f}s")
 
+    voice = data.get("voice", {})
+    if voice.get("turns"):
+        first = voice["first_audio_p50_ms"]
+        lines.append(
+            f"Voice: {voice['turns']} spoken turns"
+            + (f", median {first / 1000:.1f}s to first sound" if first is not None else "")
+            + (f", fallbacks: {sum(voice['issues'].values())}" if voice["issues"] else "")
+        )
+
     if data["top_questions"]:
         lines += ["", "Top questions:"] + [f"- {q['question']} ({q['count']})" for q in data["top_questions"][:3]]
     if data["knowledge_gaps"]:

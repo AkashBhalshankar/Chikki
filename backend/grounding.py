@@ -75,6 +75,22 @@ def sources() -> set[str]:
     return chosen or {"resume", "knowledge"}
 
 
+EARLY_MIN_WORDS = 6
+CLAUSE_BREAK = re.compile(r"[,;:]\s+|\s[-–—]\s")
+
+
+def pop_early_phrase(buffer: str) -> tuple[str, str]:
+    """For voice: lets the first clause of a reply be spoken before its sentence ends.
+
+    Returns (phrase, rest); phrase is "" until the buffer holds at least EARLY_MIN_WORDS
+    words followed by a comma, colon or dash. Used once per reply, so speech starts sooner.
+    """
+    for match in CLAUSE_BREAK.finditer(buffer):
+        if len(buffer[:match.start()].split()) >= EARLY_MIN_WORDS:
+            return buffer[:match.end()], buffer[match.end():]
+    return "", buffer
+
+
 def pop_sentences(buffer: str) -> tuple[list[str], str]:
     """Splits finished sentences off a growing buffer.
 

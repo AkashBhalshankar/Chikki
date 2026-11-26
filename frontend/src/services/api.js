@@ -41,6 +41,35 @@ export async function transcribeAudio(blob, language = "en-IN", timeoutMs = 3500
   }
 }
 
+/** Wakes the server (free hosting sleeps when idle) and reports how long it took. */
+export async function wakeServer(timeoutMs = 90000) {
+  const started = performance.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${BASE_URL}/health`, { cache: "no-store", signal: controller.signal });
+    return { ok: res.ok, ms: Math.round(performance.now() - started) };
+  } catch {
+    return { ok: false, ms: Math.round(performance.now() - started) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Fire-and-forget: how a spoken turn went (time to first sound, or which fallback was used). */
+export function sendVoiceMetric(outcome, firstAudioMs = null, language = "en-IN") {
+  try {
+    fetch(`${BASE_URL}/analytics/voice`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ outcome, first_audio_ms: firstAudioMs, language }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // metrics must never affect the conversation
+  }
+}
+
 export async function downloadResumePdf(url, focus = "", profileLinks = {}) {
   const requestUrl = new URL(url, window.location.origin);
   const res = await fetch(requestUrl, {

@@ -416,6 +416,8 @@ function UsagePanel({ usage }) {
     ["Unverified claims blocked", totals.blocked_claims],
     ["Median reply", latency.p50 != null ? `${(latency.p50 / 1000).toFixed(1)}s` : "–"],
     ["Slow (p95)", latency.p95 != null ? `${(latency.p95 / 1000).toFixed(1)}s` : "–"],
+    ["Voice: first sound", usage.voice?.first_audio_p50_ms != null ? `${(usage.voice.first_audio_p50_ms / 1000).toFixed(1)}s` : "–"],
+    ["Voice: slow (p95)", usage.voice?.first_audio_p95_ms != null ? `${(usage.voice.first_audio_p95_ms / 1000).toFixed(1)}s` : "–"],
   ];
   const card = "p-3.5 rounded-xl border border-gray-800 bg-zinc-900/40";
   const heading = "text-[10px] uppercase text-gray-400 font-semibold tracking-wider mb-2";
@@ -452,6 +454,7 @@ function UsagePanel({ usage }) {
         <div className={card}><div className={heading}>Languages</div><Bars items={objectToItems(usage.languages)} labelKey="name" /></div>
         <div className={card}><div className={heading}>Voice vs text</div><Bars items={objectToItems(usage.modes)} labelKey="name" /></div>
         <div className={card}><div className={heading}>Model providers used</div><Bars items={objectToItems(usage.providers)} labelKey="name" /></div>
+        <div className={card}><div className={heading}>Voice problems (fallbacks used)</div><Bars items={objectToItems(usage.voice?.issues)} labelKey="name" empty="No voice problems." /></div>
         <div className={card}><div className={heading}>Failures by cause</div><Bars items={objectToItems(usage.failures)} labelKey="name" empty="No failures." /></div>
       </div>
     </div>

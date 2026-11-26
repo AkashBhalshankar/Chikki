@@ -4,6 +4,7 @@ import { transcribeAudio } from "../services/api.js";
 
 const SERVER_STT = import.meta.env.VITE_SERVER_STT !== "false";
 const MIN_AUDIO_BYTES = 1500;
+const BARGE_IN = import.meta.env.VITE_BARGE_IN !== "false";
 
 export function useSpeechRecognition({
   mode = "wake", // "wake" | "command" | "off"
@@ -14,6 +15,7 @@ export function useSpeechRecognition({
   onInterim,
   onUnclear,
   onSpeechError,
+  onServerSttFailed,
 }) {
   const [supported, setSupported] = useState(true);
   const recognitionRef = useRef(null);
@@ -31,8 +33,9 @@ export function useSpeechRecognition({
   langRef.current = lang;
   isSpeakingRef.current = isAssistantSpeaking;
 
-  const callbacksRef = useRef({ onWake, onResult, onInterim, onUnclear, onSpeechError });
-  callbacksRef.current = { onWake, onResult, onInterim, onUnclear, onSpeechError };
+  const callbacksRef = useRef({ onWake, onResult, onInterim, onUnclear, onSpeechError, onServerSttFailed });
+  callbacksRef.current = { onWake, onResult, onInterim, onUnclear, onSpeechError, onServerSttFailed };
+  const bargedRef = useRef(false); // the visitor started talking over Chikki, so the clip misses their first words
 
   // Records the visitor's voice so the server can transcribe it accurately. The browser
   // recogniser still runs for live captions and as the fallback if the server is unreachable.
@@ -137,6 +140,8 @@ export function useSpeechRecognition({
     utteranceActiveRef.current = false;
 
     // Take the recording of this utterance and start a fresh one right away.
+    const barged = bargedRef.current;
+    bargedRef.current = false;
     const clip = await stopRecorder(true);
     if (modeRef.current === "command" && !isSpeakingRef.current) startRecorder();
 
@@ -144,8 +149,9 @@ export function useSpeechRecognition({
 
     let text = browserText;
     let confident = !unclear;
-    if (clip && clip.size >= MIN_AUDIO_BYTES) {
+    if (clip && clip.size >= MIN_AUDIO_BYTES && !barged) {
       const server = await transcribeAudio(clip, langRef.current);
+      if (!server) callbacksRef.current.onServerSttFailed?.();
       if (server) {
         // The server answered: trust it over the browser, including when it heard nothing real.
         if (!server.text) return;
@@ -189,6 +195,13 @@ export function useSpeechRecognition({
         // Shield: drop all incoming frames while Chikki is speaking
         if (isSpeakingRef.current) {
           speechBufferRef.current = "";
+          if (BARGE_IN && modeRef.current === "command") {
+            // Let the visitor interrupt: pass what was heard up; the page decides whether it is
+            // really the visitor (not Chikki's own voice) and stops the speech.
+            let heard = "";
+            for (let i = event.resultIndex; i < event.results.length; ++i) heard += event.results[i][0]?.transcript || "";
+            if (heard.trim() && callbacksRef.current.onInterim?.(heard.trim(), true)) bargedRef.current = true;
+          }
           return;
         }
 
@@ -267,12 +280,12 @@ export function useSpeechRecognition({
       recognition.onend = () => {
         isListeningRef.current = false;
         // Only restart if not in "off" mode and assistant is not speaking
-        if (modeRef.current !== "off" && !isSpeakingRef.current) {
+        if (modeRef.current !== "off" && (!isSpeakingRef.current || BARGE_IN)) {
           setTimeout(() => {
             if (
               modeRef.current !== "off" &&
               !isListeningRef.current &&
-              !isSpeakingRef.current
+              (!isSpeakingRef.current || BARGE_IN)
             ) {
               try {
                 recognition.start();
@@ -298,10 +311,12 @@ export function useSpeechRecognition({
       lowConfidenceRef.current = false;
       utteranceActiveRef.current = false;
       stopRecorder(false);
-      try {
-        recognitionRef.current?.abort();
-      } catch (_) {}
-      isListeningRef.current = false;
+      if (!BARGE_IN) {
+        try {
+          recognitionRef.current?.abort();
+        } catch (_) {}
+        isListeningRef.current = false;
+      }
     } else {
       const timer = setTimeout(() => {
         if (modeRef.current !== "off") {
@@ -355,5 +370,8 @@ export function useSpeechRecognition({
 
   useEffect(() => releaseMic, [releaseMic]);
 
-  return { supported, startListening, stopRecognition };
+  // Tap-to-finish: sends what has been heard so far without waiting for silence.
+  const finishNow = useCallback(() => dispatchCommand(), [dispatchCommand]);
+
+  return { supported, startListening, stopRecognition, finishNow };
 }

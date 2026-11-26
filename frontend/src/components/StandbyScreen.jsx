@@ -7,6 +7,7 @@ export default function StandbyScreen({
   onEnableMic,
   onTypeInstead,
   sharedLabel,
+  serverState = "ready",
   theme = "dark",
   onToggleTheme,
 }) {
@@ -41,7 +42,11 @@ export default function StandbyScreen({
           <ChikkiBot state={state} size={160} />
 
           <div className="mt-6 flex items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-gray-600">
-            <span><span className="text-chikki-green">●</span> Online</span>
+            {serverState === "waking" ? (
+              <span role="status"><span className="text-amber-400">●</span> Waking up Chikki…</span>
+            ) : (
+              <span><span className="text-chikki-green">●</span> Online</span>
+            )}
             <span className="text-gray-800">/</span>
             <span>Standby</span>
           </div>
@@ -54,6 +59,12 @@ export default function StandbyScreen({
                 See Chikki&apos;s answer
               </button>
             </div>
+          )}
+
+          {serverState === "waking" && (
+            <p className="mt-3 max-w-sm text-xs text-amber-300/90">
+              Chikki was asleep and is starting up. The first answer can take up to a minute; after that it is quick.
+            </p>
           )}
 
           <p className="mt-8 text-sm text-gray-400">Say <span className="text-chikki-purpleLight">“Hey Chikki”</span> to begin.</p>
