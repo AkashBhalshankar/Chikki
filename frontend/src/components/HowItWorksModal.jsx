@@ -12,7 +12,7 @@ const STEPS = [
 const PRINCIPLES = [
   "Grounded: answers come from the verified resume and write-ups, and Chikki says so when something is not there.",
   "Honest by design: the role-fit check lists real gaps, and the tailored resume only reorders existing content.",
-  "Private: no IP addresses or identities are stored, only anonymous usage counts for improving answers.",
+  "Transparent: your questions are shared with Akash so he can improve Chikki and see what recruiters need. Please do not type anything private. No accounts, and no IP addresses are stored.",
   "Tested: automated tests, a build check on every change, and a set of answer-quality checks run against real models.",
   "Observable: tracing and usage analytics show where answers are slow, failing, or missing knowledge.",
 ];

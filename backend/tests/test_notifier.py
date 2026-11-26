@@ -6,6 +6,8 @@ import main
 import notifier
 
 ALL_VARS = (
+    "NOTIFY_CONTACT", "NOTIFY_CONVERSATION", "NOTIFY_DIGEST", "NOTIFY_ALERT", "NOTIFY_TEST",
+    "NOTIFY_CONVERSATIONS", "NOTIFY_CONVERSATIONS_PER_HOUR",
     "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "RESEND_API_KEY", "Resend_API_KEY",
     "CONTACT_TO", "CONTACT_FROM", "CONTACT_WEBHOOK_URL",
     "SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS", "SMTP_FROM",
@@ -221,3 +223,95 @@ def test_smtp_port_465_uses_ssl(smtp_env, monkeypatch):
     seen = []
     monkeypatch.setattr(notifier.smtplib, "SMTP_SSL", lambda host, port, timeout=None: seen.append(port) or FakeSMTP(host, port))
     assert notifier.send_all("x") == {"email": True} and seen == [465]
+
+
+# ---- routing: avoid duplicate notifications ----
+
+@pytest.fixture
+def both_channels(clean_env):
+    """Telegram and email configured; records which channels were called."""
+    clean_env.setenv("TELEGRAM_BOT_TOKEN", "t")
+    clean_env.setenv("TELEGRAM_CHAT_ID", "1")
+    clean_env.setenv("RESEND_API_KEY", "re_key")
+    clean_env.setenv("CONTACT_TO", "owner@example.com")
+    called = []
+    fail = set()
+
+    def fake_post(url, **kwargs):
+        channel = "telegram" if "telegram" in url else "email"
+        called.append(channel)
+        return FakeResponse(channel not in fail, 500 if channel in fail else 200)
+
+    clean_env.setattr(notifier.requests, "post", fake_post)
+    return called, fail
+
+
+def test_parse_route():
+    assert notifier.parse_route("telegram>email") == [["telegram"], ["email"]]
+    assert notifier.parse_route("telegram,email>webhook") == [["telegram", "email"], ["webhook"]]
+    assert notifier.parse_route("all") == [["telegram", "email", "webhook"]]
+    assert notifier.parse_route("bogus, telegram >>") == [["telegram"]]
+
+
+def test_contact_goes_to_email_only_by_default(both_channels):
+    called, _ = both_channels
+    assert notifier.send_notification("hi", event="contact") is True
+    assert called == ["email"]  # no duplicate on Telegram
+
+
+@pytest.mark.parametrize("event", ["conversation", "digest"])
+def test_conversations_and_digest_go_to_telegram_only(both_channels, event):
+    called, _ = both_channels
+    assert notifier.send_notification("hi", event=event) is True
+    assert called == ["telegram"]
+
+
+def test_alerts_use_telegram_and_email_only_as_a_fallback(both_channels):
+    called, fail = both_channels
+    assert notifier.send_notification("hi", event="alert") is True
+    assert called == ["telegram"]
+    called.clear()
+    fail.add("telegram")
+    assert notifier.send_notification("hi", event="alert") is True
+    assert called == ["telegram", "email"]
+
+
+def test_contact_falls_back_to_telegram_when_email_fails(both_channels):
+    called, fail = both_channels
+    fail.add("email")
+    assert notifier.send_notification("hi", event="contact") is True
+    assert called == ["email", "telegram"]
+
+
+def test_all_failed_returns_false(both_channels):
+    called, fail = both_channels
+    fail.update({"telegram", "email"})
+    assert notifier.send_notification("hi", event="contact") is False
+    assert called == ["email", "telegram"]
+
+
+def test_env_can_request_both_channels(both_channels, clean_env):
+    called, _ = both_channels
+    clean_env.setenv("NOTIFY_CONTACT", "telegram,email")
+    assert notifier.send_notification("hi", event="contact") is True
+    assert sorted(called) == ["email", "telegram"]
+
+
+def test_env_can_pick_a_single_channel(both_channels, clean_env):
+    called, _ = both_channels
+    clean_env.setenv("NOTIFY_CONTACT", "email")
+    notifier.send_notification("hi", event="contact")
+    assert called == ["email"]
+
+
+def test_unconfigured_channels_are_skipped_in_the_chain(clean_env, calls):
+    clean_env.setenv("RESEND_API_KEY", "re_key")
+    clean_env.setenv("CONTACT_TO", "owner@example.com")
+    assert notifier.send_notification("hi", event="contact") is True  # telegram not configured
+    assert len(calls) == 1 and calls[0]["url"] == notifier.RESEND_URL
+
+
+def test_test_route_checks_every_channel(both_channels):
+    called, _ = both_channels
+    assert notifier.send_all("hi", route=notifier.route_for("test")) == {"telegram": True, "email": True}
+    assert sorted(called) == ["email", "telegram"]

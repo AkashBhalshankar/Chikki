@@ -89,13 +89,17 @@ If Groq reports a rate limit the run falls back to the next provider; just re-ru
    You see a "Someone shared this with you" card; click it and the answer starts automatically. In chat, **Copy link** copies a link for your last question.
 8. **Voice:** go back to the start screen, click "Click to start", allow the microphone, say *"Hey Chikki"*, then ask something. You should hear the voice and see captions.
 9. **Dashboard:** click **Analytics**, enter `local-test-token`. The **Usage** tab shows the questions you just asked, language, voice vs text, reply times and any knowledge gaps. **Feedback** and **Messages** tabs also load.
-10. **Voice quality:** in voice mode, say *"Does he know fast API and lang graph?"*:
+10. **Telegram conversation feed (optional):** set `NOTIFY_CONVERSATIONS=true` in `backend/.env`, restart the
+    backend, and ask two questions in the app. The first arrives as "🆕 New visitor #XXXX" with a sound, the
+    second as "💬 #XXXX · turn 2" silently, each with the full question and a one-line answer. Set it back to
+    `false` afterwards so your own testing does not ping you.
+11. **Voice quality:** in voice mode, say *"Does he know fast API and lang graph?"*:
     - while you speak, a line **"I'm hearing..."** shows your words, and technical terms appear correctly spelled (FastAPI, LangGraph);
     - mumble or whisper something unclear: Chikki should ask you to repeat instead of answering;
     - switch the language selector to **Telugu** or **Hindi** and ask in that language: the reply is in that script and the voice matches;
     - ask in English with the selector on Telugu: the English reply is spoken with the English voice, not garbled.
-11. **How it works:** click **🧠 How Chikki works** and check the page opens and closes (Esc works too).
-12. **Limits (optional):** send 6 role-fit checks in an hour, or 5 messages in an hour, and the last one should be refused politely.
+12. **How it works:** click **🧠 How Chikki works** and check the page opens and closes (Esc works too).
+13. **Limits (optional):** send 6 role-fit checks in an hour, or 5 messages in an hour, and the last one should be refused politely.
 
 ## 6. If something looks wrong
 

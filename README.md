@@ -89,6 +89,14 @@ prompt as the ground truth.
   - Resend's default sender can only email your own Resend account address. To email any
     address, verify a domain at resend.com/domains and set `CONTACT_FROM`.
   - Test delivery any time with `POST /notify/test` (admin token).
+  - Each kind of notification goes to one place, so you never get duplicates:
+    contact-form messages go to email (Telegram only if email fails); the live conversation feed,
+    weekly digest and health alerts go to Telegram. Change this with `NOTIFY_CONTACT`,
+    `NOTIFY_CONVERSATION`, `NOTIFY_DIGEST` and `NOTIFY_ALERT` (see `.env.example`).
+- **Live conversation feed (Telegram):** set `NOTIFY_CONVERSATIONS=true` on the deployed backend.
+  Every visitor question arrives with a one-line answer, a short visitor code, the time and reply
+  time, and a warning when it is a knowledge gap. A visitor's first message makes a sound and later
+  ones are silent. It is capped at 60 messages an hour (`NOTIFY_CONVERSATIONS_PER_HOUR`).
   - Protected by a rate limit (5 per hour per IP) and a spam honeypot.
 - **Book a call:** set `VITE_BOOKING_URL` (Cal.com or Calendly) to show the button.
 

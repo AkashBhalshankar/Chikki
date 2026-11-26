@@ -10,6 +10,11 @@
 - Chikki project details moved from the hardcoded system prompt into `knowledge/chikki.md`.
 - Added admin endpoint `POST /knowledge/refresh`.
 
+### New: live conversation feed and notification routing
+- Telegram receives each visitor question in full with a one-line answer, a short anonymous visitor code, the time, reply time, and a warning for knowledge gaps. A visitor's first message makes a sound; later ones are silent. Off by default (`NOTIFY_CONVERSATIONS=true` to enable), sent in the background and capped at 60 an hour.
+- Each notification type now goes to one place: contact-form messages to email (Telegram only if email fails), conversations, the weekly digest and health alerts to Telegram. Override with `NOTIFY_*` settings.
+- The "How Chikki works" page now says plainly that questions are shared with Akash.
+
 ### New: email notifications (Resend) and delivery test
 - Visitor messages, the weekly digest and health alerts can now also go to your inbox through Resend, next to Telegram and webhooks. Email replies go straight to the visitor.
 - SMTP (for example Gmail with an App Password) works as an email fallback after Resend.

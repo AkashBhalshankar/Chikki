@@ -1,6 +1,7 @@
 import base64
 import asyncio
 import time
+import uuid
 import logging
 import os
 import re
@@ -16,7 +17,8 @@ from actions import ActionTagFilter, filter_actions
 from analytics_store import record_event, summary as analytics_summary
 from jd_match import analyze_job
 from digest import run_ops_check, send_digest, build_digest
-from notifier import send_all
+from conversation_alerts import alerts as conversation_alerts
+from notifier import route_for, send_all
 from github_activity import github_context
 from contact_store import notify_contact, read_contacts, save_contact
 from feedback_store import feedback_analytics, read_feedback, record_feedback
@@ -119,6 +121,7 @@ def notify_test():
     results = send_all(
         "Chikki test: notifications are connected. You will get visitor messages, weekly digests and health alerts here.",
         subject="Chikki test notification",
+        route=route_for("test"),
     )
     return {"configured": list(results), "delivered": results, "ok": bool(results) and all(results.values())}
 
@@ -288,6 +291,7 @@ async def process_chikki_turn(
     conversation_history: list[dict],
     conversation_jokes: list[str],
     detail: bool = False,
+    session_id: str = "",
 ):
     full_reply = []
     sentence_buffer = ""
@@ -323,6 +327,17 @@ async def process_chikki_turn(
     mode = "voice" if voice_mode else "text"
 
     async def log_turn(ok: bool, error_kind: str | None = None):
+        latency = int((time.monotonic() - turn_started) * 1000)
+        conversation_alerts.notify_turn(
+            session_id,
+            user_msg,
+            "".join(full_reply),
+            language,
+            mode,
+            latency,
+            gap=ok and not is_joke and not retrieved,
+            error_kind=error_kind if not ok else None,
+        )
         await asyncio.to_thread(
             record_event,
             "turn",
@@ -493,6 +508,7 @@ async def handle_chikki_ws(websocket: WebSocket):
         return
 
     await websocket.accept()
+    connection_id = uuid.uuid4().hex  # fallback visitor id when the browser sends no session id
     conversation_history = []
     conversation_jokes = []
     resume_refresh_task = asyncio.create_task(asyncio.to_thread(sync_drive_resume))
@@ -548,6 +564,8 @@ async def handle_chikki_ws(websocket: WebSocket):
                 language = "en-IN"
             turn_id = data.get("turn_id")
             turn_id = turn_id[:100] if isinstance(turn_id, str) else None
+            client_session = data.get("session_id")
+            session_key = client_session[:100] if isinstance(client_session, str) and client_session else connection_id
 
             if len(user_msg) > MAX_MESSAGE_CHARS:
                 await _send_error(
@@ -591,6 +609,7 @@ async def handle_chikki_ws(websocket: WebSocket):
                 conversation_history,
                 conversation_jokes,
                 bool(data.get("detail")) or is_detail_request(user_msg),
+                session_key,
             ))
 
     except WebSocketDisconnect:

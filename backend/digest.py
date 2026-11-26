@@ -54,7 +54,7 @@ def build_digest(days: int = 7) -> str:
 
 def send_digest(days: int = 7) -> tuple[str, bool]:
     text = build_digest(days)
-    return text, send_notification(text, subject=f"Chikki weekly digest (last {days} days)")
+    return text, send_notification(text, subject=f"Chikki weekly digest (last {days} days)", event="digest")
 
 
 def check_health() -> list[str]:
@@ -80,6 +80,6 @@ def run_ops_check() -> tuple[list[str], bool]:
     if problems:
         logger.warning("Ops check found problems: %s", problems)
         alerted = send_notification(
-            "Chikki alert\n" + "\n".join(f"- {p}" for p in problems), subject="Chikki alert: action needed"
+            "Chikki alert\n" + "\n".join(f"- {p}" for p in problems), subject="Chikki alert: action needed", event="alert"
         )
     return problems, alerted
