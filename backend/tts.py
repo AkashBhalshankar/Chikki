@@ -61,6 +61,55 @@ def detect_language(text: str) -> str:
     return "en"
 
 
+def speech_language(text: str, language: str | None = None) -> str:
+    """Language whose voice should read this text.
+
+    The voice follows the words actually being spoken, not just the UI language:
+    a Telugu or Hindi voice reading English text (or an English voice reading
+    Telugu script) sounds garbled. The UI language is only a fallback when the
+    text gives no signal.
+    """
+    detected = detect_language(text)
+    if detected != "en":
+        return detected
+    if re.search(r"[A-Za-z]{3}", text):
+        return "en"
+    return language.split("-")[0].lower() if language else "en"
+
+
+# Respellings so the voice says technical terms the way people do. They are
+# applied to the audio only; captions keep the original spelling.
+PRONUNCIATIONS = [
+    (r"\bFastAPI\b", "Fast A P I"),
+    (r"\bLangGraph\b", "Lang Graph"),
+    (r"\bLangChain\b", "Lang Chain"),
+    (r"\bLangfuse\b", "Lang fuse"),
+    (r"\bNavLearn\b", "Nav Learn"),
+    (r"\bWebSockets?\b", "Web Sockets"),
+    (r"\bEdge-TTS\b", "Edge T T S"),
+    (r"\bOpenAI\b", "Open A I"),
+    (r"\bGitHub\b", "Git Hub"),
+    (r"\bSQLite\b", "S Q Lite"),
+    (r"\bpytest\b", "pie test"),
+    (r"\bGroq\b", "Grok"),
+    (r"\bLLMs\b", "L L Ms"),
+    (r"\bLLM\b", "L L M"),
+    (r"\bAPIs\b", "A P Is"),
+    (r"\bAPI\b", "A P I"),
+    (r"\bRAG\b", "R A G"),
+    (r"\bATS\b", "A T S"),
+    (r"\bTTS\b", "T T S"),
+    (r"\bPWA\b", "P W A"),
+    (r"\bJSON\b", "Jay son"),
+]
+
+
+def apply_pronunciations(text: str) -> str:
+    for pattern, spoken in PRONUNCIATIONS:
+        text = re.sub(pattern, spoken, text)
+    return text
+
+
 def speech_tone(user_text: str = "", reply: str = "") -> str:
     """Infer vocal prosody and emotional delivery from conversational context."""
     combined = f"{user_text} {reply}".lower()
@@ -149,9 +198,10 @@ async def synthesize_speech(
     if not clean_text:
         return b""
 
-    # Detect language and guarantee a female voice selection
-    lang = language.split("-")[0].lower() if language else detect_language(clean_text)
+    # Pick the voice from the words actually spoken, so the audio matches the reply.
+    lang = speech_language(clean_text, language)
     selected_voice = voice or FEMALE_VOICE_MAP.get(lang, DEFAULT_FEMALE_VOICE)
+    spoken_text = apply_pronunciations(clean_text)
 
     # Female expressive vocal pitch and rate profiles
     tone_profiles = {
@@ -167,7 +217,7 @@ async def synthesize_speech(
     config = tone_profiles.get(tone, tone_profiles["natural"])
 
     communicate = edge_tts.Communicate(
-        clean_text,
+        spoken_text,
         selected_voice,
         rate=config["rate"],
         pitch=config["pitch"],

@@ -10,6 +10,14 @@
 - Chikki project details moved from the hardcoded system prompt into `knowledge/chikki.md`.
 - Added admin endpoint `POST /knowledge/refresh`.
 
+### Voice: clearer listening and speaking
+- Live "I'm hearing..." text while the visitor speaks, so recognition problems are visible immediately.
+- Common mishearings are corrected (Akash, Chikki, FastAPI, LangGraph, LangChain, Langfuse, RAG, LLM, GitHub, WebSockets, and similar).
+- Low-confidence results ask the visitor to repeat instead of answering a question they did not ask.
+- Quicker send after a finished sentence (1.0s) and patient waiting while words are still arriving (1.8s); the recogniser picks the most confident of 3 alternatives.
+- The reply voice now follows the words actually spoken (Telugu, Hindi or English), not just the UI language, so the audio always matches the text.
+- Technical terms are pronounced clearly in the audio (for example "Fast A P I") while captions keep the real spelling; the browser-voice fallback now reads the same cleaned text as the captions.
+
 ### New: shareable links and company intros
 - `?q=<question>` opens Chikki with that question; `?company=<name>` opens a tailored introduction for that company. A "Copy link" button in text chat shares the latest question.
 

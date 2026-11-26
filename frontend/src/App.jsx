@@ -7,6 +7,7 @@ import FeedbackDashboard from "./components/FeedbackDashboard.jsx";
 import ContactModal from "./components/ContactModal.jsx";
 import JobMatchModal from "./components/JobMatchModal.jsx";
 import { buildShareUrl, readSharedLink } from "./sharedLink.js";
+import { cleanForBrowserSpeech } from "./speechText.js";
 import LanguageSelector from "./components/LanguageSelector.jsx";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition.js";
 import { connectVoiceSocket, downloadResumePdf, fetchGreetingAudio, sendFeedback } from "./services/api.js";
@@ -146,8 +147,9 @@ function loadStoredMessages() {
 // Browser text-to-speech fallback. Used only when the backend sends a text
 // reply but no audio (e.g. edge-tts is blocked/broken), so Chikki can still
 // speak. Free, built into the browser, and never rate-limited or blocked.
-function speakWithBrowser(text, lang, { onStart, onEnd } = {}) {
-  if (!("speechSynthesis" in window) || !text?.trim()) {
+function speakWithBrowser(rawText, lang, { onStart, onEnd } = {}) {
+  const text = cleanForBrowserSpeech(rawText || "");
+  if (!("speechSynthesis" in window) || !text) {
     onEnd?.();
     return;
   }
@@ -322,6 +324,10 @@ export default function App() {
   // Telemetry Dashboard Modal
   const [showDashboard, setShowDashboard] = useState(false);
   const [showContact, setShowContact] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState("");
+  const [voiceNotice, setVoiceNotice] = useState("");
+  const liveTranscriptTimerRef = useRef(null);
+  const voiceNoticeTimerRef = useRef(null);
   const openContact = useCallback(() => setShowContact(true), []);
   const closeContact = useCallback(() => setShowContact(false), []);
   const [showMatch, setShowMatch] = useState(false);
@@ -515,6 +521,13 @@ export default function App() {
   const handleInterimSpeech = useCallback((interimText) => {
     if (!interimText) return;
 
+    // Show what Chikki is hearing so the visitor can see recognition problems early.
+    if (!audioQueue.isPlaying) {
+      setLiveTranscript(interimText);
+      if (liveTranscriptTimerRef.current) window.clearTimeout(liveTranscriptTimerRef.current);
+      liveTranscriptTimerRef.current = window.setTimeout(() => setLiveTranscript(""), 4000);
+    }
+
     // While Chikki is actively speaking, ignore single noise clicks and faint bleed
     if (audioQueue.isPlaying || isAssistantSpeaking) {
       const trimmed = interimText.trim().toLowerCase();
@@ -539,8 +552,17 @@ export default function App() {
     }
   }, [stopAudioImmediate, isAssistantSpeaking]);
 
+  const handleUnclear = useCallback((heard) => {
+    setLiveTranscript("");
+    setVoiceNotice(`I'm not sure I heard that right (“${heard}”). Could you say it again?`);
+    if (voiceNoticeTimerRef.current) window.clearTimeout(voiceNoticeTimerRef.current);
+    voiceNoticeTimerRef.current = window.setTimeout(() => setVoiceNotice(""), 5000);
+  }, []);
+
   const handleResult = useCallback((transcript) => {
     if (!transcript) return;
+    setLiveTranscript("");
+    setVoiceNotice("");
 
     const turnId = createTurnId();
     activeTurnIdRef.current = turnId;
@@ -754,6 +776,7 @@ export default function App() {
     onWake: handleWake,
     onResult: handleResultWithReset,
     onInterim: handleInterimSpeech,
+    onUnclear: handleUnclear,
     onSpeechError: handleSpeechError,
   });
 
@@ -1078,7 +1101,14 @@ export default function App() {
 
           {/* Subtitles & State Readout */}
           <div className="mt-4 flex flex-col items-center gap-1.5 max-w-lg px-4 w-full">
-            {chikkiState === "speaking" && latestAssistant ? (
+            {liveTranscript && chikkiState !== "speaking" && chikkiState !== "thinking" ? (
+              <div className="flex flex-col items-center gap-1 animate-fadeIn" aria-live="polite">
+                <span className="text-[10px] uppercase tracking-wider text-chikki-purpleLight font-semibold">👂 I&apos;m hearing</span>
+                <p className="text-xs sm:text-sm text-gray-300 italic">&ldquo;{liveTranscript}&rdquo;</p>
+              </div>
+            ) : voiceNotice && chikkiState !== "speaking" && chikkiState !== "thinking" ? (
+              <p className="text-xs sm:text-sm text-amber-200" role="status">{voiceNotice}</p>
+            ) : chikkiState === "speaking" && latestAssistant ? (
               <div className="flex flex-col items-center gap-1 animate-fadeIn">
                 <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">🤖 Chikki</span>
                 <p className="text-xs sm:text-sm text-gray-200 line-clamp-3 leading-relaxed">

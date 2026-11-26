@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { correctTranscript, isLowConfidence } from "../speechText.js";
 
 export function useSpeechRecognition({
   mode = "wake", // "wake" | "command" | "off"
@@ -7,6 +8,7 @@ export function useSpeechRecognition({
   onWake,
   onResult,
   onInterim,
+  onUnclear,
   onSpeechError,
 }) {
   const [supported, setSupported] = useState(true);
@@ -14,6 +16,7 @@ export function useSpeechRecognition({
   const isListeningRef = useRef(false);
   const silenceTimerRef = useRef(null);
   const speechBufferRef = useRef("");
+  const lowConfidenceRef = useRef(false);
 
   const modeRef = useRef(mode);
   const langRef = useRef(lang);
@@ -24,8 +27,8 @@ export function useSpeechRecognition({
   langRef.current = lang;
   isSpeakingRef.current = isAssistantSpeaking;
 
-  const callbacksRef = useRef({ onWake, onResult, onInterim, onSpeechError });
-  callbacksRef.current = { onWake, onResult, onInterim, onSpeechError };
+  const callbacksRef = useRef({ onWake, onResult, onInterim, onUnclear, onSpeechError });
+  callbacksRef.current = { onWake, onResult, onInterim, onUnclear, onSpeechError };
 
   // Initialize mobile hardware DSP to isolate voice and stop tracks cleanly
   const initHardwareDSP = useCallback(async () => {
@@ -66,14 +69,21 @@ export function useSpeechRecognition({
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
     }
-    const clean = speechBufferRef.current
-      .replace(/^(hey\s+)?chikk[iy]\s*/i, "")
-      .trim();
+    const clean = correctTranscript(
+      speechBufferRef.current.replace(/^(hey\s+)?chikk[iy]\s*/i, "")
+    );
+    const unclear = lowConfidenceRef.current;
+    speechBufferRef.current = "";
+    lowConfidenceRef.current = false;
 
-    if (clean && clean.length > 2) {
-      callbacksRef.current.onResult?.(clean);
-      speechBufferRef.current = "";
+    if (!clean || clean.length <= 2) return;
+    if (unclear) {
+      // The recogniser was not sure what it heard: ask the visitor to repeat
+      // instead of answering a question they did not ask.
+      callbacksRef.current.onUnclear?.(clean);
+      return;
     }
+    callbacksRef.current.onResult?.(clean);
   }, []);
 
   const startListening = useCallback(() => {
@@ -93,6 +103,7 @@ export function useSpeechRecognition({
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
+      recognition.maxAlternatives = 3;
       recognition.lang = langRef.current || "en-IN";
 
       recognition.onstart = () => {
@@ -110,9 +121,16 @@ export function useSpeechRecognition({
         let finalText = "";
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const transcript = event.results[i][0]?.transcript || "";
-          if (event.results[i].isFinal) {
+          const result = event.results[i];
+          // Prefer the alternative the recogniser is most confident about.
+          let best = result[0];
+          for (let a = 1; a < result.length; a += 1) {
+            if ((result[a]?.confidence || 0) > (best?.confidence || 0) + 0.15) best = result[a];
+          }
+          const transcript = best?.transcript || "";
+          if (result.isFinal) {
             finalText += transcript;
+            if (isLowConfidence(best?.confidence)) lowConfidenceRef.current = true;
           } else {
             interimText += transcript;
           }
@@ -141,7 +159,7 @@ export function useSpeechRecognition({
             " " +
             currentSegment
           ).trim();
-          callbacksRef.current.onInterim?.(recognizedText);
+          callbacksRef.current.onInterim?.(correctTranscript(recognizedText));
 
           if (finalText) {
             speechBufferRef.current = (
@@ -161,7 +179,7 @@ export function useSpeechRecognition({
               ).trim();
             }
             dispatchCommand();
-          }, 1800);
+          }, finalText ? 1000 : 1800);
         }
       };
 
@@ -201,6 +219,7 @@ export function useSpeechRecognition({
     if (isAssistantSpeaking) {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       speechBufferRef.current = "";
+      lowConfidenceRef.current = false;
       try {
         recognitionRef.current?.abort();
       } catch (_) {}
@@ -222,6 +241,7 @@ export function useSpeechRecognition({
   useEffect(() => {
     if (previousLangRef.current !== lang) {
       speechBufferRef.current = "";
+      lowConfidenceRef.current = false;
       previousLangRef.current = lang;
     }
   }, [lang]);
