@@ -1,23 +1,45 @@
 import base64
 import asyncio
+import logging
 import os
 import re
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
+from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from ai import ChikkiAIError, _is_joke_request, ask_chikki, stream_chikki
+from ai import ChikkiAIError, _is_joke_request, stream_chikki
 from feedback_store import feedback_analytics, read_feedback, record_feedback
 from generate_resume_pdf import build_resume_pdf
 from models import FeedbackRequest
-from resume import build_system_prompt, sync_resume as sync_resume_profile
+from resume import sync_resume as sync_resume_profile
 from resume_loader import sync_drive_resume
+from security import (
+    MAX_MESSAGE_CHARS,
+    MAX_TTS_CHARS,
+    chat_limiter,
+    client_ip,
+    enforce_rate_limit,
+    feedback_limiter,
+    require_admin,
+    resume_limiter,
+    sanitize_history,
+    sanitize_jokes,
+    tts_limiter,
+    ws_connections,
+)
 from tts import clean_for_speech, synthesize_speech, speech_tone
 
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger("chikki")
 
-app = FastAPI(title="Chikki AI Assistant")
+APP_VERSION = "2.0.0"
+
+app = FastAPI(title="Chikki AI Assistant", version=APP_VERSION)
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,26 +60,29 @@ SENTENCE_END = re.compile(r"([.!?।॥\n]+(?:\s+|$))")
 
 
 class TTSRequest(BaseModel):
-    text: str
-    voice: str | None = None
-    language: str | None = None
+    text: str = Field(max_length=MAX_TTS_CHARS)
+    voice: str | None = Field(default=None, max_length=60)
+    language: str | None = Field(default=None, max_length=10)
 
 
 class ResumeDownloadRequest(BaseModel):
-    focus: str = ""
-    linkedin_url: str = ""
-    github_url: str = ""
+    focus: str = Field(default="", max_length=2000)
+    linkedin_url: str = Field(default="", max_length=300)
+    github_url: str = Field(default="", max_length=300)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "version": APP_VERSION}
 
 
 @app.post("/tts")
-async def text_to_speech(req: TTSRequest):
+async def text_to_speech(req: TTSRequest, request: Request):
+    enforce_rate_limit(tts_limiter, request)
     text = req.text.strip()
     if not text:
         raise HTTPException(status_code=400, detail="Text cannot be empty")
     try:
-        # Routed through tts.py now - this cleans markdown/asterisks out of
-        # the text and picks a tone-appropriate rate/pitch, instead of a
-        # raw edge_tts call that skipped both.
         tone = speech_tone(reply=text)
         audio_bytes = await synthesize_speech(
             text,
@@ -66,26 +91,30 @@ async def text_to_speech(req: TTSRequest):
             language=req.language,
         )
         return Response(content=audio_bytes, media_type="audio/mpeg")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as error:
+        logger.exception("TTS endpoint failed")
+        raise HTTPException(status_code=500, detail="Speech synthesis failed") from error
 
 
-@app.post("/resume/sync")
+@app.post("/resume/sync", dependencies=[Depends(require_admin)])
 def sync_resume_route():
     try:
         return {"status": "success", "data": sync_resume_profile()}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    except Exception as error:
+        logger.exception("Resume sync failed")
+        return {"status": "error", "message": str(error)}
 
 
 @app.get("/resume")
-def download_resume(focus: str = "", linkedin_url: str = "", github_url: str = ""):
-    return _resume_pdf_response(focus, linkedin_url, github_url)
+def download_resume(request: Request, focus: str = "", linkedin_url: str = "", github_url: str = ""):
+    enforce_rate_limit(resume_limiter, request)
+    return _resume_pdf_response(focus, linkedin_url[:300], github_url[:300])
 
 
 @app.post("/resume")
-def download_resume_post(request: ResumeDownloadRequest):
-    return _resume_pdf_response(request.focus, request.linkedin_url, request.github_url)
+def download_resume_post(body: ResumeDownloadRequest, request: Request):
+    enforce_rate_limit(resume_limiter, request)
+    return _resume_pdf_response(body.focus, body.linkedin_url, body.github_url)
 
 
 def _resume_pdf_response(focus: str, linkedin_url: str, github_url: str):
@@ -103,30 +132,30 @@ def _resume_pdf_response(focus: str, linkedin_url: str, github_url: str):
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
     except Exception as error:
+        logger.exception("Resume generation failed")
         raise HTTPException(status_code=500, detail="Resume generation failed") from error
 
 
 @app.post("/feedback")
-def create_feedback(request: FeedbackRequest):
-    if request.value not in {"helpful", "needs-improvement"}:
-        raise HTTPException(status_code=422, detail="Feedback value must be helpful or needs-improvement")
+def create_feedback(body: FeedbackRequest, request: Request):
+    enforce_rate_limit(feedback_limiter, request)
     return record_feedback(
-        value=request.value,
-        question=request.question or "",
-        reply=request.reply or "",
-        mode=request.mode or "voice",
-        user_comment=request.user_comment,
-        trace_id=request.trace_id,
-        session_id=request.session_id,
+        value=body.value,
+        question=body.question or "",
+        reply=body.reply or "",
+        mode=body.mode or "voice",
+        user_comment=body.user_comment,
+        trace_id=body.trace_id,
+        session_id=body.session_id,
     )
 
 
-@app.get("/feedback/recent")
+@app.get("/feedback/recent", dependencies=[Depends(require_admin)])
 def recent_feedback(limit: int = Query(50, ge=1, le=200)):
     return read_feedback(limit=limit)
 
 
-@app.get("/feedback/analytics")
+@app.get("/feedback/analytics", dependencies=[Depends(require_admin)])
 def feedback_analytics_route():
     return feedback_analytics()
 
@@ -141,12 +170,13 @@ async def synthesize_b64(
         tone = speech_tone(user_text=user_msg, reply=text)
         audio_bytes = await synthesize_speech(text, voice=voice, tone=tone, language=language)
         if not audio_bytes:
-            print("TTS warning: synthesize_speech returned empty audio for:", text[:60])
+            logger.warning("TTS returned empty audio for: %s", text[:60])
             return ""
         return base64.b64encode(audio_bytes).decode("utf-8")
-    except Exception as e:
-        print("TTS error:", type(e).__name__, e)
+    except Exception as error:
+        logger.warning("TTS error: %s: %s", type(error).__name__, error)
         return ""
+
 
 async def process_chikki_turn(
     websocket: WebSocket,
@@ -246,6 +276,7 @@ async def process_chikki_turn(
         is_joke = _is_joke_request(user_msg)
         if is_joke and final_text.strip():
             conversation_jokes.append(final_text.strip())
+            del conversation_jokes[:-10]
 
         await websocket.send_json({
             "type": "text",
@@ -261,6 +292,7 @@ async def process_chikki_turn(
     except asyncio.CancelledError:
         raise
     except ChikkiAIError as error:
+        logger.warning("All providers failed (%s)", error.kind)
         await websocket.send_json({
             "type": "text",
             "reply": str(error),
@@ -269,7 +301,22 @@ async def process_chikki_turn(
         })
 
 
+async def _send_error(websocket: WebSocket, message: str, kind: str, turn_id: str | None) -> None:
+    await websocket.send_json({
+        "type": "text",
+        "reply": message,
+        "meta": {"isError": True, "kind": kind, "turn_id": turn_id},
+        "turn_id": turn_id,
+    })
+
+
 async def handle_chikki_ws(websocket: WebSocket):
+    ip = client_ip(websocket)
+    if not ws_connections.acquire(ip):
+        logger.warning("Rejected WebSocket from %s: too many open connections", ip)
+        await websocket.close(code=1008, reason="Too many connections")
+        return
+
     await websocket.accept()
     conversation_history = []
     conversation_jokes = []
@@ -289,6 +336,8 @@ async def handle_chikki_ws(websocket: WebSocket):
                     active_turn_task.result()
                 except asyncio.CancelledError:
                     pass
+                except Exception:
+                    logger.exception("Conversation turn failed")
                 active_turn_task = None
 
             if receive_task not in completed:
@@ -296,6 +345,9 @@ async def handle_chikki_ws(websocket: WebSocket):
 
             data = receive_task.result()
             receive_task = asyncio.create_task(websocket.receive_json())
+
+            if not isinstance(data, dict):
+                continue
 
             if data.get("type") == "interrupt":
                 if active_turn_task is not None:
@@ -308,36 +360,44 @@ async def handle_chikki_ws(websocket: WebSocket):
                 continue
 
             if data.get("type") == "sync":
-                incoming_history = data.get("history", [])
-                incoming_jokes = data.get("joke_history", [])
-                if isinstance(incoming_history, list):
-                    conversation_history = [
-                        {"role": turn["role"], "content": turn["content"]}
-                        for turn in incoming_history
-                        if isinstance(turn, dict)
-                        and turn.get("role") in {"user", "assistant"}
-                        and isinstance(turn.get("content"), str)
-                        and turn["content"].strip()
-                    ][-12:]
-                if isinstance(incoming_jokes, list):
-                    conversation_jokes = [
-                        joke.strip()
-                        for joke in incoming_jokes
-                        if isinstance(joke, str) and joke.strip()
-                    ]
+                conversation_history = sanitize_history(data.get("history", []))
+                conversation_jokes = sanitize_jokes(data.get("joke_history", []))
                 continue
 
             user_msg = data.get("message") or data.get("text") or ""
-            voice_mode = data.get("voice", True)
+            if not isinstance(user_msg, str) or not user_msg.strip():
+                continue
+            voice_mode = bool(data.get("voice", True))
             language = data.get("language", "en-IN")
+            if language not in {"en-IN", "hi-IN", "te-IN"}:
+                language = "en-IN"
             turn_id = data.get("turn_id")
-            is_joke = _is_joke_request(user_msg)
+            turn_id = turn_id[:100] if isinstance(turn_id, str) else None
 
-            if not user_msg.strip():
+            if len(user_msg) > MAX_MESSAGE_CHARS:
+                await _send_error(
+                    websocket,
+                    f"That message is a bit long. Please keep it under {MAX_MESSAGE_CHARS} characters.",
+                    "too_long",
+                    turn_id,
+                )
+                continue
+
+            if not chat_limiter.allow(ip):
+                logger.warning("Chat rate limit exceeded for %s", ip)
+                await _send_error(
+                    websocket,
+                    "You're asking faster than I can think! Please wait a moment and try again.",
+                    "rate_limit",
+                    turn_id,
+                )
                 continue
 
             if resume_refresh_task is not None:
-                await resume_refresh_task
+                try:
+                    await resume_refresh_task
+                except Exception:
+                    logger.exception("Background resume refresh failed")
                 resume_refresh_task = None
 
             if active_turn_task is not None:
@@ -360,11 +420,14 @@ async def handle_chikki_ws(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
     except Exception:
-        pass
+        logger.exception("WebSocket session crashed for %s", ip)
     finally:
+        ws_connections.release(ip)
         receive_task.cancel()
         if active_turn_task is not None:
             active_turn_task.cancel()
+        if resume_refresh_task is not None:
+            resume_refresh_task.cancel()
 
 
 @app.websocket("/ws")

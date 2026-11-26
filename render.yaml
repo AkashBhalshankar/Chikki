@@ -18,8 +18,6 @@ services:
         sync: false
       - key: NVIDIA_MODEL
         sync: false
-      - key: NVIDIA_EMBED_MODEL
-        sync: false
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL
@@ -27,4 +25,12 @@ services:
       - key: GOOGLE_DRIVE_RESUME_URL
         sync: false
       - key: ALLOWED_ORIGINS
+        sync: false
+      - key: ADMIN_TOKEN
+        generateValue: true
+      - key: FEEDBACK_DB_PATH
+        value: data/feedback.db
+      - key: LANGFUSE_PUBLIC_KEY
+        sync: false
+      - key: LANGFUSE_SECRET_KEY
         sync: false

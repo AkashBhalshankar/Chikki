@@ -1,8 +1,11 @@
 import json
+import logging
 import re
 from datetime import date, datetime
 from calendar import month_abbr
 from pathlib import Path
+
+logger = logging.getLogger("chikki.resume")
 
 # Safe import from resume_loader
 try:
@@ -137,6 +140,7 @@ def load_resume(resume_path: Path = RESUME_PATH) -> dict:
         with open(resume_path, "r", encoding="utf-8") as f:
             resume = json.load(f)
     except Exception:
+        logger.exception("Could not load %s", resume_path.name)
         return {"name": "Akash Bhalshankar"}
 
     approx_str, exact_str, _ = calculate_dynamic_experience(resume)
@@ -151,13 +155,13 @@ def sync_resume() -> dict:
         try:
             drive_text = sync_drive_resume()
         except Exception:
-            pass
+            logger.exception("Drive resume sync failed")
 
     if not drive_text and callable(get_current_resume_text):
         try:
             drive_text = get_current_resume_text()
         except Exception:
-            pass
+            logger.exception("Reading cached resume text failed")
 
     resume = load_resume()
     source = "google_drive" if drive_text else "local_json"
@@ -178,7 +182,7 @@ def build_system_prompt() -> str:
         try:
             live_resume_text = get_current_resume_text()
         except Exception:
-            pass
+            logger.exception("Reading live resume text failed; using bundled profile")
 
     if live_resume_text and len(live_resume_text.strip()) > 30:
         resume_context = f"=== CURRENT LIVE RESUME (GOOGLE DRIVE) ===\n{live_resume_text.strip()}"

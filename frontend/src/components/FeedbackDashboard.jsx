@@ -1,6 +1,22 @@
 import { useEffect, useState } from "react";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const ADMIN_TOKEN_KEY = "chikki_admin_token";
+
+function readStoredToken() {
+  try {
+    return sessionStorage.getItem(ADMIN_TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function storeToken(token) {
+  try {
+    if (token) sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+    else sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+  } catch {}
+}
 
 export default function FeedbackDashboard({ isOpen, onClose }) {
   const [analytics, setAnalytics] = useState(null);
@@ -8,15 +24,32 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [filter, setFilter] = useState("all");
+  const [adminToken, setAdminToken] = useState(readStoredToken);
+  const [tokenInput, setTokenInput] = useState("");
 
-  const fetchData = async () => {
+  const fetchData = async (token = adminToken) => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setLoadError("");
     try {
+      const headers = { "X-Admin-Token": token };
       const [resAnalytics, resLogs] = await Promise.all([
-        fetch(`${BASE_URL}/feedback/analytics`, { cache: "no-store" }),
-        fetch(`${BASE_URL}/feedback/recent?limit=50`, { cache: "no-store" }),
+        fetch(`${BASE_URL}/feedback/analytics`, { cache: "no-store", headers }),
+        fetch(`${BASE_URL}/feedback/recent?limit=50`, { cache: "no-store", headers }),
       ]);
+      if (resAnalytics.status === 401 || resLogs.status === 401) {
+        storeToken("");
+        setAdminToken("");
+        setLoadError("That admin token was rejected. Please enter it again.");
+        return;
+      }
+      if (resAnalytics.status === 503) {
+        setLoadError("Admin access is not configured on the backend (set ADMIN_TOKEN).");
+        return;
+      }
       if (!resAnalytics.ok || !resLogs.ok) {
         throw new Error(`Feedback service returned ${resAnalytics.status}/${resLogs.status}`);
       }
@@ -40,6 +73,64 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const handleTokenSubmit = (event) => {
+    event.preventDefault();
+    const token = tokenInput.trim();
+    if (!token) return;
+    storeToken(token);
+    setAdminToken(token);
+    setTokenInput("");
+    fetchData(token);
+  };
+
+  if (!adminToken) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 font-mono">
+        <form
+          onSubmit={handleTokenSubmit}
+          className="max-w-sm w-full rounded-2xl border border-gray-700 bg-[#0d0d12] p-5 space-y-4 shadow-2xl"
+        >
+          <div>
+            <h2 className="text-sm font-bold text-chikki-purpleLight tracking-wide">ADMIN ACCESS</h2>
+            <p className="mt-1 text-[11px] text-gray-400">Feedback analytics are private. Enter the admin token to continue.</p>
+          </div>
+          {loadError && (
+            <div role="alert" className="border border-rose-800/60 bg-rose-950/30 px-3 py-2 text-xs text-rose-200">
+              {loadError}
+            </div>
+          )}
+          <label className="block">
+            <span className="sr-only">Admin token</span>
+            <input
+              type="password"
+              autoComplete="off"
+              autoFocus
+              value={tokenInput}
+              onChange={(event) => setTokenInput(event.target.value)}
+              placeholder="Admin token"
+              className="w-full rounded-lg border border-gray-700 bg-zinc-900 px-3 py-2 text-xs text-white outline-none focus:border-chikki-purple"
+            />
+          </label>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-gray-700 text-gray-300"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="text-xs px-3 py-1.5 rounded-lg bg-chikki-purple/30 border border-chikki-purple text-chikki-purpleLight hover:bg-chikki-purple/40"
+            >
+              Unlock
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
 
   const filteredLogs = recentLogs.filter((item) => {
     if (filter === "with-comments") return Boolean(item.user_comment && item.user_comment.trim());
@@ -82,7 +173,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
               {loadError && (
                 <div role="alert" className="flex items-center justify-between gap-3 border border-rose-800/60 bg-rose-950/30 px-3 py-2 text-xs text-rose-200">
                   <span>{loadError}</span>
-                  <button type="button" onClick={fetchData} className="shrink-0 underline underline-offset-2">
+                  <button type="button" onClick={() => fetchData()} className="shrink-0 underline underline-offset-2">
                     Retry
                   </button>
                 </div>
@@ -148,7 +239,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
                 </div>
 
                 <button
-                  onClick={fetchData}
+                  onClick={() => fetchData()}
                   className="text-[11px] text-gray-400 hover:text-white px-2.5 py-1 rounded bg-zinc-800/80 hover:bg-zinc-800 transition-colors"
                 >
                   🔄 Refresh

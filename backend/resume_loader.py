@@ -1,4 +1,5 @@
 import io
+import logging
 import os
 import re
 import time
@@ -6,6 +7,8 @@ import requests
 from pathlib import Path
 from pypdf import PdfReader
 from dotenv import load_dotenv
+
+logger = logging.getLogger("chikki.resume_loader")
 
 # Ensure environment variables are loaded
 ENV_PATH = Path(__file__).resolve().parent / ".env"
@@ -105,7 +108,8 @@ def sync_drive_resume() -> str:
     try:
         text, _ = fetch_resume_from_drive(drive_url)
         return text
-    except Exception:
+    except Exception as error:
+        logger.warning("Google Drive resume fetch failed: %s", error)
         return ""
 
 

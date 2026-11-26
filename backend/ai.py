@@ -1,5 +1,8 @@
+import logging
 import os
 import re
+import threading
+import time
 from difflib import SequenceMatcher
 from typing import Iterator, Tuple
 
@@ -11,6 +14,8 @@ from resume import build_system_prompt
 
 load_dotenv()
 
+logger = logging.getLogger("chikki.ai")
+
 # -------------------------------------------------------------------------
 # Observability: Langfuse
 # -------------------------------------------------------------------------
@@ -19,7 +24,7 @@ if os.environ.get("LANGFUSE_PUBLIC_KEY") and os.environ.get("LANGFUSE_SECRET_KEY
     try:
         langfuse = get_client()
     except Exception:
-        pass
+        logger.exception("Langfuse initialisation failed; continuing without tracing")
 
 # -------------------------------------------------------------------------
 # Multi-Provider Configuration (All Verified 2026 Endpoints)
@@ -47,7 +52,7 @@ PROVIDERS = {
     },
 }
 
-ACTIVE_PROVIDER = "groq"
+PRIORITY_ORDER = ["groq", "gemini", "nvidia", "openrouter"]
 _clients = {}
 
 
@@ -55,6 +60,46 @@ class ChikkiAIError(Exception):
     def __init__(self, message: str, kind: str = "unknown"):
         super().__init__(message)
         self.kind = kind
+
+
+class CircuitBreaker:
+    """Temporarily skips providers that recently failed.
+
+    Auth and retired-model errors will not fix themselves, so those providers
+    are skipped for longer than transient failures (timeouts, rate limits).
+    If every provider is cooling down, they are still tried in priority order
+    rather than failing without an attempt.
+    """
+
+    COOLDOWNS = {"auth": 600.0, "model_retired": 600.0}
+    DEFAULT_COOLDOWN = 30.0
+
+    def __init__(self, clock=time.monotonic):
+        self._clock = clock
+        self._open_until: dict[str, float] = {}
+        self._lock = threading.Lock()
+
+    def record_failure(self, provider: str, kind: str) -> None:
+        cooldown = self.COOLDOWNS.get(kind, self.DEFAULT_COOLDOWN)
+        with self._lock:
+            self._open_until[provider] = self._clock() + cooldown
+        logger.warning("Provider %s failed (%s); skipping it for %.0fs", provider, kind, cooldown)
+
+    def record_success(self, provider: str) -> None:
+        with self._lock:
+            self._open_until.pop(provider, None)
+
+    def is_open(self, provider: str) -> bool:
+        with self._lock:
+            return self._clock() < self._open_until.get(provider, 0.0)
+
+    def order(self, providers: list[str]) -> list[str]:
+        healthy = [p for p in providers if not self.is_open(p)]
+        cooling = [p for p in providers if self.is_open(p)]
+        return healthy + cooling
+
+
+circuit_breaker = CircuitBreaker()
 
 
 def _get_client(provider_key: str) -> OpenAI:
@@ -155,6 +200,7 @@ def _stream_provider(
     messages.append({"role": "user", "content": message})
 
     if langfuse:
+        yielded_any = False
         try:
             with langfuse.start_as_current_observation(
                 as_type="span",
@@ -185,6 +231,7 @@ def _stream_provider(
                             delta = chunk.choices[0].delta.content or ""
                             if delta:
                                 collected.append(delta)
+                                yielded_any = True
                                 yield delta, current_trace_id
 
                         gen.update(output="".join(collected))
@@ -194,7 +241,10 @@ def _stream_provider(
         except GeneratorExit:
             return
         except Exception:
-            pass
+            # Once tokens have reached the user, retrying would duplicate them.
+            if yielded_any:
+                raise
+            logger.warning("Traced call to %s failed; retrying without Langfuse", provider_name, exc_info=True)
 
     # Direct streaming fallback without Langfuse
     try:
@@ -223,8 +273,6 @@ def stream_chikki(
     previous_jokes: list[str] | None = None,
 ) -> Iterator[Tuple[str, str]]:
     """Yields (token, trace_id) pairs with priority failover across all providers."""
-    global ACTIVE_PROVIDER
-
     previous_jokes = previous_jokes or []
     is_joke = _is_joke_request(message)
     request_message = message.strip() if is_joke else _prepare_message(message, language)
@@ -249,12 +297,7 @@ def stream_chikki(
         )
     last_error = None
 
-    priority_order = ["groq", "gemini", "nvidia", "openrouter"]
-
-    if ACTIVE_PROVIDER in priority_order:
-        candidates = [ACTIVE_PROVIDER] + [p for p in priority_order if p != ACTIVE_PROVIDER]
-    else:
-        candidates = priority_order
+    candidates = circuit_breaker.order(PRIORITY_ORDER)
 
     accepted_candidate_attempts = 0
     for provider in candidates:
@@ -284,10 +327,9 @@ def stream_chikki(
                     if not candidate_tokens:
                         break
                     accepted_candidate_attempts += 1
+                    circuit_breaker.record_success(provider)
                     if not _is_repeated_joke(candidate, rejected_jokes):
                         yield from candidate_tokens
-                        if ACTIVE_PROVIDER != provider:
-                            ACTIVE_PROVIDER = provider
                         return
                     rejected_jokes.append(candidate)
                 if accepted_candidate_attempts >= 2:
@@ -301,16 +343,17 @@ def stream_chikki(
                 yield first_token_pair
                 for token_pair in iterator:
                     yield token_pair
-
-                if ACTIVE_PROVIDER != provider:
-                    ACTIVE_PROVIDER = provider
+                circuit_breaker.record_success(provider)
                 return
+
+            logger.warning("Provider %s returned an empty stream", provider)
+            circuit_breaker.record_failure(provider, "empty")
 
         except GeneratorExit:
             return
         except Exception as e:
             last_error = e
-            kind = _classify_error(e)
+            circuit_breaker.record_failure(provider, _classify_error(e))
             continue
 
     kind = _classify_error(last_error) if last_error else "unknown"

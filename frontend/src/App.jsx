@@ -59,8 +59,8 @@ const QUICK_PROMPTS = {
 const CONTACT_ACTIONS = {
   linkedin: import.meta.env.VITE_LINKEDIN_URL,
   github: import.meta.env.VITE_GITHUB_URL,
-  email: import.meta.env.VITE_CONTACT_EMAIL || "akashbhalshankar07@gmail.com",
-  phone: import.meta.env.VITE_CONTACT_PHONE || "+91 9014160774",
+  email: import.meta.env.VITE_CONTACT_EMAIL || "",
+  phone: import.meta.env.VITE_CONTACT_PHONE || "",
   resume: import.meta.env.VITE_RESUME_URL || `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/resume`,
 };
 

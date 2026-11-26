@@ -1,5 +1,6 @@
-from typing import List, Optional
-from pydantic import BaseModel
+from typing import List, Literal, Optional
+
+from pydantic import BaseModel, Field
 
 
 class ChatMessage(BaseModel):
@@ -17,17 +18,11 @@ class ChatResponse(BaseModel):
     trace_id: Optional[str] = None
 
 
-class TTSRequest(BaseModel):
-    text: str
-    voice: Optional[str] = None
-
-
 class FeedbackRequest(BaseModel):
-    value: str
-    question: Optional[str] = ""
-    reply: Optional[str] = ""
-    mode: Optional[str] = "voice"
-    user_comment: Optional[str] = None
-    trace_id: Optional[str] = None
-    session_id: Optional[str] = None
-    session_id: Optional[str] = None
+    value: Literal["helpful", "needs-improvement"]
+    question: Optional[str] = Field(default="", max_length=2000)
+    reply: Optional[str] = Field(default="", max_length=4000)
+    mode: Optional[str] = Field(default="voice", max_length=20)
+    user_comment: Optional[str] = Field(default=None, max_length=1000)
+    trace_id: Optional[str] = Field(default=None, max_length=100)
+    session_id: Optional[str] = Field(default=None, max_length=100)
