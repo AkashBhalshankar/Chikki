@@ -40,7 +40,7 @@ const STATES = {
   sleepy: { stroke: "#3C3489", eyeFill: "#7F77DD", mouth: "M 82 63 Q 90 65 98 63", coreFill: "#1c1c1c", dim: true, closedEyes: true, zzz: true },
 };
 
-export default function ChikkiBot({ state = "idle", expression = "confident", size, className, onClick }) {
+export default function ChikkiBot({ state = "idle", expression = "confident", size, className, onClick, faceOnly = false }) {
   const [isHovered, setIsHovered] = useState(false);
   const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
   const safeState = typeof state === "string" && STATES[state] ? state : "idle";
@@ -63,8 +63,8 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
   return (
     <motion.svg
       width={fluid ? undefined : size || 180}
-      height={fluid ? undefined : (size || 180) * 1.17}
-      viewBox="0 0 180 210"
+      height={fluid ? undefined : (size || 180) * (faceOnly ? 0.68 : 1.17)}
+      viewBox={faceOnly ? "38 6 104 71" : "0 0 180 210"}
       className={className}
       onClick={onClick}
       onHoverStart={() => setIsHovered(true)}
@@ -78,7 +78,7 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
         const y = ((event.clientY - bounds.top) / bounds.height - 0.5) * 2;
         setEyeOffset({ x: x * 2.5, y: y * 1.5 });
       }}
-      style={{ cursor: onClick ? "pointer" : "default", ...(fluid ? { aspectRatio: "180 / 210" } : {}) }}
+      style={{ cursor: onClick ? "pointer" : "default", ...(fluid ? { aspectRatio: faceOnly ? "104 / 71" : "180 / 210" } : {}) }}
       animate={{
         y: cfg.jump ? [0, -14, 0] : cfg.bounce ? [0, -3, 0] : cfg.dim ? [0, 2, 0] : [0, -4, 0],
         x: cfg.shiver ? [0, -2, 2, 0] : 0,
@@ -188,6 +188,8 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
       </motion.g>
 
 
+      {!faceOnly && (
+      <>
       <rect x="67" y="75" width="46" height="55" rx="6" fill="#2A2A2A" stroke="#444" strokeWidth="1" />
 
       {cfg.ringsIn && (
@@ -221,6 +223,8 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
 
       <rect x="73" y="130" width="14" height="30" rx="4" fill="#2A2A2A" />
       <rect x="93" y="130" width="14" height="30" rx="4" fill="#2A2A2A" />
+      </>
+      )}
     </motion.svg>
   );
 }

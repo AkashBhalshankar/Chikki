@@ -40,7 +40,7 @@ export default function ThinkingIndicator() {
   const { word, face, index } = useWorkingWord();
   return (
     <div className="flex items-center gap-3 px-1 py-1 text-sm text-gray-400" role="status" aria-live="polite">
-      <ChikkiBot state={face} size={78} />
+      <ChikkiBot state={face} faceOnly size={64} />
       <span className="flex items-center gap-2">
         <span key={index} className="thinking-word">{word}…</span>
         <span className="typing-dots" aria-hidden="true"><i /><i /><i /></span>
