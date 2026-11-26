@@ -261,3 +261,17 @@ export function connectVoiceSocket({
 
   return client;
 }
+export async function matchJobDescription(jobDescription) {
+  const res = await fetch(`${BASE_URL}/match`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ job_description: jobDescription }),
+  });
+  if (res.status === 429) throw new Error("You've reached the limit for now. Please try again later.");
+  if (res.status === 422) throw new Error("Please paste the full job description (at least a few sentences).");
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.detail || "Could not analyse that right now. Please try again.");
+  }
+  return res.json();
+}

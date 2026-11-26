@@ -30,6 +30,10 @@ class FeedbackRequest(BaseModel):
     session_id: Optional[str] = Field(default=None, max_length=100)
 
 
+class JobMatchRequest(BaseModel):
+    job_description: str = Field(min_length=40, max_length=6000)
+
+
 class ContactRequest(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     email: str = Field(max_length=254, pattern=EMAIL_PATTERN)

@@ -104,6 +104,7 @@ def summary(days: int = 30) -> Dict[str, Any]:
 
     turns = [r for r in rows if r["type"] == "turn"]
     downloads = [r for r in rows if r["type"] == "resume_download"]
+    matches = [r for r in rows if r["type"] == "jd_match" and r["ok"]]
     ok_turns = [r for r in turns if r["ok"]]
     latencies = [r["latency_ms"] for r in ok_turns if r["latency_ms"] is not None]
     first_tokens = [r["first_token_ms"] for r in ok_turns if r["first_token_ms"] is not None]
@@ -128,6 +129,7 @@ def summary(days: int = 30) -> Dict[str, Any]:
             "turns": len(turns),
             "failed_turns": len(turns) - len(ok_turns),
             "resume_downloads": len(downloads),
+            "jd_matches": len(matches),
             "contact_messages": contacts,
             "jokes": sum(1 for r in turns if r["is_joke"]),
         },

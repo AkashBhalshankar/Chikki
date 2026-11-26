@@ -379,6 +379,42 @@ def stream_chikki(
     raise ChikkiAIError(fallback_messages[kind], kind=kind)
 
 
+def complete_text(
+    system_prompt: str,
+    user_message: str,
+    max_tokens: int = 700,
+    temperature: float = 0.2,
+    timeout: float = 25.0,
+) -> str:
+    """Single non-streaming completion with the same provider failover as chat."""
+    last_error = None
+    for provider in circuit_breaker.order(PRIORITY_ORDER):
+        cfg = PROVIDERS.get(provider, {})
+        if not cfg.get("api_key"):
+            continue
+        try:
+            response = _get_client(provider).chat.completions.create(
+                model=cfg["model"],
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                ],
+                temperature=temperature,
+                max_tokens=max_tokens,
+                timeout=timeout,
+            )
+            text = (response.choices[0].message.content or "").strip()
+            if text:
+                circuit_breaker.record_success(provider)
+                return text
+            circuit_breaker.record_failure(provider, "empty")
+        except Exception as error:
+            last_error = error
+            circuit_breaker.record_failure(provider, _classify_error(error))
+    kind = _classify_error(last_error) if last_error else "unknown"
+    raise ChikkiAIError("I couldn't analyse that right now. Please try again in a moment.", kind=kind)
+
+
 def ask_chikki(
     message: str,
     history: list[dict],

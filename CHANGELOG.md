@@ -10,6 +10,11 @@
 - Chikki project details moved from the hardcoded system prompt into `knowledge/chikki.md`.
 - Added admin endpoint `POST /knowledge/refresh`.
 
+### New: role-fit check (job description match)
+- Recruiters paste a job description and get an honest fit score, strong matches, real gaps and talking points, grounded only in the verified resume and knowledge base.
+- One click downloads a resume reordered for that role (existing content only, nothing invented).
+- `POST /match`, limited to 6 per hour per IP; the job description is treated as untrusted data and results are counted in the Usage tab.
+
 ### New: usage analytics
 - Every answered or failed question is logged (question text, language, voice/text, provider, latency, whether knowledge was found), with no IP or identity.
 - `GET /analytics/summary` (admin) and a new Usage tab: questions per day, top questions and topics, knowledge gaps, languages, voice vs text, providers used, failures, median and p95 reply time, resume downloads and messages left.

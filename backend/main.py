@@ -13,11 +13,12 @@ from pydantic import BaseModel, Field
 
 from ai import ChikkiAIError, _is_joke_request, stream_chikki
 from analytics_store import record_event, summary as analytics_summary
+from jd_match import analyze_job
 from contact_store import notify_contact, read_contacts, save_contact
 from feedback_store import feedback_analytics, read_feedback, record_feedback
 from generate_resume_pdf import build_resume_pdf
 from knowledge import format_context, knowledge_base, sources_for
-from models import ContactRequest, FeedbackRequest
+from models import ContactRequest, FeedbackRequest, JobMatchRequest
 from resume import sync_resume as sync_resume_profile
 from resume_loader import sync_drive_resume
 from security import (
@@ -26,6 +27,7 @@ from security import (
     chat_limiter,
     client_ip,
     contact_limiter,
+    match_limiter,
     enforce_rate_limit,
     feedback_limiter,
     require_admin,
@@ -190,6 +192,21 @@ def analytics_summary_route(days: int = Query(30, ge=1, le=365)):
 @app.get("/feedback/analytics", dependencies=[Depends(require_admin)])
 def feedback_analytics_route():
     return feedback_analytics()
+
+
+@app.post("/match")
+async def match_job(body: JobMatchRequest, request: Request):
+    enforce_rate_limit(match_limiter, request)
+    try:
+        result = await asyncio.to_thread(analyze_job, body.job_description)
+    except ChikkiAIError as error:
+        await asyncio.to_thread(record_event, "jd_match", "", None, None, None, None, None, False, error.kind)
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    except ValueError as error:
+        await asyncio.to_thread(record_event, "jd_match", "", None, None, None, None, None, False, "bad_format")
+        raise HTTPException(status_code=502, detail=str(error)) from error
+    await asyncio.to_thread(record_event, "jd_match", "", None, None, None, None, None, True)
+    return result
 
 
 @app.post("/contact")

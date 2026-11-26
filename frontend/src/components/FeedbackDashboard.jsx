@@ -411,6 +411,7 @@ function UsagePanel({ usage }) {
     ["Questions (30d)", totals.turns],
     ["Resume downloads", totals.resume_downloads],
     ["Messages left", totals.contact_messages],
+    ["Role-fit checks", totals.jd_matches],
     ["Failed answers", totals.failed_turns],
     ["Median reply", latency.p50 != null ? `${(latency.p50 / 1000).toFixed(1)}s` : "–"],
     ["Slow (p95)", latency.p95 != null ? `${(latency.p95 / 1000).toFixed(1)}s` : "–"],

@@ -67,6 +67,7 @@ chat_limiter = RateLimiter(_int_env("RATE_LIMIT_CHAT_PER_MIN", 20), 60)
 tts_limiter = RateLimiter(_int_env("RATE_LIMIT_TTS_PER_MIN", 30), 60)
 resume_limiter = RateLimiter(_int_env("RATE_LIMIT_RESUME_PER_MIN", 6), 60)
 feedback_limiter = RateLimiter(_int_env("RATE_LIMIT_FEEDBACK_PER_MIN", 20), 60)
+match_limiter = RateLimiter(_int_env("RATE_LIMIT_MATCH_PER_HOUR", 6), 3600)
 contact_limiter = RateLimiter(_int_env("RATE_LIMIT_CONTACT_PER_HOUR", 5), 3600)
 
 

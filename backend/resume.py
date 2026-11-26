@@ -173,6 +173,19 @@ def sync_resume() -> dict:
     }
 
 
+def get_resume_context() -> str:
+    """Plain resume text (live Drive copy, else bundled profile) for non-voice features."""
+    live_text = ""
+    if callable(get_current_resume_text):
+        try:
+            live_text = get_current_resume_text()
+        except Exception:
+            logger.exception("Reading live resume text failed; using bundled profile")
+    if live_text and len(live_text.strip()) > 30:
+        return live_text.strip()
+    return json.dumps(load_resume(), indent=2)
+
+
 def build_system_prompt() -> str:
     resume = load_resume()
     name = resume.get("name", "Akash Bhalshankar")

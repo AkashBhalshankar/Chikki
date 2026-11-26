@@ -5,6 +5,7 @@ import ChatPanel from "./components/ChatPanel.jsx";
 import AppFooter from "./components/AppFooter.jsx";
 import FeedbackDashboard from "./components/FeedbackDashboard.jsx";
 import ContactModal from "./components/ContactModal.jsx";
+import JobMatchModal from "./components/JobMatchModal.jsx";
 import LanguageSelector from "./components/LanguageSelector.jsx";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition.js";
 import { connectVoiceSocket, downloadResumePdf, fetchGreetingAudio, sendFeedback } from "./services/api.js";
@@ -312,6 +313,9 @@ export default function App() {
   const [showContact, setShowContact] = useState(false);
   const openContact = useCallback(() => setShowContact(true), []);
   const closeContact = useCallback(() => setShowContact(false), []);
+  const [showMatch, setShowMatch] = useState(false);
+  const openMatch = useCallback(() => setShowMatch(true), []);
+  const closeMatch = useCallback(() => setShowMatch(false), []);
 
   // Session tracking
   const [sessionId] = useState(() => {
@@ -666,6 +670,14 @@ export default function App() {
     }
   }, [returnToVoiceHome]);
 
+  const handleDownloadTailoredResume = useCallback(async (focus) => {
+    try {
+      await downloadResumePdf(CONTACT_ACTIONS.resume, focus || "", CONTACT_ACTIONS);
+    } catch {
+      window.location.assign(new URL(CONTACT_ACTIONS.resume, window.location.origin));
+    }
+  }, []);
+
   const handleSpeechError = useCallback((kind) => {
     if (kind === "not-allowed" || kind === "audio-capture" || kind === "not-supported") {
       setInputMode("chat");
@@ -921,6 +933,7 @@ export default function App() {
           onBack={handleSwitchToVoice}
           onOpenDashboard={() => setShowDashboard(true)}
           onOpenContact={openContact}
+          onOpenMatch={openMatch}
           language={currentLang}
           onLanguageChange={setCurrentLang}
         />
@@ -934,6 +947,7 @@ export default function App() {
           topics={resumeFocusFromMessages(messages).slice(0, 300)}
           bookingUrl={CONTACT_ACTIONS.booking}
         />
+        <JobMatchModal isOpen={showMatch} onClose={closeMatch} onDownloadResume={handleDownloadTailoredResume} />
       </>
     );
   }
@@ -1155,6 +1169,9 @@ export default function App() {
             <button type="button" onClick={openContact} className="action-button primary-action">
               ✉️ Leave a message
             </button>
+            <button type="button" onClick={openMatch} className="action-button">
+              🎯 Check role fit
+            </button>
             {CONTACT_ACTIONS.booking && (
               <a href={CONTACT_ACTIONS.booking} target="_blank" rel="noreferrer" className="action-button">
                 📅 Book a call
@@ -1207,6 +1224,7 @@ export default function App() {
         topics={resumeFocusFromMessages(messages).slice(0, 300)}
         bookingUrl={CONTACT_ACTIONS.booking}
       />
+      <JobMatchModal isOpen={showMatch} onClose={closeMatch} onDownloadResume={handleDownloadTailoredResume} />
     </div>
   );
 }

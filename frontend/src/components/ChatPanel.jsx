@@ -35,6 +35,7 @@ export default function ChatPanel({
   onDownloadResume,
   onOpenDashboard,
   onOpenContact,
+  onOpenMatch,
   language = "en-IN",
   onLanguageChange,
 }) {
@@ -141,6 +142,11 @@ export default function ChatPanel({
             {onOpenContact && (
               <button type="button" onClick={onOpenContact} className="action-button primary-action">
                 ✉️ Leave a message
+              </button>
+            )}
+            {onOpenMatch && (
+              <button type="button" onClick={onOpenMatch} className="action-button">
+                🎯 Check role fit
               </button>
             )}
             {actions.booking && (
