@@ -34,7 +34,7 @@ Resume downloads are generated from the latest Google Drive resume. The visitor'
 
 ## Contact and scheduling
 
-Visitors can leave a message for Akash with their name, email, company, and note, using the "Leave a message" button. Messages are saved for Akash to review and can trigger an instant notification, with rate limiting and a spam honeypot. When a booking link is configured, visitors can also schedule a call directly with the "Book a call" button.
+Visitors can leave a message for Akash with their name, email, company, and note, using the single "Contact Akash" button, which also shows his email and phone to copy. Messages are saved for Akash to review and can trigger an instant notification, with rate limiting and a spam honeypot. When a booking link is configured, the same window offers a "Book a call" link to schedule directly.
 
 ## Engineering approach
 

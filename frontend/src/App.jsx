@@ -1036,6 +1036,8 @@ export default function App() {
           onClose={closeContact}
           topics={resumeFocusFromMessages(messages).slice(0, 300)}
           bookingUrl={CONTACT_ACTIONS.booking}
+          email={CONTACT_ACTIONS.email}
+          phone={CONTACT_ACTIONS.phone}
         />
         <JobMatchModal isOpen={showMatch} onClose={closeMatch} onDownloadResume={handleDownloadTailoredResume} />
         <HowItWorksModal isOpen={showHow} onClose={closeHow} githubUrl={CONTACT_ACTIONS.github} />
@@ -1265,7 +1267,7 @@ export default function App() {
               Resume PDF
             </button>
             <button type="button" onClick={openContact} className="action-button primary-action">
-              ✉️ Leave a message
+              ✉️ Contact Akash
             </button>
             <button type="button" onClick={openMatch} className="action-button">
               🎯 Check role fit
@@ -1273,11 +1275,6 @@ export default function App() {
             <button type="button" onClick={openHow} className="action-button">
               🧠 How Chikki works
             </button>
-            {CONTACT_ACTIONS.booking && (
-              <a href={CONTACT_ACTIONS.booking} target="_blank" rel="noreferrer" className="action-button">
-                📅 Book a call
-              </a>
-            )}
             {CONTACT_ACTIONS.linkedin && (
               <a
                 href={CONTACT_ACTIONS.linkedin}
@@ -1291,22 +1288,6 @@ export default function App() {
             {CONTACT_ACTIONS.github && (
               <a href={CONTACT_ACTIONS.github} target="_blank" rel="noreferrer" className="action-button">
                 GitHub
-              </a>
-            )}
-            {CONTACT_ACTIONS.email && (
-              <a
-                href={`mailto:${CONTACT_ACTIONS.email}?subject=${encodeURIComponent("Interview opportunity for Akash Bhalshankar")}`}
-                className="action-button primary-action"
-              >
-                Contact Akash
-              </a>
-            )}
-            {CONTACT_ACTIONS.phone && (
-              <a
-                href={`tel:${CONTACT_ACTIONS.phone.replace(/\s+/g, "")}`}
-                className="action-button"
-              >
-                Call
               </a>
             )}
           </div>
@@ -1324,6 +1305,8 @@ export default function App() {
         onClose={closeContact}
         topics={resumeFocusFromMessages(messages).slice(0, 300)}
         bookingUrl={CONTACT_ACTIONS.booking}
+          email={CONTACT_ACTIONS.email}
+          phone={CONTACT_ACTIONS.phone}
       />
       <JobMatchModal isOpen={showMatch} onClose={closeMatch} onDownloadResume={handleDownloadTailoredResume} />
       <HowItWorksModal isOpen={showHow} onClose={closeHow} githubUrl={CONTACT_ACTIONS.github} />

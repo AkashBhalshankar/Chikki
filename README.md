@@ -78,7 +78,7 @@ prompt as the ground truth.
 
 ## 5. Contact and booking
 
-- **Leave a message:** visitors send their name, email, company and a message.
+- **Contact Akash:** one button opens a window where visitors send their name, email, company and a message.
   Messages appear in the dashboard's **Messages** tab.
   - Notifications (also used for the weekly digest and health alerts): Telegram
     (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`), email through Resend
@@ -98,7 +98,8 @@ prompt as the ground truth.
   time, and a warning when it is a knowledge gap. A visitor's first message makes a sound and later
   ones are silent. It is capped at 60 messages an hour (`NOTIFY_CONVERSATIONS_PER_HOUR`).
   - Protected by a rate limit (5 per hour per IP) and a spam honeypot.
-- **Book a call:** set `VITE_BOOKING_URL` (Cal.com or Calendly) to show the button.
+  The same window shows your email and phone (with Copy buttons) from `VITE_CONTACT_EMAIL` and `VITE_CONTACT_PHONE`.
+- **Book a call:** set `VITE_BOOKING_URL` (Cal.com or Calendly) and the contact window shows a booking link.
 
 ## 6. Admin: feedback dashboard
 

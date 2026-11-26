@@ -3,7 +3,39 @@ import { sendContactMessage } from "../services/api.js";
 
 const EMPTY_FORM = { name: "", email: "", company: "", message: "", website: "" };
 
-export default function ContactModal({ isOpen, onClose, topics = "", bookingUrl = "" }) {
+function DirectRow({ label, value, href }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch (_) {
+      window.prompt(`Copy ${label.toLowerCase()}:`, value);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-2 text-xs">
+      <span className="min-w-0 truncate">
+        <span className="text-gray-500">{label}: </span>
+        <a href={href} className="text-gray-200 underline underline-offset-2 select-all">
+          {value}
+        </a>
+      </span>
+      <button
+        type="button"
+        onClick={copy}
+        className="shrink-0 rounded border border-gray-700 bg-zinc-800 px-2 py-0.5 text-[10px] text-gray-300 hover:bg-zinc-700"
+      >
+        {copied ? "✓ Copied" : "Copy"}
+      </button>
+    </div>
+  );
+}
+
+export default function ContactModal({ isOpen, onClose, topics = "", bookingUrl = "", email = "", phone = "" }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
   const [error, setError] = useState("");
@@ -57,9 +89,9 @@ export default function ContactModal({ isOpen, onClose, topics = "", bookingUrl 
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 id="contact-title" className="text-sm font-bold text-chikki-purpleLight tracking-wide">
-              LEAVE A MESSAGE FOR AKASH
+              CONTACT AKASH
             </h2>
-            <p className="mt-1 text-[11px] text-gray-400">He'll reply to you by email.</p>
+            <p className="mt-1 text-[11px] text-gray-400">Send a message here and he'll reply by email.</p>
           </div>
           <button
             type="button"
@@ -153,6 +185,14 @@ export default function ContactModal({ isOpen, onClose, topics = "", bookingUrl 
               </button>
             </div>
           </form>
+        )}
+
+        {(email || phone) && (
+          <div className="mt-5 space-y-2 border-t border-gray-800 pt-4">
+            <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Or reach Akash directly</div>
+            {email && <DirectRow label="Email" value={email} href={`mailto:${email}`} />}
+            {phone && <DirectRow label="Phone" value={phone} href={`tel:${phone.replace(/\s+/g, "")}`} />}
+          </div>
         )}
       </div>
     </div>

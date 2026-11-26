@@ -24,7 +24,7 @@ const QUICK_PROMPTS = {
 };
 
 const ACTION_BUTTONS = {
-  contact: { label: "✉️ Leave a message", handler: "onOpenContact" },
+  contact: { label: "✉️ Contact Akash", handler: "onOpenContact" },
   resume: { label: "📄 Download resume", handler: "onDownloadResume" },
   role_fit: { label: "🎯 Check role fit", handler: "onOpenMatch" },
   booking: { label: "📅 Book a call", handler: "onOpenBooking" },
@@ -193,7 +193,7 @@ export default function ChatPanel({
             )}
             {onOpenContact && (
               <button type="button" onClick={onOpenContact} className="action-button primary-action">
-                ✉️ Leave a message
+                ✉️ Contact Akash
               </button>
             )}
             {onOpenMatch && (
@@ -210,11 +210,6 @@ export default function ChatPanel({
               <button type="button" onClick={handleShareClick} className="action-button">
                 {linkCopied ? "✓ Link copied" : "🔗 Copy link"}
               </button>
-            )}
-            {actions.booking && (
-              <a href={actions.booking} target="_blank" rel="noreferrer" className="action-button">
-                📅 Book a call
-              </a>
             )}
             {actions.linkedin && (
               <a
@@ -236,20 +231,6 @@ export default function ChatPanel({
                 className="action-button"
               >
                 GitHub
-              </a>
-            )}
-            {actions.email && (
-              <a
-                href={`mailto:${actions.email}?subject=${encodeURIComponent("Interview opportunity for Akash Bhalshankar")}`}
-                onClick={onReturnHome}
-                className="action-button primary-action"
-              >
-                Contact Akash
-              </a>
-            )}
-            {actions.phone && (
-              <a href={`tel:${actions.phone.replace(/\s+/g, "")}`} onClick={onReturnHome} className="action-button">
-                Call
               </a>
             )}
           </div>
