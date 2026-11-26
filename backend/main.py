@@ -1,5 +1,6 @@
 import base64
 import asyncio
+import time
 import logging
 import os
 import re
@@ -11,6 +12,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from ai import ChikkiAIError, _is_joke_request, stream_chikki
+from analytics_store import record_event, summary as analytics_summary
 from contact_store import notify_contact, read_contacts, save_contact
 from feedback_store import feedback_analytics, read_feedback, record_feedback
 from generate_resume_pdf import build_resume_pdf
@@ -143,6 +145,7 @@ def download_resume_post(body: ResumeDownloadRequest, request: Request):
 
 def _resume_pdf_response(focus: str, linkedin_url: str, github_url: str):
     try:
+        record_event("resume_download", focus[-200:])
         pdf_bytes = build_resume_pdf(
             focus=focus[-500:].strip(),
             linkedin_url=linkedin_url,
@@ -177,6 +180,11 @@ def create_feedback(body: FeedbackRequest, request: Request):
 @app.get("/feedback/recent", dependencies=[Depends(require_admin)])
 def recent_feedback(limit: int = Query(50, ge=1, le=200)):
     return read_feedback(limit=limit)
+
+
+@app.get("/analytics/summary", dependencies=[Depends(require_admin)])
+def analytics_summary_route(days: int = Query(30, ge=1, le=365)):
+    return analytics_summary(days)
 
 
 @app.get("/feedback/analytics", dependencies=[Depends(require_admin)])
@@ -252,6 +260,26 @@ async def process_chikki_turn(
         except Exception:
             logger.exception("Knowledge retrieval failed; answering without it")
     knowledge_context = format_context(retrieved)
+    turn_started = time.monotonic()
+    first_token_ms: int | None = None
+    turn_meta: dict = {}
+    mode = "voice" if voice_mode else "text"
+
+    async def log_turn(ok: bool, error_kind: str | None = None):
+        await asyncio.to_thread(
+            record_event,
+            "turn",
+            user_msg,
+            language,
+            mode,
+            turn_meta.get("provider"),
+            int((time.monotonic() - turn_started) * 1000),
+            first_token_ms,
+            ok,
+            error_kind,
+            len(retrieved),
+            is_joke,
+        )
 
     def pump_tokens():
         try:
@@ -261,6 +289,7 @@ async def process_chikki_turn(
                 language,
                 previous_jokes=conversation_jokes,
                 knowledge_context=knowledge_context,
+                meta=turn_meta,
             ):
                 event_loop.call_soon_threadsafe(token_queue.put_nowait, ("token", token_pair))
         except Exception as stream_error:
@@ -278,6 +307,8 @@ async def process_chikki_turn(
                 raise event_value
 
             delta, trace_id = event_value
+            if first_token_ms is None:
+                first_token_ms = int((time.monotonic() - turn_started) * 1000)
             full_reply.append(delta)
             sentence_buffer += delta
             if trace_id:
@@ -350,10 +381,12 @@ async def process_chikki_turn(
             },
             "turn_id": turn_id,
         })
+        await log_turn(True)
     except asyncio.CancelledError:
         raise
     except ChikkiAIError as error:
         logger.warning("All providers failed (%s)", error.kind)
+        await log_turn(False, error.kind)
         await websocket.send_json({
             "type": "text",
             "reply": str(error),

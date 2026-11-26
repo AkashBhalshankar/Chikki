@@ -10,6 +10,10 @@
 - Chikki project details moved from the hardcoded system prompt into `knowledge/chikki.md`.
 - Added admin endpoint `POST /knowledge/refresh`.
 
+### New: usage analytics
+- Every answered or failed question is logged (question text, language, voice/text, provider, latency, whether knowledge was found), with no IP or identity.
+- `GET /analytics/summary` (admin) and a new Usage tab: questions per day, top questions and topics, knowledge gaps, languages, voice vs text, providers used, failures, median and p95 reply time, resume downloads and messages left.
+
 ### New: contact and booking
 - "Leave a message" form (name, email, company, message, plus the topics the visitor asked about), stored in SQLite.
 - Optional Telegram and webhook notifications, sent in the background.

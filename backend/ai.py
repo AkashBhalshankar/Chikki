@@ -272,6 +272,7 @@ def stream_chikki(
     language: str = "en-IN",
     previous_jokes: list[str] | None = None,
     knowledge_context: str = "",
+    meta: dict | None = None,
 ) -> Iterator[Tuple[str, str]]:
     """Yields (token, trace_id) pairs with priority failover across all providers.
 
@@ -333,6 +334,8 @@ def stream_chikki(
                         break
                     accepted_candidate_attempts += 1
                     circuit_breaker.record_success(provider)
+                    if meta is not None:
+                        meta["provider"] = provider
                     if not _is_repeated_joke(candidate, rejected_jokes):
                         yield from candidate_tokens
                         return
@@ -345,6 +348,8 @@ def stream_chikki(
             first_token_pair = next(iterator, ("", ""))
 
             if first_token_pair[0]:
+                if meta is not None:
+                    meta["provider"] = provider
                 yield first_token_pair
                 for token_pair in iterator:
                     yield token_pair

@@ -26,8 +26,9 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
   const [filter, setFilter] = useState("all");
   const [adminToken, setAdminToken] = useState(readStoredToken);
   const [tokenInput, setTokenInput] = useState("");
-  const [view, setView] = useState("feedback");
+  const [view, setView] = useState("usage");
   const [contacts, setContacts] = useState([]);
+  const [usage, setUsage] = useState(null);
 
   const fetchData = async (token = adminToken) => {
     if (!token) {
@@ -62,6 +63,10 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
       ]);
       setAnalytics(analyticsData);
       setRecentLogs(Array.isArray(logData) ? logData : logData.items || []);
+      try {
+        const resUsage = await fetch(`${BASE_URL}/analytics/summary?days=30`, { cache: "no-store", headers });
+        if (resUsage.ok) setUsage(await resUsage.json());
+      } catch {}
       if (resContacts?.ok) {
         const contactData = await resContacts.json();
         setContacts(Array.isArray(contactData) ? contactData : []);
@@ -164,7 +169,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            {[["feedback", "📊 Feedback"], ["messages", `✉️ Messages (${contacts.length})`]].map(([key, label]) => (
+            {[["usage", "📈 Usage"], ["feedback", "📊 Feedback"], ["messages", `✉️ Messages (${contacts.length})`]].map(([key, label]) => (
               <button
                 key={key}
                 type="button"
@@ -189,7 +194,9 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 chikki-scroll">
-          {view === "messages" ? (
+          {view === "usage" ? (
+            <UsagePanel usage={usage} />
+          ) : view === "messages" ? (
             <div className="space-y-3">
               {contacts.length === 0 ? (
                 <div className="text-center py-10 text-xs text-gray-500">No messages yet.</div>
@@ -368,6 +375,82 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
             </>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+function Bars({ items, labelKey, valueKey = "count", empty = "No data yet." }) {
+  if (!items?.length) return <p className="text-xs text-gray-500">{empty}</p>;
+  const max = Math.max(...items.map((item) => item[valueKey]), 1);
+  return (
+    <ul className="space-y-1.5">
+      {items.map((item) => (
+        <li key={item[labelKey]} className="text-[11px]">
+          <div className="flex justify-between gap-2 text-gray-300">
+            <span className="truncate">{item[labelKey]}</span>
+            <span className="text-gray-400">{item[valueKey]}</span>
+          </div>
+          <div className="mt-0.5 h-1.5 rounded bg-zinc-800">
+            <div className="h-1.5 rounded bg-chikki-purple" style={{ width: `${(item[valueKey] / max) * 100}%` }} />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function objectToItems(obj = {}) {
+  return Object.entries(obj).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+}
+
+function UsagePanel({ usage }) {
+  if (!usage) return <div className="text-center py-16 text-xs text-gray-400">No usage data yet.</div>;
+  const { totals, latency_ms: latency, daily } = usage;
+  const maxDay = Math.max(...daily.map((d) => d.turns), 1);
+  const cards = [
+    ["Questions (30d)", totals.turns],
+    ["Resume downloads", totals.resume_downloads],
+    ["Messages left", totals.contact_messages],
+    ["Failed answers", totals.failed_turns],
+    ["Median reply", latency.p50 != null ? `${(latency.p50 / 1000).toFixed(1)}s` : "–"],
+    ["Slow (p95)", latency.p95 != null ? `${(latency.p95 / 1000).toFixed(1)}s` : "–"],
+  ];
+  const card = "p-3.5 rounded-xl border border-gray-800 bg-zinc-900/40";
+  const heading = "text-[10px] uppercase text-gray-400 font-semibold tracking-wider mb-2";
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        {cards.map(([label, value]) => (
+          <div key={label} className={card}>
+            <div className={heading}>{label}</div>
+            <div className="text-xl font-bold text-white">{value}</div>
+          </div>
+        ))}
+      </div>
+      <div className={card}>
+        <div className={heading}>Questions per day</div>
+        <div className="flex h-20 items-end gap-0.5">
+          {daily.map((d) => (
+            <div
+              key={d.date}
+              title={`${d.date}: ${d.turns}`}
+              className="flex-1 rounded-t bg-chikki-purple/70"
+              style={{ height: `${Math.max((d.turns / maxDay) * 100, d.turns ? 6 : 2)}%` }}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className={card}><div className={heading}>Top questions</div><Bars items={usage.top_questions} labelKey="question" /></div>
+        <div className={card}><div className={heading}>Top topics</div><Bars items={usage.top_topics} labelKey="topic" /></div>
+        <div className={card}>
+          <div className={heading}>Knowledge gaps (asked, nothing retrieved)</div>
+          <Bars items={usage.knowledge_gaps} labelKey="question" empty="No gaps found." />
+        </div>
+        <div className={card}><div className={heading}>Languages</div><Bars items={objectToItems(usage.languages)} labelKey="name" /></div>
+        <div className={card}><div className={heading}>Voice vs text</div><Bars items={objectToItems(usage.modes)} labelKey="name" /></div>
+        <div className={card}><div className={heading}>Model providers used</div><Bars items={objectToItems(usage.providers)} labelKey="name" /></div>
+        <div className={card}><div className={heading}>Failures by cause</div><Bars items={objectToItems(usage.failures)} labelKey="name" empty="No failures." /></div>
       </div>
     </div>
   );
