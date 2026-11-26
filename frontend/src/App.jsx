@@ -99,7 +99,6 @@ const EXPRESSION_LABELS = {
   skeptical: ["Let’s check that carefully.", "SKEPTICAL"],
   grateful: ["I appreciate that.", "GRATEFUL"],
   focused: ["Hmm... let me think.", "THINKING"],
-  laughing: ["Hehe!", "LAUGHING"],
   confused: ["Hmm, I did not catch that.", "CONFUSED"],
   nod: ["Got it.", "GOT IT"],
   interrupted: ["Oh, go ahead!", "LISTENING"],
