@@ -385,7 +385,6 @@ export default function App() {
   const liveTranscriptRef = useRef("");
   const voiceNoticeTimerRef = useRef(null);
   const openContact = useCallback(() => setShowContact(true), []);
-  const handleContactSent = useCallback(() => flashExpression("celebrate", 3000), [flashExpression]);
   const closeContact = useCallback(() => setShowContact(false), []);
   const [showHow, setShowHow] = useState(false);
   const openHow = useCallback(() => setShowHow(true), []);
@@ -547,6 +546,8 @@ export default function App() {
       setChikkiState((current) => (current === name ? "listening" : current));
     }, ms);
   }, []);
+
+  const handleContactSent = useCallback(() => flashExpression("celebrate", 3000), [flashExpression]);
 
   const unlockAudioContext = () => {
     try {
