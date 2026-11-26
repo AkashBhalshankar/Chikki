@@ -18,6 +18,7 @@ import ListeningWave from "./components/ListeningWave.jsx";
 import { ProfileLine } from "./components/ProfileBadge.jsx";
 import LanguageSelector from "./components/LanguageSelector.jsx";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition.js";
+import { voiceLogLines } from "./voiceLog.js";
 import { expressionForTurn, expressionForUserInput } from "./expressions.js";
 import { connectVoiceSocket, downloadResumePdf, fetchGreetingAudio, sendFeedback, sendVoiceMetric, wakeServer } from "./services/api.js";
 
@@ -453,6 +454,14 @@ export default function App() {
   const flashTimerRef = useRef(null);
   const lastSttMetricRef = useRef(0);
   const [serverState, setServerState] = useState("checking"); // checking | waking | ready
+  const debugVoice = useState(() => new URLSearchParams(window.location.search).has("debug"))[0];
+  const [, setLogTick] = useState(0);
+  useEffect(() => {
+    if (!debugVoice) return undefined;
+    const refresh = () => setLogTick((n) => n + 1);
+    window.addEventListener("chikki-voice-log", refresh);
+    return () => window.removeEventListener("chikki-voice-log", refresh);
+  }, [debugVoice]);
   const [tapAssist, setTapAssist] = useState(false); // shows the tap button once voice needs help
   const inputModeRef = useRef(inputMode);
   const currentLangRef = useRef(currentLang);
@@ -1322,6 +1331,12 @@ export default function App() {
                 ? "✋ Tap to interrupt"
                 : "🎤 Tap to talk"}
             </button>
+          )}
+
+          {debugVoice && (
+            <pre className="mt-3 max-h-40 w-full max-w-lg overflow-auto rounded border border-gray-700 bg-black/60 p-2 text-left text-[10px] text-green-300">
+              {voiceLogLines().join("\n") || "voice log is empty: nothing heard yet"}
+            </pre>
           )}
 
           {/* Suggestion Rail */}

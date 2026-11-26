@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { correctTranscript, isLowConfidence } from "../speechText.js";
 import { transcribeAudio } from "../services/api.js";
+import { logVoice } from "../voiceLog.js";
 
 const SERVER_STT = import.meta.env.VITE_SERVER_STT !== "false";
 const MIN_AUDIO_BYTES = 1500;
@@ -35,11 +36,12 @@ export function useSpeechRecognition({
 
   const callbacksRef = useRef({ onWake, onResult, onInterim, onUnclear, onSpeechError, onServerSttFailed });
   callbacksRef.current = { onWake, onResult, onInterim, onUnclear, onSpeechError, onServerSttFailed };
+  const lastHeardAtRef = useRef(0); // when the browser recogniser last produced any result
   const bargedRef = useRef(false); // the visitor started talking over Chikki, so the clip misses their first words
 
   // Records the visitor's voice so the server can transcribe it accurately. The browser
   // recogniser still runs for live captions and as the fallback if the server is unreachable.
-  const recorderRef = useRef({ stream: null, recorder: null, chunks: [], broken: false, startedAt: 0 });
+  const recorderRef = useRef({ stream: null, recorder: null, chunks: [], broken: false, startedAt: 0, audioCtx: null, analyser: null });
   const utteranceActiveRef = useRef(false);
 
   const startRecorder = useCallback(async () => {
@@ -50,6 +52,17 @@ export function useSpeechRecognition({
         state.stream = await navigator.mediaDevices.getUserMedia({
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
         });
+      }
+      if (!state.analyser) {
+        try {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          state.audioCtx = new Ctx();
+          state.analyser = state.audioCtx.createAnalyser();
+          state.analyser.fftSize = 512;
+          state.audioCtx.createMediaStreamSource(state.stream).connect(state.analyser);
+        } catch (_) {
+          state.analyser = null; // no level meter; the safety check below simply stays off
+        }
       }
       const recorder = new MediaRecorder(state.stream);
       state.chunks = [];
@@ -90,6 +103,11 @@ export function useSpeechRecognition({
     const state = recorderRef.current;
     state.stream?.getTracks().forEach((track) => track.stop());
     state.stream = null;
+    try {
+      state.audioCtx?.close();
+    } catch (_) {}
+    state.audioCtx = null;
+    state.analyser = null;
   }, [stopRecorder]);
 
   // Initialize mobile hardware DSP to isolate voice and stop tracks cleanly
@@ -131,6 +149,7 @@ export function useSpeechRecognition({
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
     }
+    logVoice(`silence -> sending what was heard: "${speechBufferRef.current.trim()}"`);
     const browserText = correctTranscript(
       speechBufferRef.current.replace(/^(hey\s+)?chikk[iy]\s*/i, "")
     );
@@ -155,6 +174,7 @@ export function useSpeechRecognition({
       if (!server) {
         callbacksRef.current.onServerSttFailed?.();
       } else if (server.text) {
+        logVoice(`server heard: "${server.text}" (browser: "${browserText}")`);
         // The server is more accurate than the browser, so use its words when it has some.
         text = correctTranscript(server.text.replace(/^(hey\s+)?chikk[iy]\s*/i, ""));
         confident = server.confident || confident;
@@ -167,6 +187,7 @@ export function useSpeechRecognition({
       callbacksRef.current.onUnclear?.(text);
       return;
     }
+    logVoice(`asking Chikki: "${text}"`);
     callbacksRef.current.onResult?.(text);
   }, [startRecorder, stopRecorder]);
 
@@ -195,6 +216,7 @@ export function useSpeechRecognition({
       };
 
       recognition.onresult = (event) => {
+        lastHeardAtRef.current = Date.now();
         // Shield: drop all incoming frames while Chikki is speaking
         if (isSpeakingRef.current) {
           speechBufferRef.current = "";
@@ -229,6 +251,7 @@ export function useSpeechRecognition({
 
         const currentSegment = (finalText || interimText).trim();
         if (!currentSegment) return;
+        logVoice(`${finalText ? "final" : "hearing"}: "${currentSegment}"`);
 
         // Wake word check
         if (modeRef.current === "wake") {
@@ -277,6 +300,7 @@ export function useSpeechRecognition({
 
       recognition.onerror = (event) => {
         if (event.error === "no-speech") return;
+        logVoice(`recogniser error: ${event.error}`);
         callbacksRef.current.onSpeechError?.(event.error);
       };
 
@@ -357,6 +381,40 @@ export function useSpeechRecognition({
       stopRecognition();
     };
   }, [mode, lang, startListening, stopRecognition, startRecorder, stopRecorder, releaseMic]);
+
+  // Safety net: on some devices a second microphone stream starves the browser recogniser, so the
+  // page sits on "listening" while the visitor talks. If the level meter hears speech for a few
+  // seconds and the recogniser hears nothing, give up server transcription and let the recogniser
+  // have the microphone to itself.
+  useEffect(() => {
+    if (mode !== "command") return undefined;
+    let loudMs = 0;
+    const buffer = new Uint8Array(256);
+    const timer = setInterval(() => {
+      const analyser = recorderRef.current.analyser;
+      if (!analyser || isSpeakingRef.current) {
+        loudMs = 0;
+        return;
+      }
+      analyser.getByteTimeDomainData(buffer);
+      let sum = 0;
+      for (let i = 0; i < buffer.length; i += 1) sum += ((buffer[i] - 128) / 128) ** 2;
+      const level = Math.sqrt(sum / buffer.length);
+      const recentlyHeard = Date.now() - lastHeardAtRef.current < 2500;
+      // Speech has pauses, so quiet moments only drain the counter instead of resetting it.
+      loudMs = recentlyHeard ? 0 : Math.max(0, loudMs + (level > 0.05 ? 250 : -100));
+      if (loudMs >= 2500) {
+        loudMs = 0;
+        logVoice("recogniser deaf while the mic hears speech -> turning server transcription off");
+        recorderRef.current.broken = true;
+        releaseMic();
+        stopRecognition();
+        setTimeout(() => startListening(), 300);
+        callbacksRef.current.onServerSttFailed?.();
+      }
+    }, 250);
+    return () => clearInterval(timer);
+  }, [mode, releaseMic, stopRecognition, startListening]);
 
   // Keep the clip short: if nobody has spoken for a while, start a fresh recording.
   useEffect(() => {
