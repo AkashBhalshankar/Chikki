@@ -19,6 +19,7 @@ import { ProfileLine } from "./components/ProfileBadge.jsx";
 import LanguageSelector from "./components/LanguageSelector.jsx";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition.js";
 import { voiceLogLines } from "./voiceLog.js";
+import { ThinkingWord } from "./components/ThinkingIndicator.jsx";
 import { expressionForTurn, expressionForUserInput } from "./expressions.js";
 import { connectVoiceSocket, downloadResumePdf, fetchGreetingAudio, sendFeedback, sendVoiceMetric, wakeServer } from "./services/api.js";
 
@@ -1286,7 +1287,7 @@ export default function App() {
             ) : (
               <p className="min-h-[1.5rem] text-sm text-gray-300">
                 {chikkiState === "thinking"
-                  ? "Hmm... let me think..."
+                  ? <ThinkingWord />
                   : chikkiState === "error"
                   ? "Something went wrong."
                   : chikkiState === "wake"
@@ -1306,7 +1307,7 @@ export default function App() {
 
           <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-chikki-purpleLight font-semibold">
             {chikkiState === "thinking"
-              ? "Thinking"
+              ? <ThinkingWord />
               : chikkiState === "speaking"
               ? "Speaking (Tap bot to stop)"
               : chikkiState === "error"
