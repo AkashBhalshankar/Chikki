@@ -140,9 +140,10 @@ export function useSpeechRecognition({
     utteranceActiveRef.current = false;
 
     // Take the recording of this utterance and start a fresh one right away.
+    // Every wait here is capped: a stuck recorder or a slow server must never swallow a question.
     const barged = bargedRef.current;
     bargedRef.current = false;
-    const clip = await stopRecorder(true);
+    const clip = await Promise.race([stopRecorder(true), new Promise((resolve) => setTimeout(() => resolve(null), 1500))]);
     if (modeRef.current === "command" && !isSpeakingRef.current) startRecorder();
 
     if (!browserText || browserText.length <= 2) return;
@@ -151,13 +152,15 @@ export function useSpeechRecognition({
     let confident = !unclear;
     if (clip && clip.size >= MIN_AUDIO_BYTES && !barged) {
       const server = await transcribeAudio(clip, langRef.current);
-      if (!server) callbacksRef.current.onServerSttFailed?.();
-      if (server) {
-        // The server answered: trust it over the browser, including when it heard nothing real.
-        if (!server.text) return;
+      if (!server) {
+        callbacksRef.current.onServerSttFailed?.();
+      } else if (server.text) {
+        // The server is more accurate than the browser, so use its words when it has some.
         text = correctTranscript(server.text.replace(/^(hey\s+)?chikk[iy]\s*/i, ""));
-        confident = server.confident;
+        confident = server.confident || confident;
       }
+      // When the server heard nothing (short phrases like "thank you" are often filtered as noise),
+      // the browser's transcript still stands.
     }
     if (!text || text.length <= 2) return;
     if (!confident) {

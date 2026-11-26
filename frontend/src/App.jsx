@@ -453,6 +453,7 @@ export default function App() {
   const flashTimerRef = useRef(null);
   const lastSttMetricRef = useRef(0);
   const [serverState, setServerState] = useState("checking"); // checking | waking | ready
+  const [tapAssist, setTapAssist] = useState(false); // shows the tap button once voice needs help
   const inputModeRef = useRef(inputMode);
   const currentLangRef = useRef(currentLang);
 
@@ -642,6 +643,7 @@ export default function App() {
 
   const handleUnclear = useCallback((heard) => {
     setLiveTranscript("");
+    setTapAssist(true);
     flashExpression("confused", 2600);
     setVoiceNotice(`I'm not sure I heard that right (“${heard}”). Could you say it again?`);
     if (voiceNoticeTimerRef.current) window.clearTimeout(voiceNoticeTimerRef.current);
@@ -848,10 +850,13 @@ export default function App() {
       return;
     }
 
+    if (kind && kind !== "no-speech" && kind !== "aborted") setTapAssist(true);
+
     if (kind === "no-speech") {
       noSpeechCountRef.current += 1;
       if (noSpeechCountRef.current >= NO_SPEECH_FALLBACK_THRESHOLD) {
         setShowTypeSuggestion(true);
+        setTapAssist(true);
       }
     }
   }, [active]);
@@ -865,6 +870,7 @@ export default function App() {
     if (Date.now() - lastSttMetricRef.current < 60000) return;
     lastSttMetricRef.current = Date.now();
     sendVoiceMetric("stt_fallback", null, currentLangRef.current);
+    setTapAssist(true);
   }, []);
 
   const { supported, startListening, finishNow } = useSpeechRecognition({
@@ -1005,6 +1011,7 @@ export default function App() {
           sendVoiceMetric("ok", Math.round(performance.now() - voiceTurnStartRef.current), currentLangRef.current);
           voiceTurnStartRef.current = null;
         }
+        if (!receivedAudioForTurnRef.current) setTapAssist(false);
         receivedAudioForTurnRef.current = true;
 
         const audioSrc = `data:${mimeType};base64,${rawData}`;
@@ -1032,6 +1039,7 @@ export default function App() {
           setVoiceExpression(fallbackExpression);
           sendVoiceMetric("tts_fallback", null, currentLangRef.current);
           voiceTurnStartRef.current = null;
+          setTapAssist(true);
           speakWithBrowser(reply, currentLangRef.current, {
             onUnavailable: () => {
               sendVoiceMetric("text_only", null, currentLangRef.current);
@@ -1301,18 +1309,20 @@ export default function App() {
               : EXPRESSION_LABELS[chikkiState]?.[1] || "Listening"}
           </p>
 
-          <button
-            type="button"
-            onClick={handleTapToTalk}
-            className="action-button mt-3 px-5 text-xs"
-            title="Tap to talk, interrupt Chikki, or send what you have said"
-          >
-            {liveTranscript && chikkiState !== "speaking"
-              ? "✅ Done, send it"
-              : chikkiState === "speaking"
-              ? "✋ Tap to interrupt"
-              : "🎤 Tap to talk"}
-          </button>
+          {tapAssist && (
+            <button
+              type="button"
+              onClick={handleTapToTalk}
+              className="action-button mt-3 px-5 text-xs"
+              title="Tap to talk, interrupt Chikki, or send what you have said"
+            >
+              {liveTranscript && chikkiState !== "speaking"
+                ? "✅ Done, send it"
+                : chikkiState === "speaking"
+                ? "✋ Tap to interrupt"
+                : "🎤 Tap to talk"}
+            </button>
+          )}
 
           {/* Suggestion Rail */}
           <div className="suggestion-rail mt-6 w-full max-w-lg">
