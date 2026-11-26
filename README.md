@@ -72,7 +72,7 @@ prompt as the ground truth.
   per project, with `##` sections. The index rebuilds automatically when files change.
 - Optionally add raw README URLs with `KNOWLEDGE_URLS`, for implemented projects only.
 - Retrieval uses BM25 keyword scoring. When `NVIDIA_EMBED_MODEL` is set to an
-  available embedding model, dense similarity is fused in (hybrid search).
+  available embedding model (recommended: `nvidia/nemotron-3.5-embed-1b`, see `.env.example`), dense similarity is fused in (hybrid search).
   Embedding errors fall back to keyword search automatically.
 - Admins can force a rebuild with `POST /knowledge/refresh` (needs `X-Admin-Token`).
 
