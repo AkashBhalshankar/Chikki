@@ -147,8 +147,8 @@ export default function ChatPanel({
   };
 
   return (
-    <div className="app-viewport dot-grid px-3 py-4 sm:px-8 sm:py-6 flex flex-col justify-between font-mono">
-      <div className="app-shell flex flex-1 flex-col justify-between max-w-4xl mx-auto w-full">
+    <div className="chat-viewport dot-grid px-3 py-4 sm:px-8 sm:py-6 flex flex-col font-mono">
+      <div className="app-shell flex min-h-0 flex-1 flex-col max-w-4xl mx-auto w-full">
         
         {/* Header */}
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-4">

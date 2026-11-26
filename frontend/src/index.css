@@ -58,15 +58,17 @@ input {
   min-height: 100dvh;
 }
 
-.chat-scroll-container {
-  height: calc(100dvh - 310px);
-  min-height: 280px;
+/* Text chat fills exactly one screen: the page itself never scrolls, only the message list does. */
+.chat-viewport {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
-@media (max-width: 640px) {
-  .chat-scroll-container {
-    height: calc(100dvh - 330px);
-  }
+.chat-scroll-container {
+  flex: 1 1 0;
+  min-height: 0;
+  overscroll-behavior: contain;
 }
 
 /* =========================================
