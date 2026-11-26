@@ -423,6 +423,19 @@ async def process_chikki_turn(
     pending = ""
     early_done = False
 
+    mood_sent: str | None = None
+
+    async def send_mood(mood: str):
+        """Tells the page which face to show, as soon as it is known."""
+        nonlocal mood_sent
+        if mood and mood != mood_sent:
+            mood_sent = mood
+            await websocket.send_json({"type": "mood", "mood": mood, "turn_id": turn_id})
+
+    async def announce_mood():
+        if tag_filter.mood:
+            await send_mood(tag_filter.mood)
+
     audio_queue: asyncio.Queue = asyncio.Queue()
 
     async def audio_sender():
@@ -476,6 +489,7 @@ async def process_chikki_turn(
                         return
                     notice_given = True
                     sentence = guard.notice + " "
+                    await send_mood("apologetic")
         await emit(sentence, trace)
 
     stream_task = asyncio.create_task(asyncio.to_thread(pump_tokens))
@@ -493,6 +507,7 @@ async def process_chikki_turn(
             if trace_id:
                 last_trace_id = trace_id
             delta = tag_filter.feed(delta)
+            await announce_mood()
             if not delta:
                 continue
             pending += delta
@@ -541,6 +556,7 @@ async def process_chikki_turn(
                 "kind": "joke" if is_joke else None,
                 "sources": sources_for(retrieved),
                 "actions": filter_actions(tag_filter.actions, user_msg),
+                "mood": mood_sent or tag_filter.mood,
             },
             "turn_id": turn_id,
         })

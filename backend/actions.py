@@ -12,8 +12,15 @@ import re
 ALLOWED_ACTIONS = ("contact", "resume", "role_fit", "booking")
 MAX_ACTIONS = 2
 
-PREFIX = "[[action:"
-TAG_RE = re.compile(r"\[\[action:(\w+)\]\]")
+PREFIXES = ("[[action:", "[[mood:")
+TAG_RE = re.compile(r"\[\[(action|mood):(\w+)\]\]")
+
+# Moods the model may choose; the page maps each to a face. Anything else is ignored.
+ALLOWED_MOODS = (
+    "neutral", "happy", "joyful", "excited", "proud", "confident", "focused", "curious", "playful",
+    "laughing", "shy", "grateful", "love", "surprised", "skeptical", "determined", "relieved",
+    "apologetic", "concerned", "sad", "wink", "encouraging",
+)
 
 # The model decides, but a button is only shown when the visitor's own message
 # plausibly asks for it. This keeps stray tags from weaker or fallback models
@@ -58,24 +65,44 @@ The app can show the visitor a button. Add a tag ONLY when the visitor's message
 Rules: the default is NO tag, and most replies must not have one. When you do add one, it goes at the very end, at most one per reply, and you never mention or describe it.
 Questions about Akash's experience, employers, skills, projects, education, or about how Chikki works are NOT requests for a button: answer them normally with NO tag. For example "Did Akash work at Google?", "What happens if a provider goes down?" and "Tell me about his projects" get no tag.
 
+==================================================
+MOOD TAG (HIDDEN, FIRST THING IN EVERY REPLY)
+==================================================
+Start every reply with exactly one mood tag that matches how your answer feels, like [[mood:proud]]. It sets Chikki's face. Never mention it. Pick the closest:
+- proud : Akash's projects, achievements, results.  - confident : skills, strengths, why hire him.
+- focused : a technical explanation.  - excited : something impressive or a big win.  - happy : friendly, positive, a warm hello.
+- joyful : very good news or a celebration.  - curious : you ask a clarifying question.  - neutral : plain facts.
+- apologetic : the detail is not in the resume or you cannot help.  - skeptical : the visitor assumes something false or tests you.
+- determined : a hard or challenging question.  - relieved : you settle a worry.  - concerned : a problem or an unclear request.
+- grateful : thanks.  - shy : a compliment.  - laughing : a joke.  - playful : light banter.  - love : something heartfelt.
+- surprised : something unexpected.  - sad : bad news or a setback.  - wink : a fun aside.  - encouraging : motivating the visitor.
+
 """
 
 
 class ActionTagFilter:
-    """Removes [[action:x]] tags from a token stream and collects them."""
+    """Removes [[action:x]] and [[mood:x]] tags from a token stream and collects them."""
 
     def __init__(self):
         self.buffer = ""
         self.actions: list[str] = []
+        self.mood: str | None = None
 
     @staticmethod
     def _could_become_tag(text: str) -> bool:
-        if len(text) <= len(PREFIX):
-            return PREFIX.startswith(text)
-        return text.startswith(PREFIX) and re.fullmatch(r"\w*\]?", text[len(PREFIX):]) is not None
+        for prefix in PREFIXES:
+            if len(text) <= len(prefix):
+                if prefix.startswith(text):
+                    return True
+            elif text.startswith(prefix) and re.fullmatch(r"\w*\]?", text[len(prefix):]) is not None:
+                return True
+        return False
 
-    def _record(self, name: str) -> None:
-        if name in ALLOWED_ACTIONS and name not in self.actions and len(self.actions) < MAX_ACTIONS:
+    def _record(self, kind: str, name: str) -> None:
+        if kind == "mood":
+            if self.mood is None and name in ALLOWED_MOODS:
+                self.mood = name
+        elif name in ALLOWED_ACTIONS and name not in self.actions and len(self.actions) < MAX_ACTIONS:
             self.actions.append(name)
 
     def feed(self, delta: str) -> str:
@@ -91,7 +118,7 @@ class ActionTagFilter:
             self.buffer = self.buffer[index:]
             match = TAG_RE.match(self.buffer)
             if match:
-                self._record(match.group(1))
+                self._record(match.group(1), match.group(2))
                 self.buffer = self.buffer[match.end():]
                 continue
             if self._could_become_tag(self.buffer):

@@ -89,3 +89,20 @@ def test_unexpected_turn_error_still_replies(client, monkeypatch):
 ])
 def test_actions_are_filtered_by_the_visitors_request(message, action, allowed):
     assert (filter_actions([action], message) == [action]) is allowed
+
+
+def test_mood_tag_is_hidden_and_collected():
+    from actions import ActionTagFilter
+
+    tag_filter = ActionTagFilter()
+    text = "".join(tag_filter.feed(c) for c in ["[[mo", "od:pro", "ud]] Akash built ", "agents. [[action:contact]]"]) + tag_filter.finish()
+    assert text == " Akash built agents. "
+    assert tag_filter.mood == "proud" and tag_filter.actions == ["contact"]
+
+
+def test_unknown_mood_is_ignored_and_first_mood_wins():
+    from actions import ActionTagFilter
+
+    tag_filter = ActionTagFilter()
+    text = tag_filter.feed("[[mood:bogus]]Hi [[mood:happy]]there") + tag_filter.finish()
+    assert text == "Hi there" and tag_filter.mood == "happy"

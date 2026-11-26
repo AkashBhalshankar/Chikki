@@ -3,12 +3,12 @@ import { motion } from "framer-motion";
 
 // Central style config per state - drives colors, eye shape, mouth path, and pose.
 const STATES = {
-  idle: { stroke: "#5B4FE9", eyeFill: "#AFA9EC", mouth: "M 78 62 Q 90 62 102 62", coreFill: "#1c1c1c" },
+  idle: { stroke: "#5B4FE9", eyeFill: "#AFA9EC", mouth: "M 78 62 Q 90 62 102 62", coreFill: "#1c1c1c", blink: true },
   listening: { stroke: "#7F77DD", eyeFill: "#0d0d0d", mouth: "M 78 60 Q 90 66 102 60", coreFill: "#26215C", ringsIn: true },
   thinking: { stroke: "#AFA9EC", eyeFill: "#AFA9EC", mouth: "M 82 63 L 98 63", coreFill: "#1c1c1c", dots: true },
   speaking: { stroke: "#7F77DD", eyeFill: "#fff", mouth: "M 78 60 Q 90 63 102 60", coreFill: "#5B4FE9", ringsOutHead: true, talking: true },
   greet: { stroke: "#5B4FE9", eyeFill: "#AFA9EC", mouth: "M 78 60 Q 90 66 102 60", coreFill: "#1c1c1c", wave: true },
-  celebrate: { stroke: "#5B4FE9", eyeFill: "#fff", mouth: "M 78 58 Q 90 68 102 58", coreFill: "#5B4FE9", jump: true, sparkles: true },
+  celebrate: { stroke: "#5B4FE9", eyeFill: "#fff", mouth: "M 78 58 Q 90 68 102 58", coreFill: "#5B4FE9", jump: true, confetti: true, armsUp: true },
   happy: { stroke: "#639922", eyeFill: "#97C459", mouth: "M 76 58 Q 90 72 104 58", coreFill: "#27500A", blush: true },
   excited: { stroke: "#D85A30", eyeFill: "#fff", mouth: "M 76 57 Q 90 74 104 57", coreFill: "#7A260D", jump: true, sparkles: true, wideEyes: true },
   surprised: { stroke: "#D85A30", eyeFill: "#fff", mouth: "M 84 61 A 6 7 0 1 0 96 61 A 6 7 0 1 0 84 61", coreFill: "#7A260D", wideEyes: true },
@@ -18,26 +18,26 @@ const STATES = {
   concerned: { stroke: "#AFA9EC", eyeFill: "#AFA9EC", mouth: "M 82 67 Q 90 62 98 67", coreFill: "#29245C", brows: true },
   curious: { stroke: "#4AA3A2", eyeFill: "#8FE1D8", mouth: "M 82 62 Q 90 66 98 62", coreFill: "#124746", headTilt: 8, dots: true, wideEyes: true },
   playful: { stroke: "#D8A52F", eyeFill: "#F4D77A", mouth: "M 76 59 Q 90 73 104 59", coreFill: "#5D4307", wink: true, sparkles: true },
-  encouraging: { stroke: "#639922", eyeFill: "#97C459", mouth: "M 76 58 Q 90 72 104 58", coreFill: "#27500A", bounce: true, blush: true },
+  encouraging: { stroke: "#639922", eyeFill: "#97C459", mouth: "M 76 58 Q 90 72 104 58", coreFill: "#27500A", bounce: true, blush: true, armUp: true },
   neutral: { stroke: "#8A8A8A", eyeFill: "#D0D0D0", mouth: "M 80 63 L 100 63", coreFill: "#303030" },
-  relieved: { stroke: "#639922", eyeFill: "#97C459", mouth: "M 78 62 Q 90 68 102 62", coreFill: "#27500A", closedEyes: true },
-  apologetic: { stroke: "#7B8FA8", eyeFill: "#B8C9DA", mouth: "M 82 67 Q 90 63 98 67", coreFill: "#243445", blush: true, headTilt: -5 },
+  relieved: { stroke: "#639922", eyeFill: "#97C459", mouth: "M 78 62 Q 90 68 102 62", coreFill: "#27500A", closedEyes: true, puff: true },
+  apologetic: { stroke: "#7B8FA8", eyeFill: "#B8C9DA", mouth: "M 82 67 Q 90 63 98 67", coreFill: "#243445", blush: true, headTilt: -5, sweat: true },
   confident: { stroke: "#5B4FE9", eyeFill: "#C8C3FF", mouth: "M 76 60 Q 90 70 104 60", coreFill: "#3C3489", brows: true, bounce: true },
-  skeptical: { stroke: "#A68A42", eyeFill: "#E4CE83", mouth: "M 82 64 Q 90 61 98 64", coreFill: "#4B3A0B", sideEyes: true, headTilt: -4 },
-  grateful: { stroke: "#D85A78", eyeFill: "#F28BA5", mouth: "M 78 60 Q 90 69 102 60", coreFill: "#6B1830", closedEyes: true, hearts: true },
+  skeptical: { stroke: "#A68A42", eyeFill: "#E4CE83", mouth: "M 82 64 Q 90 61 98 64", coreFill: "#4B3A0B", sideEyes: true, headTilt: -4, browRaised: true },
+  grateful: { stroke: "#D85A78", eyeFill: "#F28BA5", mouth: "M 78 60 Q 90 69 102 60", coreFill: "#6B1830", closedEyes: true, hearts: true, headTilt: 7, headDip: true },
   focused: { stroke: "#4A73A8", eyeFill: "#A8C7E8", mouth: "M 82 63 L 98 63", coreFill: "#19324D", brows: true },
-  determined: { stroke: "#D85A30", eyeFill: "#F0A078", mouth: "M 78 60 Q 90 66 102 60", coreFill: "#7A260D", brows: true, bounce: true },
+  determined: { stroke: "#D85A30", eyeFill: "#F0A078", mouth: "M 80 62 L 100 62", coreFill: "#7A260D", browsAngry: true, bounce: true },
   shy: { stroke: "#B56A9B", eyeFill: "#E6A5CB", mouth: "M 84 63 Q 90 66 96 63", coreFill: "#512442", blush: true, headTilt: -5 },
   joyful: { stroke: "#D8A52F", eyeFill: "#F4D77A", mouth: "M 74 57 Q 90 76 106 57", coreFill: "#5D4307", closedEyes: true, sparkles: true, bounce: true },
   laughing: { stroke: "#D85A30", eyeFill: "#fff", mouth: "M 74 56 Q 90 79 106 56", coreFill: "#7A260D", closedEyes: true, sparkles: true, jump: true },
-  confused: { stroke: "#AFA9EC", eyeFill: "#AFA9EC", mouth: "M 82 64 Q 90 60 98 64", coreFill: "#1c1c1c", headTilt: -12 },
+  confused: { stroke: "#AFA9EC", eyeFill: "#AFA9EC", mouth: "M 82 64 Q 90 60 98 64", coreFill: "#1c1c1c", headTilt: -12, question: true },
   error: { stroke: "#993C1D", eyeFill: "none", mouth: "M 82 66 L 98 66", coreFill: "#4A1B0C", xmarks: true },
-  ready: { stroke: "#5B4FE9", eyeFill: "#fff", mouth: "M 78 62 Q 90 66 102 62", coreFill: "#3C3489", brows: true, bounce: true },
-  nod: { stroke: "#639922", eyeFill: "#97C459", mouth: "M 78 60 Q 90 66 102 60", coreFill: "#173404" },
+  ready: { stroke: "#5B4FE9", eyeFill: "#fff", mouth: "M 78 62 Q 90 66 102 62", coreFill: "#3C3489", brows: true, bounce: true, ready: true },
+  nod: { stroke: "#639922", eyeFill: "#97C459", mouth: "M 78 60 Q 90 66 102 60", coreFill: "#173404", headDip: true },
   wake: { stroke: "#639922", eyeFill: "#97C459", mouth: "M 78 60 Q 90 68 102 60", coreFill: "#173404", stretch: true },
-  interrupted: { stroke: "#5B4FE9", eyeFill: "#fff", mouth: "M 84 66 A 6 4 0 1 0 96 66", coreFill: "#1c1c1c", shiver: true },
-  proud: { stroke: "#639922", eyeFill: "#97C459", mouth: "M 78 60 Q 90 67 102 60", coreFill: "#27500A" },
-  sleepy: { stroke: "#3C3489", eyeFill: "#7F77DD", mouth: "M 82 63 Q 90 65 98 63", coreFill: "#1c1c1c", dim: true },
+  interrupted: { stroke: "#5B4FE9", eyeFill: "#fff", mouth: "M 84 66 A 6 4 0 1 0 96 66", coreFill: "#1c1c1c", shiver: true, bang: true, wideEyes: true },
+  proud: { stroke: "#639922", eyeFill: "#97C459", mouth: "M 78 60 Q 90 67 102 60", coreFill: "#27500A", medal: true, brows: true },
+  sleepy: { stroke: "#3C3489", eyeFill: "#7F77DD", mouth: "M 82 63 Q 90 65 98 63", coreFill: "#1c1c1c", dim: true, closedEyes: true, zzz: true },
 };
 
 export default function ChikkiBot({ state = "idle", expression = "confident", size, className, onClick }) {
@@ -80,7 +80,7 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
       }}
       style={{ cursor: onClick ? "pointer" : "default", ...(fluid ? { aspectRatio: "180 / 210" } : {}) }}
       animate={{
-        y: cfg.jump ? [0, -14, 0] : cfg.bounce ? [0, -3, 0] : cfg.sleepy || cfg.dim ? [0, 2, 0] : [0, -4, 0],
+        y: cfg.jump ? [0, -14, 0] : cfg.bounce ? [0, -3, 0] : cfg.dim ? [0, 2, 0] : [0, -4, 0],
         x: cfg.shiver ? [0, -2, 2, 0] : 0,
       }}
       transition={{ duration: cfg.jump ? 0.5 : 2.2, repeat: Infinity, ease: "easeInOut" }}
@@ -95,8 +95,22 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
         </>
       )}
 
+      <motion.g animate={cfg.headDip ? { y: [0, 5, 0, 5, 0] } : { y: 0 }} transition={cfg.headDip ? { duration: 1.1, repeat: Infinity } : {}}>
       <motion.rect x="65" y="30" width="50" height="42" rx="8" fill="#3A3A3A" stroke={cfg.stroke} strokeWidth="2"
         animate={{ rotate: cfg.headTilt || 0 }} style={{ transformOrigin: "90px 50px" }} />
+
+      {cfg.browsAngry && (
+        <>
+          <path d="M 71 36 L 82 41" stroke="#F0A078" strokeWidth="2.2" strokeLinecap="round" />
+          <path d="M 98 41 L 109 36" stroke="#F0A078" strokeWidth="2.2" strokeLinecap="round" />
+        </>
+      )}
+      {cfg.browRaised && (
+        <>
+          <path d="M 71 35 Q 77 31 83 34" fill="none" stroke="#E4CE83" strokeWidth="2" strokeLinecap="round" />
+          <path d="M 98 40 L 108 41" stroke="#E4CE83" strokeWidth="2" strokeLinecap="round" />
+        </>
+      )}
 
       {cfg.brows && (
         <>
@@ -105,6 +119,7 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
         </>
       )}
 
+      <motion.g style={{ transformOrigin: "90px 50px" }} animate={cfg.blink ? { scaleY: [1, 1, 0.1, 1, 1] } : { scaleY: 1 }} transition={cfg.blink ? { duration: 4, repeat: Infinity, times: [0, 0.9, 0.94, 0.98, 1] } : {}}>
       {cfg.eyeFill !== "none" ? (
         <>
           {cfg.closedEyes ? <><path d="M 74 50 Q 78 54 82 50" fill="none" stroke={cfg.eyeFill} strokeWidth="2" strokeLinecap="round" /><path d="M 98 50 Q 102 54 106 50" fill="none" stroke={cfg.eyeFill} strokeWidth="2" strokeLinecap="round" /></> : cfg.wink ? <path d="M 73 50 Q 77 46 81 50" fill="none" stroke={cfg.eyeFill} strokeWidth="2.5" strokeLinecap="round" /> : <circle cx={80 + eyeOffset.x} cy={50 + eyeOffset.y} r={cfg.wideEyes ? 7 : cfg.ready ? 6.5 : 5} fill={cfg.eyeFill} />}
@@ -116,6 +131,7 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
           <path d="M 99 42 L 107 48 M 107 42 L 99 48" stroke="#E24B4A" strokeWidth="2" />
         </>
       )}
+      </motion.g>
 
       <motion.path
         d={cfg.mouth}
@@ -151,6 +167,27 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
 
       {cfg.hearts && <motion.g animate={{ y: [0, -7, 0], opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.2, repeat: Infinity }}><text x="40" y="35" fill="#F28BA5" fontSize="13">&#9829;</text><text x="132" y="28" fill="#F28BA5" fontSize="11">&#9829;</text></motion.g>}
 
+      {cfg.sweat && <motion.path d="M 119 38 Q 115 44 119 47 Q 123 44 119 38" fill="#7DB7E8" animate={{ y: [0, 5, 0], opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.4, repeat: Infinity }} />}
+
+      {cfg.puff && [[112, 66, 0], [118, 62, 0.3], [124, 58, 0.6]].map(([x, y, d], i) => (
+        <motion.circle key={i} cx={x} cy={y} r={2 + i} fill="#97C459" animate={{ opacity: [0, 0.8, 0], x: [0, 4, 8] }} transition={{ duration: 1.6, repeat: Infinity, delay: d }} />
+      ))}
+
+      {cfg.question && <motion.text x="118" y="34" fill="#AFA9EC" fontSize="20" fontWeight="bold" animate={{ y: [0, -4, 0], rotate: [0, 8, 0] }} transition={{ duration: 1.2, repeat: Infinity }}>?</motion.text>}
+
+      {cfg.bang && <motion.text x="119" y="34" fill="#E24B4A" fontSize="22" fontWeight="bold" animate={{ scale: [1, 1.25, 1] }} style={{ transformOrigin: "122px 28px" }} transition={{ duration: 0.5, repeat: Infinity }}>!</motion.text>}
+
+      {cfg.zzz && [[116, 38, 11, 0], [126, 28, 14, 0.5], [136, 17, 17, 1]].map(([x, y, size, d], i) => (
+        <motion.text key={i} x={x} y={y} fill="#7F77DD" fontSize={size} fontWeight="bold" animate={{ opacity: [0, 1, 0], y: [y + 4, y - 4] }} transition={{ duration: 2.4, repeat: Infinity, delay: d }}>z</motion.text>
+      ))}
+
+      {cfg.confetti && [[40, 18, "#F4D77A"], [64, 8, "#F28BA5"], [116, 10, "#97C459"], [142, 22, "#8FE1D8"], [90, 4, "#D85A30"], [28, 52, "#AFA9EC"], [152, 56, "#F4D77A"]].map(([x, y, color], i) => (
+        <motion.rect key={i} x={x} y={y} width="5" height="5" rx="1" fill={color}
+          animate={{ y: [0, 26], rotate: [0, 180], opacity: [1, 0] }} transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.18 }} />
+      ))}
+      </motion.g>
+
+
       <rect x="67" y="75" width="46" height="55" rx="6" fill="#2A2A2A" stroke="#444" strokeWidth="1" />
 
       {cfg.ringsIn && (
@@ -167,15 +204,17 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
         animate={{ opacity: cfg.dim ? [0.3, 0.6, 0.3] : cfg.ringsIn ? [0.5, 1, 0.5] : 1 }}
         transition={{ duration: cfg.dim ? 3 : 1, repeat: Infinity }} />
 
+      {cfg.medal && <path d="M 90 114 L 92.4 119 L 98 119.7 L 94 123.5 L 95 129 L 90 126.3 L 85 129 L 86 123.5 L 82 119.7 L 87.6 119 Z" fill="#F4D77A" stroke="#D8A52F" strokeWidth="0.8" />}
+
       <motion.g style={{ transformOrigin: "53px 80px" }}
-        animate={cfg.wave ? { rotate: [0, -25, 0, -25, 0] } : cfg.jump || cfg.celebrate ? { y: -16 } : cfg.stretch ? { y: [-8, 0], rotate: [-10, 0] } : {}}
+        animate={cfg.wave ? { rotate: [0, -25, 0, -25, 0] } : cfg.jump || cfg.armsUp ? { y: -16 } : cfg.stretch ? { y: [-8, 0], rotate: [-10, 0] } : {}}
         transition={cfg.wave ? { duration: 0.6, repeat: 3 } : cfg.stretch ? { duration: 0.9, repeat: Infinity } : {}}>
         <rect x="45" y="85" width="16" height="26" rx="4" fill="#2A2A2A" />
         <circle cx="53" cy="80" r="14" fill={safeState === "error" ? "#8a8a8a" : "#D85A30"} />
       </motion.g>
 
       <motion.g style={{ transformOrigin: "127px 80px" }}
-        animate={cfg.jump || cfg.celebrate ? { y: -16 } : {}}>
+        animate={cfg.jump || cfg.armUp || cfg.armsUp ? { y: -16 } : {}}>
         <rect x="119" y="85" width="16" height="26" rx="4" fill="#2A2A2A" />
         <circle cx="127" cy="80" r="14" fill={safeState === "error" ? "#8a8a8a" : "#D85A30"} />
       </motion.g>

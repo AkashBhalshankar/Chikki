@@ -3,7 +3,7 @@ import { sendContactMessage } from "../services/api.js";
 
 const EMPTY_FORM = { name: "", email: "", company: "", message: "", website: "" };
 
-export default function ContactModal({ isOpen, onClose, topics = "", bookingUrl = "" }) {
+export default function ContactModal({ isOpen, onClose, onSent, topics = "", bookingUrl = "" }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
   const [error, setError] = useState("");
@@ -36,6 +36,7 @@ export default function ContactModal({ isOpen, onClose, topics = "", bookingUrl 
     try {
       await sendContactMessage({ ...form, topics });
       setStatus("sent");
+      onSent?.();
       setForm(EMPTY_FORM);
     } catch (err) {
       setStatus("error");

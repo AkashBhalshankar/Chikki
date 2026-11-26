@@ -18,6 +18,7 @@ import ListeningWave from "./components/ListeningWave.jsx";
 import { ProfileLine } from "./components/ProfileBadge.jsx";
 import LanguageSelector from "./components/LanguageSelector.jsx";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition.js";
+import { expressionForTurn, expressionForUserInput } from "./expressions.js";
 import { connectVoiceSocket, downloadResumePdf, fetchGreetingAudio, sendFeedback, sendVoiceMetric, wakeServer } from "./services/api.js";
 
 const NO_SPEECH_FALLBACK_THRESHOLD = 3;
@@ -98,35 +99,17 @@ const EXPRESSION_LABELS = {
   skeptical: ["Let’s check that carefully.", "SKEPTICAL"],
   grateful: ["I appreciate that.", "GRATEFUL"],
   focused: ["Hmm... let me think.", "THINKING"],
+  laughing: ["Hehe!", "LAUGHING"],
+  confused: ["Hmm, I did not catch that.", "CONFUSED"],
+  nod: ["Got it.", "GOT IT"],
+  interrupted: ["Oh, go ahead!", "LISTENING"],
+  sleepy: ["Zzz... say something to wake me.", "SLEEPY"],
+  ready: ["Ready when you are.", "READY"],
   determined: ["I’ll work through it.", "DETERMINED"],
   shy: ["Aww, that's kind of you!", "SHY"],
   joyful: ["That makes me so happy!", "JOYFUL"],
   laughing: ["Haha! That got me.", "LAUGHING"],
 };
-
-function expressionForReply(reply = "") {
-  const text = reply.toLowerCase();
-  if (/\b(hmm|let me think|well\.\.\.|ఆలోచిస్తున్నాను|सोच रही)\b/.test(text)) return "focused";
-  if (/\b(laugh|funny|joke|hilarious|haha|hehe|lol|chuckle|నవ్వు|హాహా|हंस|जोक)\b/.test(text)) return "laughing";
-  if (/\b(shy|blush|sweet|aww|thank you|compliment|kind of you|సిగ్గు|ధన్యవాదాలు|शुक्रिया|धन्यवाद)\b/.test(text)) return "shy";
-  if (/\b(excited|amazing|incredible|fantastic|brilliant|thrilled|super cool|బాగుంది|बढ़िया)\b/.test(text)) return "excited";
-  if (/\b(love|lovely|heartfelt|adorable)\b/.test(text)) return "love";
-  if (/\b(surpris(e|d|ing)|wow|unexpected)\b/.test(text)) return "surprised";
-  if (/\b(why should|strengths|expert|hire|confident|impact|fastapi|langgraph|ఎందుకు|क्यों)\b/.test(text)) return "confident";
-  return "confident";
-}
-
-function expressionForUserInput(input = "") {
-  const text = input.toLowerCase().trim();
-  if (/^(hi|hello|hey|good morning|namaskaram|namaste|నమస్కారం|नमस्ते)\b/.test(text)) return "greet";
-  if (/\b(joke|funny|play|game|haha|lol|జోక్|जोक)\b/.test(text)) return "playful";
-  if (/\b(laugh|hilarious)\b/.test(text)) return "laughing";
-  if (/\?$|\b(why|how|what|when|where|who|which|can you explain|ఎలా|ఏమిటి|कैसे|क्या)\b/.test(text)) return "curious";
-  if (/\b(thank|thanks|appreciate|love|cute|pretty|sweet|ధన్యవాదాలు|शुक्रिया)\b/.test(text)) return "shy";
-  if (/^(yes|yeah|yep|okay|ok|sure|let's|lets|సరే|हाँ|ठीक)\b/.test(text)) return "encouraging";
-  if (/\b(help|stuck|confused|don't understand|cannot|can't|సహాయం|मदद)\b/.test(text)) return "concerned";
-  return "curious";
-}
 
 function loadStoredMessages() {
   try {
@@ -403,6 +386,7 @@ export default function App() {
   const liveTranscriptRef = useRef("");
   const voiceNoticeTimerRef = useRef(null);
   const openContact = useCallback(() => setShowContact(true), []);
+  const handleContactSent = useCallback(() => flashExpression("celebrate", 3000), [flashExpression]);
   const closeContact = useCallback(() => setShowContact(false), []);
   const [showHow, setShowHow] = useState(false);
   const openHow = useCallback(() => setShowHow(true), []);
@@ -467,6 +451,8 @@ export default function App() {
   const receivedAudioForTurnRef = useRef(false);
   const noSpeechCountRef = useRef(0);
   const voiceTurnStartRef = useRef(null);
+  const turnMoodRef = useRef(null); // the model's chosen mood for the current reply
+  const flashTimerRef = useRef(null);
   const lastSttMetricRef = useRef(0);
   const [serverState, setServerState] = useState("checking"); // checking | waking | ready
   const inputModeRef = useRef(inputMode);
@@ -498,7 +484,7 @@ export default function App() {
       }
 
       if (currentReply) {
-        const expression = expressionForReply(currentReply);
+        const expression = expressionForTurn(turnMoodRef.current, currentReply);
         replyExpressionRef.current = expression;
         setVoiceExpression(expression);
       }
@@ -553,12 +539,29 @@ export default function App() {
     return [more, base[0]];
   };
 
+  // Shows a face for a moment (celebration, thanks, surprise...) then returns to listening.
+  const flashExpression = useCallback((name, ms = 2200) => {
+    if (inputModeRef.current !== "voice") return;
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    setChikkiState(name);
+    flashTimerRef.current = window.setTimeout(() => {
+      setChikkiState((current) => (current === name ? "listening" : current));
+    }, ms);
+  }, []);
+
   const unlockAudioContext = () => {
     try {
       const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
       audio.play().catch(() => {});
     } catch (_) {}
   };
+
+  // Chikki dozes off after a minute with nobody talking, and wakes the moment someone speaks.
+  useEffect(() => {
+    if (chikkiState !== "listening" || inputMode !== "voice" || !active) return undefined;
+    const timer = window.setTimeout(() => setChikkiState((current) => (current === "listening" ? "sleepy" : current)), 60000);
+    return () => window.clearTimeout(timer);
+  }, [chikkiState, inputMode, active]);
 
   // Stops both the normal audio queue and any browser-TTS fallback speech.
   const stopAudioImmediate = useCallback(() => {
@@ -585,7 +588,8 @@ export default function App() {
         const audio = new Audio(audioUrl);
         audio.onended = () => {
           URL.revokeObjectURL(audioUrl);
-          setChikkiState("listening");
+          setChikkiState("ready");
+          window.setTimeout(() => setChikkiState((current) => (current === "ready" ? "listening" : current)), 1200);
         };
         await audio.play();
       } catch {
@@ -601,6 +605,7 @@ export default function App() {
   // Returns true when the visitor interrupted Chikki.
   const handleInterimSpeech = useCallback((interimText, whileSpeaking = false) => {
     if (!interimText) return false;
+    setChikkiState((current) => (current === "sleepy" ? "listening" : current));
     const speakingNow = whileSpeaking || audioQueue.isPlaying || isAssistantSpeaking;
 
     // Show what Chikki is hearing so the visitor can see recognition problems early.
@@ -620,7 +625,7 @@ export default function App() {
         activeTurnIdRef.current = null;
         stopAudioImmediate();
         socketRef.current?.interrupt();
-        if (inputModeRef.current === "voice") setChikkiState("listening");
+        flashExpression("interrupted", 900);
         return true;
       }
       return false;
@@ -633,14 +638,15 @@ export default function App() {
       if (inputModeRef.current === "voice") setChikkiState("listening");
     }
     return false;
-  }, [stopAudioImmediate, isAssistantSpeaking]);
+  }, [stopAudioImmediate, isAssistantSpeaking, flashExpression]);
 
   const handleUnclear = useCallback((heard) => {
     setLiveTranscript("");
+    flashExpression("confused", 2600);
     setVoiceNotice(`I'm not sure I heard that right (“${heard}”). Could you say it again?`);
     if (voiceNoticeTimerRef.current) window.clearTimeout(voiceNoticeTimerRef.current);
     voiceNoticeTimerRef.current = window.setTimeout(() => setVoiceNotice(""), 5000);
-  }, []);
+  }, [flashExpression]);
 
   const handleResult = useCallback((transcript) => {
     if (!transcript) return;
@@ -650,6 +656,7 @@ export default function App() {
     const turnId = createTurnId();
     activeTurnIdRef.current = turnId;
     spokenTextRef.current = "";
+    turnMoodRef.current = null;
     receivedAudioForTurnRef.current = false;
     stopAudioImmediate();
     socketRef.current?.interrupt();
@@ -751,6 +758,7 @@ export default function App() {
     setVoiceFeedbackSaved(false);
     setVoiceComment("");
     handleFeedback(vote);
+    if (vote === "helpful") flashExpression("grateful", 2200);
   };
 
   const handleVoiceCommentSubmit = (e) => {
@@ -924,6 +932,12 @@ export default function App() {
     socketReadyRef.current = false;
 
     socketRef.current = connectVoiceSocket({
+      onMood: (mood, turnId) => {
+        if (turnId !== activeTurnIdRef.current) return;
+        turnMoodRef.current = mood;
+        replyExpressionRef.current = expressionForTurn(mood, "");
+        setVoiceExpression(replyExpressionRef.current);
+      },
       onOpen: () => {
         socketReadyRef.current = true;
         if (inputModeRef.current === "voice") setChikkiState("listening");
@@ -1013,7 +1027,7 @@ export default function App() {
           !meta?.isError &&
           reply?.trim()
         ) {
-          const fallbackExpression = expressionForReply(reply);
+          const fallbackExpression = expressionForTurn(meta?.mood || turnMoodRef.current, reply);
           replyExpressionRef.current = fallbackExpression;
           setVoiceExpression(fallbackExpression);
           sendVoiceMetric("tts_fallback", null, currentLangRef.current);
@@ -1060,7 +1074,7 @@ export default function App() {
             trace_id: tid || currentTraceIdRef.current,
           };
           if (!hasPacedAudio) {
-            const expression = expressionForReply(reply);
+            const expression = expressionForTurn(meta?.mood || turnMoodRef.current, reply);
             replyExpressionRef.current = expression;
             setVoiceExpression(expression);
           }
@@ -1153,6 +1167,7 @@ export default function App() {
         <ContactModal
           isOpen={showContact}
           onClose={closeContact}
+          onSent={handleContactSent}
           topics={resumeFocusFromMessages(messages).slice(0, 300)}
           bookingUrl={CONTACT_ACTIONS.booking}
         />
@@ -1431,6 +1446,7 @@ export default function App() {
       <ContactModal
         isOpen={showContact}
         onClose={closeContact}
+        onSent={handleContactSent}
         topics={resumeFocusFromMessages(messages).slice(0, 300)}
         bookingUrl={CONTACT_ACTIONS.booking}
       />

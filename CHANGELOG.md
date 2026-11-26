@@ -1,5 +1,10 @@
 # Changelog
 
+## Chikki's expressions
+- The model now names the mood of every reply with a hidden `[[mood:x]]` tag (22 moods) at the start, sent to the page as soon as it is known; keyword rules remain as the fallback, and the resume guard's "not in the resume" notice shows the apologetic face.
+- All 35 faces are now reachable: celebrate after a contact message, grateful after a thumbs-up, interrupted when talked over, confused when speech is unclear, ready after the greeting, sleepy after a minute of silence, plus richer faces from the visitor's words.
+- Look-alike faces now have their own feature (medal, sweat drop, confetti, question mark, zzz, raised brow, angry brows, nodding head, raised arm, blinking).
+
 ## Voice reliability and accuracy
 - Server-side listening: each spoken question is transcribed by Groq Whisper (`POST /stt`), with a vocabulary hint for names like LangGraph and UBS and a filter for phantom phrases. The browser recogniser still gives live captions and is the fallback.
 - Speaking: text-to-speech now has a timeout, one retry and an automatic pause with browser-voice fallback; audio for the next sentence is prepared while the current one plays.

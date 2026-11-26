@@ -144,6 +144,7 @@ export function connectVoiceSocket({
   onText,
   onAudio,
   onAudioChunk,
+  onMood,
   onError,
   onClose,
 }) {
@@ -179,6 +180,11 @@ export function connectVoiceSocket({
         if (data.type === "token" || data.type === "delta") {
           const textToken = data.token ?? data.text ?? "";
           onDelta?.(textToken, data.trace_id, data.turn_id);
+          return;
+        }
+
+        if (data.type === "mood") {
+          onMood?.(data.mood, data.turn_id);
           return;
         }
 
