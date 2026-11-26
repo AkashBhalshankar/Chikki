@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { sendContactMessage } from "../services/api.js";
+import { telHref } from "../device.js";
 
 const EMPTY_FORM = { name: "", email: "", company: "", message: "", website: "" };
 
@@ -191,7 +192,7 @@ export default function ContactModal({ isOpen, onClose, topics = "", bookingUrl 
           <div className="mt-5 space-y-2 border-t border-gray-800 pt-4">
             <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Or reach Akash directly</div>
             {email && <DirectRow label="Email" value={email} href={`mailto:${email}`} />}
-            {phone && <DirectRow label="Phone" value={phone} href={`tel:${phone.replace(/\s+/g, "")}`} />}
+            {phone && <DirectRow label="Phone" value={phone} href={telHref(phone)} />}
           </div>
         )}
       </div>

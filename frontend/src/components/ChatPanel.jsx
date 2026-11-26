@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import AppFooter from "./AppFooter.jsx";
 import LanguageSelector from "./LanguageSelector.jsx";
+import { isMobileDevice, telHref } from "../device.js";
 
 const QUICK_PROMPTS = {
   "en-IN": [
@@ -59,6 +60,7 @@ export default function ChatPanel({
   const [commentText, setCommentText] = useState("");
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [canCall] = useState(() => isMobileDevice());
   const [confirmClear, setConfirmClear] = useState(false);
 
   useEffect(() => {
@@ -205,6 +207,11 @@ export default function ChatPanel({
               <button type="button" onClick={onOpenHow} className="action-button">
                 🧠 How Chikki works
               </button>
+            )}
+            {canCall && actions.phone && (
+              <a href={telHref(actions.phone)} onClick={onReturnHome} className="action-button">
+                📞 Call
+              </a>
             )}
             {onShare && (
               <button type="button" onClick={handleShareClick} className="action-button">

@@ -9,6 +9,7 @@ import JobMatchModal from "./components/JobMatchModal.jsx";
 import HowItWorksModal from "./components/HowItWorksModal.jsx";
 import { buildShareUrl, readSharedLink } from "./sharedLink.js";
 import { cleanForBrowserSpeech } from "./speechText.js";
+import { isMobileDevice, telHref } from "./device.js";
 import LanguageSelector from "./components/LanguageSelector.jsx";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition.js";
 import { connectVoiceSocket, downloadResumePdf, fetchGreetingAudio, sendFeedback } from "./services/api.js";
@@ -325,6 +326,7 @@ export default function App() {
   // Telemetry Dashboard Modal
   const [showDashboard, setShowDashboard] = useState(false);
   const [showContact, setShowContact] = useState(false);
+  const [canCall] = useState(() => isMobileDevice());
   const [liveTranscript, setLiveTranscript] = useState("");
   const [voiceNotice, setVoiceNotice] = useState("");
   const liveTranscriptTimerRef = useRef(null);
@@ -1275,6 +1277,11 @@ export default function App() {
             <button type="button" onClick={openHow} className="action-button">
               🧠 How Chikki works
             </button>
+            {canCall && CONTACT_ACTIONS.phone && (
+              <a href={telHref(CONTACT_ACTIONS.phone)} className="action-button">
+                📞 Call
+              </a>
+            )}
             {CONTACT_ACTIONS.linkedin && (
               <a
                 href={CONTACT_ACTIONS.linkedin}

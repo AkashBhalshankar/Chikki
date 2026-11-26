@@ -11,6 +11,7 @@
 - Added admin endpoint `POST /knowledge/refresh`.
 
 ### Fix: one Contact Akash button
+- A **📞 Call** button is shown on phones and tablets only (a `tel:` link does nothing on desktop); the phone number is also in the Contact Akash window everywhere.
 - "Contact Akash" used a `mailto:` link that does nothing on computers without an email app, and "Call" a `tel:` link that does nothing on desktop, next to a separate "Leave a message" form. They are now one **Contact Akash** button that opens the form, with your email and phone shown there with Copy buttons, plus the booking link when configured.
 
 ### New: live conversation feed and notification routing
