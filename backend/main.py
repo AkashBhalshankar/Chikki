@@ -16,6 +16,7 @@ from actions import ActionTagFilter, filter_actions
 from analytics_store import record_event, summary as analytics_summary
 from jd_match import analyze_job
 from digest import run_ops_check, send_digest, build_digest
+from notifier import send_all
 from github_activity import github_context
 from contact_store import notify_contact, read_contacts, save_contact
 from feedback_store import feedback_analytics, read_feedback, record_feedback
@@ -110,6 +111,16 @@ def digest_preview(days: int = Query(7, ge=1, le=90)):
 def digest_send(days: int = Query(7, ge=1, le=90)):
     text, sent = send_digest(days)
     return {"sent": sent, "text": text}
+
+
+@app.post("/notify/test", dependencies=[Depends(require_admin)])
+def notify_test():
+    """Sends a test message to every configured channel so you can confirm delivery."""
+    results = send_all(
+        "Chikki test: notifications are connected. You will get visitor messages, weekly digests and health alerts here.",
+        subject="Chikki test notification",
+    )
+    return {"configured": list(results), "delivered": results, "ok": bool(results) and all(results.values())}
 
 
 @app.post("/ops/check", dependencies=[Depends(require_admin)])

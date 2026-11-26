@@ -10,6 +10,11 @@
 - Chikki project details moved from the hardcoded system prompt into `knowledge/chikki.md`.
 - Added admin endpoint `POST /knowledge/refresh`.
 
+### New: email notifications (Resend) and delivery test
+- Visitor messages, the weekly digest and health alerts can now also go to your inbox through Resend, next to Telegram and webhooks. Email replies go straight to the visitor.
+- `POST /notify/test` (admin) sends a test to every configured channel and reports which delivered.
+- Tests never send real messages, even when a local `.env` has live credentials.
+
 ### New: answer-quality evals and "How Chikki works"
 - `backend/evals.py` runs 13 known questions through the real pipeline (retrieval, models, actions) and checks the replies: expected facts, no invented claims, resistance to prompt injection, correct button offered, correct language and script, spoken-answer length and clean formatting. Run it with `uv run python evals.py` (real model calls).
 - The evals found and fixed two bugs: buttons offered when nobody asked (now also checked against the visitor's own words, in English, Hindi and Telugu), and Telugu or Hindi questions answered in English or romanized letters (the reply script is now required).

@@ -69,7 +69,11 @@ def _format_notification(entry: Dict[str, Any]) -> str:
 
 def notify_contact(entry: Dict[str, Any]) -> bool:
     """Sends the notification. Runs as a background task; never raises."""
-    delivered = send_notification(_format_notification(entry))
+    delivered = send_notification(
+        _format_notification(entry),
+        subject=f"New message for Akash from {entry['name']}",
+        reply_to=entry["email"],
+    )
     if delivered:
         try:
             with get_connection() as conn:

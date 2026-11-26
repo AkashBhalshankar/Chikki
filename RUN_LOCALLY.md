@@ -58,6 +58,7 @@ cd frontend && npm run build            # expect: built, no errors
 | Admin is locked | `curl -i localhost:8000/feedback/analytics` | `401` |
 | Admin works | `curl -H "X-Admin-Token: local-test-token" localhost:8000/analytics/summary` | JSON with totals |
 | Drive resume + keys healthy | `curl -X POST -H "X-Admin-Token: local-test-token" localhost:8000/ops/check` | `{"ok":true,...}` |
+| Notifications delivered | `curl -X POST -H "X-Admin-Token: local-test-token" localhost:8000/notify/test` | `"ok":true` and a test message in Telegram and your inbox |
 | Digest | `curl -H "X-Admin-Token: local-test-token" localhost:8000/digest/preview` | digest text |
 | Knowledge index | `curl -X POST -H "X-Admin-Token: local-test-token" localhost:8000/knowledge/refresh` | `"chunks"` greater than 0 |
 

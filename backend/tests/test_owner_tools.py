@@ -42,7 +42,7 @@ def test_digest_and_ops_endpoints_require_admin(client):
 
 
 def test_digest_send_reports_delivery(client, monkeypatch):
-    monkeypatch.setattr(digest, "send_notification", lambda text: True)
+    monkeypatch.setattr(digest, "send_notification", lambda text, **kw: True)
     body = client.post("/digest/send", headers=ADMIN).json()
     assert body["sent"] is True and "Chikki weekly digest" in body["text"]
 
@@ -51,7 +51,7 @@ def test_ops_check_alerts_when_drive_fails(client, monkeypatch):
     sent = []
     monkeypatch.setenv("GOOGLE_DRIVE_RESUME_URL", "https://drive.example/x")
     monkeypatch.setattr(digest, "sync_drive_resume", lambda: "")
-    monkeypatch.setattr(digest, "send_notification", lambda text: sent.append(text) or True)
+    monkeypatch.setattr(digest, "send_notification", lambda text, **kw: sent.append(text) or True)
     monkeypatch.setitem(digest.PROVIDERS["groq"], "api_key", "k")
     body = client.post("/ops/check", headers=ADMIN).json()
     assert body["ok"] is False and body["alerted"] is True
@@ -61,7 +61,7 @@ def test_ops_check_alerts_when_drive_fails(client, monkeypatch):
 def test_ops_check_healthy_sends_nothing(client, monkeypatch):
     monkeypatch.setenv("GOOGLE_DRIVE_RESUME_URL", "https://drive.example/x")
     monkeypatch.setattr(digest, "sync_drive_resume", lambda: "resume text")
-    monkeypatch.setattr(digest, "send_notification", lambda text: pytest.fail("should not alert"))
+    monkeypatch.setattr(digest, "send_notification", lambda text, **kw: pytest.fail("should not alert"))
     monkeypatch.setitem(digest.PROVIDERS["groq"], "api_key", "k")
     assert client.post("/ops/check", headers=ADMIN).json() == {"ok": True, "problems": [], "alerted": False}
 

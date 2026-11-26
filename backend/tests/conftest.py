@@ -7,6 +7,9 @@ for key in (
     "GROQ_API_KEY", "GEMINI_API_KEY", "NVIDIA_API_KEY", "OPENROUTER_API_KEY",
     "GOOGLE_DRIVE_RESUME_URL", "GOOGLE_DRIVE_FILE_ID",
     "LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY",
+    # Never send real Telegram messages or emails from tests, even when a local .env has them.
+    "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "RESEND_API_KEY", "Resend_API_KEY",
+    "CONTACT_TO", "CONTACT_FROM", "CONTACT_WEBHOOK_URL", "GITHUB_USERNAME",
 ):
     os.environ[key] = ""
 

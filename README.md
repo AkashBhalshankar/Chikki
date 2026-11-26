@@ -80,8 +80,13 @@ prompt as the ground truth.
 
 - **Leave a message:** visitors send their name, email, company and a message.
   Messages appear in the dashboard's **Messages** tab.
-  - Optional instant alerts: set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`,
-    and/or `CONTACT_WEBHOOK_URL` (Slack- or Discord-style webhook).
+  - Notifications (also used for the weekly digest and health alerts): Telegram
+    (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`), email through Resend
+    (`RESEND_API_KEY`, `CONTACT_TO`, optional `CONTACT_FROM`), and/or `CONTACT_WEBHOOK_URL`.
+    Emails use the visitor as Reply-To, so replying answers them directly.
+  - Resend's default sender can only email your own Resend account address. To email any
+    address, verify a domain at resend.com/domains and set `CONTACT_FROM`.
+  - Test delivery any time with `POST /notify/test` (admin token).
   - Protected by a rate limit (5 per hour per IP) and a spam honeypot.
 - **Book a call:** set `VITE_BOOKING_URL` (Cal.com or Calendly) to show the button.
 
