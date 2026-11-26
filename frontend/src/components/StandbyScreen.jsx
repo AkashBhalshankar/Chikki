@@ -1,6 +1,7 @@
 import ChikkiBot from "./ChikkiBot.jsx";
 import AppFooter from "./AppFooter.jsx";
 import { ProfileCard } from "./ProfileBadge.jsx";
+import GithubStrip from "./GithubStrip.jsx";
 
 export default function StandbyScreen({
   state,
@@ -66,6 +67,8 @@ export default function StandbyScreen({
               Chikki was asleep and is starting up. The first answer can take up to a minute; after that it is quick.
             </p>
           )}
+
+          <GithubStrip />
 
           <p className="mt-8 text-sm text-gray-400">Say <span className="text-chikki-purpleLight">“Hey Chikki”</span> to begin.</p>
 

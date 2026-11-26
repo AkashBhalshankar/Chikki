@@ -19,9 +19,13 @@ import { ProfileLine } from "./components/ProfileBadge.jsx";
 import LanguageSelector from "./components/LanguageSelector.jsx";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition.js";
 import { voiceLogLines } from "./voiceLog.js";
+import { plainText } from "./markdown.js";
 import { attachLevelMeter } from "./voiceLevel.js";
 import { ThinkingWord } from "./components/ThinkingIndicator.jsx";
 import ProjectsModal from "./components/ProjectsModal.jsx";
+import SettingsModal from "./components/SettingsModal.jsx";
+import { readSettings } from "./settings.js";
+import { playChime } from "./sounds.js";
 import InterviewModal from "./components/InterviewModal.jsx";
 import { nextStep, roleById } from "./interview.js";
 import { expressionForTurn, expressionForUserInput } from "./expressions.js";
@@ -338,6 +342,13 @@ export default function App() {
   });
   const toggleTheme = useCallback(() => setTheme((current) => applyTheme(nextTheme(current))), []);
 
+  // Chikki waves hello when the page first opens, then settles.
+  useEffect(() => {
+    setChikkiState((current) => (current === "idle" ? "greet" : current));
+    const timer = window.setTimeout(() => setChikkiState((current) => (current === "greet" ? "idle" : current)), 3600);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   // Free hosting sleeps when idle. Wake it as soon as the page opens and say so if it takes a while.
   useEffect(() => {
     let cancelled = false;
@@ -404,6 +415,9 @@ export default function App() {
   const [showHow, setShowHow] = useState(false);
   const openHow = useCallback(() => setShowHow(true), []);
   const closeHow = useCallback(() => setShowHow(false), []);
+  const [showSettings, setShowSettings] = useState(false);
+  const openSettings = useCallback(() => setShowSettings(true), []);
+  const closeSettings = useCallback(() => setShowSettings(false), []);
   const [showProjects, setShowProjects] = useState(false);
   const openProjects = useCallback(() => setShowProjects(true), []);
   const closeProjects = useCallback(() => setShowProjects(false), []);
@@ -613,7 +627,7 @@ export default function App() {
       const greeting = greetingsList[Math.floor(Math.random() * greetingsList.length)];
 
       try {
-        const audioUrl = await fetchGreetingAudio(greeting, currentLangRef.current);
+        const audioUrl = await fetchGreetingAudio(greeting, currentLangRef.current, { voice_pref: readSettings().voice, speed: readSettings().speed });
         setChikkiState("speaking");
 
         const audio = new Audio(audioUrl);
@@ -723,7 +737,8 @@ export default function App() {
       return;
     }
 
-    const sent = socketRef.current.send(transcript, { voice, session_id: sessionId, language, turn_id: turnId });
+    const prefs = readSettings();
+    const sent = socketRef.current.send(transcript, { voice, session_id: sessionId, language, turn_id: turnId, voice_pref: prefs.voice, speed: prefs.speed });
     if (!sent) {
       pendingMessageRef.current = { text: transcript, voice, language, turnId };
       socketReadyRef.current = false;
@@ -938,6 +953,7 @@ export default function App() {
   });
 
   const handleEnableMic = useCallback(() => {
+    playChime("listen");
     stopAudioImmediate();
     unlockAudioContext();
     setInputMode("voice");
@@ -1063,7 +1079,10 @@ export default function App() {
           sendVoiceMetric("ok", Math.round(performance.now() - voiceTurnStartRef.current), currentLangRef.current);
           voiceTurnStartRef.current = null;
         }
-        if (!receivedAudioForTurnRef.current) setTapAssist(false);
+        if (!receivedAudioForTurnRef.current) {
+          setTapAssist(false);
+          playChime("done");
+        }
         receivedAudioForTurnRef.current = true;
 
         const audioSrc = `data:${mimeType};base64,${rawData}`;
@@ -1141,6 +1160,7 @@ export default function App() {
           return copy;
         });
 
+        if (inputModeRef.current !== "voice" && !meta?.isError) playChime("done");
         setFollowUpSuggestions(meta?.suggestions?.length ? meta.suggestions : suggestionsForReply(reply));
       },
 
@@ -1213,6 +1233,7 @@ export default function App() {
           onShare={handleShare}
           onOpenHow={openHow}
           onOpenProjects={openProjects}
+          onOpenSettings={openSettings}
           onOpenInterview={openInterview}
           interview={interview}
           onInterviewNext={interviewNext}
@@ -1239,6 +1260,8 @@ export default function App() {
         <JobMatchModal isOpen={showMatch} onClose={closeMatch} onDownloadResume={handleDownloadTailoredResume} />
         <HowItWorksModal isOpen={showHow} onClose={closeHow} githubUrl={CONTACT_ACTIONS.github} />
         <ProjectsModal isOpen={showProjects} onClose={closeProjects} githubUrl={CONTACT_ACTIONS.github} />
+      <SettingsModal isOpen={showSettings} onClose={closeSettings} />
+        <SettingsModal isOpen={showSettings} onClose={closeSettings} />
         <InterviewModal isOpen={showInterview} onClose={closeInterview} onStart={startInterview} />
       </>
     );
@@ -1383,6 +1406,20 @@ export default function App() {
             </button>
           )}
 
+          {messages.some((m) => m.content?.trim()) && (
+            <details className="mt-3 w-full max-w-lg text-left">
+              <summary className="cursor-pointer select-none text-center text-[11px] text-gray-500 hover:text-chikki-purpleLight">📝 Transcript</summary>
+              <div className="chikki-scroll mt-2 max-h-48 space-y-2 overflow-y-auto rounded-lg border border-gray-800 bg-zinc-900/40 p-3 text-xs">
+                {messages.filter((m) => m.content?.trim()).slice(-8).map((m, i) => (
+                  <p key={i} className={m.role === "user" ? "text-gray-300" : "text-gray-200"}>
+                    <span className="mr-1.5 text-[10px] uppercase tracking-wider text-gray-500">{m.role === "user" ? "You" : "Chikki"}</span>
+                    {plainText(m.history_content || m.content)}
+                  </p>
+                ))}
+              </div>
+            </details>
+          )}
+
           {debugVoice && (
             <pre className="mt-3 max-h-40 w-full max-w-lg overflow-auto rounded border border-gray-700 bg-black/60 p-2 text-left text-[10px] text-green-300">
               {voiceLogLines().join("\n") || "voice log is empty: nothing heard yet"}
@@ -1502,6 +1539,7 @@ export default function App() {
               direction="up"
               items={[
                 { key: "projects", label: "🗂️ Projects", onClick: openProjects },
+                { key: "settings", label: "⚙️ Voice settings", onClick: openSettings },
                 { key: "interview", label: "🎤 Interview mode", onClick: openInterview },
                 { key: "how", label: "🧠 How Chikki works", onClick: openHow },
                 canCall && CONTACT_ACTIONS.phone && { key: "call", label: "📞 Call Akash", href: telHref(CONTACT_ACTIONS.phone) },

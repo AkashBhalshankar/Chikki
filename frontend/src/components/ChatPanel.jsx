@@ -56,6 +56,7 @@ export default function ChatPanel({
   onShare,
   onOpenHow,
   onOpenProjects,
+  onOpenSettings,
   onOpenInterview,
   interview = null,
   onInterviewNext,
@@ -223,6 +224,7 @@ export default function ChatPanel({
               direction="down"
               items={[
                 onOpenProjects && { key: "projects", label: "🗂️ Projects", onClick: onOpenProjects },
+                onOpenSettings && { key: "settings", label: "⚙️ Voice settings", onClick: onOpenSettings },
                 onOpenInterview && { key: "interview", label: "🎤 Interview mode", onClick: onOpenInterview },
                 onOpenHow && { key: "how", label: "🧠 How Chikki works", onClick: onOpenHow },
                 onShare && { key: "share", label: linkCopied ? "✓ Link copied" : "🔗 Copy link", onClick: handleShareClick, keepOpen: true },

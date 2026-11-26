@@ -18,6 +18,8 @@ function storeToken(token) {
   } catch {}
 }
 
+import GapsPanel from "./GapsPanel.jsx";
+
 export default function FeedbackDashboard({ isOpen, onClose }) {
   const [analytics, setAnalytics] = useState(null);
   const [recentLogs, setRecentLogs] = useState([]);
@@ -29,6 +31,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
   const [view, setView] = useState("usage");
   const [contacts, setContacts] = useState([]);
   const [usage, setUsage] = useState(null);
+  const [gapCount, setGapCount] = useState(0);
 
   const fetchData = async (token = adminToken) => {
     if (!token) {
@@ -169,7 +172,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            {[["usage", "📈 Usage"], ["feedback", "📊 Feedback"], ["messages", `✉️ Messages (${contacts.length})`]].map(([key, label]) => (
+            {[["usage", "📈 Usage"], ["feedback", "📊 Feedback"], ["gaps", `🕳️ Gaps (${gapCount})`], ["messages", `✉️ Messages (${contacts.length})`]].map(([key, label]) => (
               <button
                 key={key}
                 type="button"
@@ -196,6 +199,8 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 chikki-scroll">
           {view === "usage" ? (
             <UsagePanel usage={usage} />
+          ) : view === "gaps" ? (
+            <GapsPanel baseUrl={BASE_URL} token={adminToken} onCount={setGapCount} />
           ) : view === "messages" ? (
             <div className="space-y-3">
               {contacts.length === 0 ? (
@@ -416,6 +421,7 @@ function UsagePanel({ usage }) {
     ["Unverified claims blocked", totals.blocked_claims],
     ["Median reply", latency.p50 != null ? `${(latency.p50 / 1000).toFixed(1)}s` : "–"],
     ["Slow (p95)", latency.p95 != null ? `${(latency.p95 / 1000).toFixed(1)}s` : "–"],
+    ["Engaged visitors", usage.visitors ? `${usage.visitors.engaged} of ${usage.visitors.sessions}` : "–"],
     ["Voice: first sound", usage.voice?.first_audio_p50_ms != null ? `${(usage.voice.first_audio_p50_ms / 1000).toFixed(1)}s` : "–"],
     ["Voice: slow (p95)", usage.voice?.first_audio_p95_ms != null ? `${(usage.voice.first_audio_p95_ms / 1000).toFixed(1)}s` : "–"],
   ];

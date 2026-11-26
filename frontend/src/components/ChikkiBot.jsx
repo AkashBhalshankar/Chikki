@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useTransform } from "framer-motion";
 import { mouthLevel } from "../voiceLevel.js";
+import { seasonFor } from "../seasonal.js";
 
 // Central style config per state - drives colors, eye shape, mouth path, and pose.
 const STATES = {
@@ -78,7 +79,8 @@ function Pop({ show, children, id }) {
 const ARC_CLOSED = ["M 74 50 Q 78 54 82 50", "M 98 50 Q 102 54 106 50"];
 const ARC_WINK = "M 73 50 Q 77 46 81 50";
 
-export default function ChikkiBot({ state = "idle", expression = "confident", size, className, onClick, faceOnly = false }) {
+export default function ChikkiBot({ state = "idle", expression = "confident", size, className, onClick, faceOnly = false, season }) {
+  const festive = season === undefined ? seasonFor(new Date()) : season;
   const [isHovered, setIsHovered] = useState(false);
   const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
   const [liveMouth, setLiveMouth] = useState(mouthLevel.get() >= 0);
@@ -149,6 +151,37 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
         <motion.rect x="65" y="30" width="50" height="42" rx="8" fill="#3A3A3A" strokeWidth="2"
           initial={false} animate={{ rotate: cfg.headTilt || 0, stroke: cfg.stroke }}
           transition={{ rotate: SPRING, stroke: COLOR }} style={{ transformOrigin: "90px 50px" }} />
+
+        {festive === "santa" && (
+          <g>
+            <path d="M 68 31 Q 78 6 104 9 Q 110 20 112 31 Z" fill="#D93636" />
+            <rect x="64" y="28" width="52" height="6" rx="3" fill="#F5F5F5" />
+            <circle cx="106" cy="9" r="5" fill="#F5F5F5" />
+          </g>
+        )}
+        {festive === "party" && (
+          <g>
+            <path d="M 78 31 L 90 4 L 102 31 Z" fill="#F4D77A" stroke="#D8A52F" strokeWidth="1" />
+            <circle cx="86" cy="22" r="2" fill="#F28BA5" />
+            <circle cx="93" cy="14" r="2" fill="#8FE1D8" />
+            <circle cx="90" cy="3" r="3" fill="#F28BA5" />
+          </g>
+        )}
+        {festive === "tricolor" && (
+          <g>
+            <rect x="65" y="27" width="50" height="3" rx="1.5" fill="#FF9933" />
+            <rect x="65" y="30" width="50" height="3" fill="#FFFFFF" />
+            <rect x="65" y="33" width="50" height="3" rx="1.5" fill="#138808" />
+          </g>
+        )}
+        {festive === "diya" && (
+          <g>
+            <motion.path d="M 90 12 Q 97 21 90 27 Q 83 21 90 12 Z" fill="#FFB020"
+              animate={{ scaleY: [1, 1.15, 0.95, 1], opacity: [0.9, 1, 0.85, 0.9] }}
+              style={{ transformOrigin: "90px 27px" }} transition={{ duration: 0.9, repeat: Infinity }} />
+            <path d="M 81 28 Q 90 36 99 28 Z" fill="#B5651D" />
+          </g>
+        )}
 
         <Pop show={cfg.browsAngry} id="browsAngry">
           <path d="M 71 36 L 82 41" stroke="#F0A078" strokeWidth="2.2" strokeLinecap="round" />

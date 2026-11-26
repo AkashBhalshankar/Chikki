@@ -7,11 +7,11 @@ const WS_URL = BASE_URL.replace(/^http/, "ws");
  * Fetches spoken audio for a short fixed line (e.g. the wake greeting)
  * via the existing /tts REST endpoint.
  */
-export async function fetchGreetingAudio(text, language = "en-IN") {
+export async function fetchGreetingAudio(text, language = "en-IN", { voice_pref = null, speed = 1 } = {}) {
   const res = await fetch(`${BASE_URL}/tts`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, language }),
+    body: JSON.stringify({ text, language, voice_pref, speed }),
   });
   if (!res.ok) throw new Error("TTS request failed");
   const blob = await res.blob();
@@ -280,8 +280,8 @@ export function connectVoiceSocket({
       return true;
     },
 
-    send: (message, { voice = true, session_id = null, language = "en-IN", turn_id = null } = {}) => {
-      const payload = { message, voice, session_id, language, turn_id };
+    send: (message, { voice = true, session_id = null, language = "en-IN", turn_id = null, voice_pref = null, speed = 1 } = {}) => {
+      const payload = { message, voice, session_id, language, turn_id, voice_pref, speed };
       if (socket?.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify(payload));
         return true;
@@ -349,4 +349,16 @@ export async function draftPitch(jobDescription) {
     throw new Error(detail.detail || "Could not draft that right now. Please try again.");
   }
   return res.json();
+}
+
+// The newest public repositories, for the "Latest on GitHub" strip. Empty when unavailable.
+export async function fetchGithubActivity() {
+  try {
+    const res = await fetch(`${BASE_URL}/github/activity`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.repos) ? data.repos : [];
+  } catch {
+    return [];
+  }
 }

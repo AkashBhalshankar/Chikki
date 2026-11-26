@@ -102,3 +102,13 @@ def test_pitch_endpoint_validates_and_uses_the_drafter(client, monkeypatch):
     assert client.post("/match/pitch", json={"job_description": "short"}).status_code == 422
     response = client.post("/match/pitch", json={"job_description": "We need an AI engineer with LangGraph and FastAPI experience for agents."})
     assert response.json()["cover_note"] == "Hello team."
+
+
+def test_digest_reports_engaged_visitors(feedback_db):
+    import digest
+    from analytics_store import record_event
+
+    for _ in range(3):
+        record_event("turn", "q", "en-IN", "text", "groq", 1, 1, True, None, 1, False, 0, "S1")
+    record_event("turn", "q", "en-IN", "text", "groq", 1, 1, True, None, 1, False, 0, "S2")
+    assert "Engaged visitors (3+ questions): 1 of 2" in digest.build_digest(7)

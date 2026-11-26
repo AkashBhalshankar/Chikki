@@ -7,7 +7,7 @@
       "dev": "vite",
       "build": "vite build",
       "preview": "vite preview",
-      "test": "node --test src/speechText.test.js src/device.test.js src/adminMode.test.js src/theme.test.js src/focus.test.js src/expressions.test.js src/markdown.test.js src/projects.test.js"
+      "test": "node --test src/speechText.test.js src/device.test.js src/adminMode.test.js src/theme.test.js src/focus.test.js src/expressions.test.js src/markdown.test.js src/projects.test.js src/extras.test.js"
     },
     "dependencies": {
       "framer-motion": "^11.11.9",

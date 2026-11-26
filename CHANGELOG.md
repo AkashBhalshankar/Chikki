@@ -1,5 +1,14 @@
 # Changelog
 
+## More for recruiters and for the owner
+- Interview mode: pick a role, Chikki answers five questions about Akash, then gives an honest fit verdict.
+- Project cards under answers that mention a project, plus a Projects window (all text taken from the resume).
+- Comparison questions answer with a small table; follow-up question chips now come from the model.
+- Draft a cover note and talking points from a pasted job description.
+- Voice settings: English voice (three female voices), speaking speed, how long Chikki waits after you stop talking, soft chimes. Saved per device.
+- A collapsible transcript in voice mode, a wave hello on first load, a "Latest on GitHub" line, and festive looks (Christmas, New Year, Republic and Independence Day, Diwali).
+- Owner inbox (Analytics > Gaps): questions Chikki could not answer; type the true answer and Chikki uses it from then on. Engaged visitors (3+ questions) appear in Analytics and the weekly digest.
+
 ## Smoother Chikki
 - Expressions now blend instead of cutting: colours fade, the mouth morphs, eyes grow and slide, closed eyes fade in, and decorations (blush, hearts, confetti...) fade in and out.
 - Everyone blinks now, not just the idle face.

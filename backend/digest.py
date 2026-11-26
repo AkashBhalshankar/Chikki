@@ -44,6 +44,10 @@ def build_digest(days: int = 7) -> str:
     if latency is not None:
         lines.append(f"Median reply time: {latency / 1000:.1f}s")
 
+    visitors = data.get("visitors", {})
+    if visitors.get("sessions"):
+        lines.append(f"Engaged visitors (3+ questions): {visitors['engaged']} of {visitors['sessions']}")
+
     voice = data.get("voice", {})
     if voice.get("turns"):
         first = voice["first_audio_p50_ms"]
