@@ -23,6 +23,13 @@ const QUICK_PROMPTS = {
   ],
 };
 
+const ACTION_BUTTONS = {
+  contact: { label: "✉️ Leave a message", handler: "onOpenContact" },
+  resume: { label: "📄 Download resume", handler: "onDownloadResume" },
+  role_fit: { label: "🎯 Check role fit", handler: "onOpenMatch" },
+  booking: { label: "📅 Book a call", handler: "onOpenBooking" },
+};
+
 export default function ChatPanel({
   messages,
   onSend,
@@ -36,6 +43,7 @@ export default function ChatPanel({
   onOpenDashboard,
   onOpenContact,
   onOpenMatch,
+  onOpenBooking,
   language = "en-IN",
   onLanguageChange,
 }) {
@@ -52,6 +60,7 @@ export default function ChatPanel({
     (latest, message, index) => (message.role === "assistant" ? index : latest),
     -1
   );
+  const actionHandlers = { onOpenContact, onDownloadResume, onOpenMatch, onOpenBooking };
   const currentPrompts = QUICK_PROMPTS[language] || QUICK_PROMPTS["en-IN"];
 
   useEffect(() => {
@@ -236,6 +245,21 @@ export default function ChatPanel({
                   )}
                 </div>
               </div>
+
+              {m.role === "assistant" && i === latestAssistantIndex && m.final && !m.isError && m.actions?.length > 0 && (
+                <div className="mt-2 ml-1 flex flex-wrap gap-2">
+                  {m.actions.map((name) => {
+                    const config = ACTION_BUTTONS[name];
+                    const handler = config && actionHandlers[config.handler];
+                    if (!handler) return null;
+                    return (
+                      <button key={name} type="button" onClick={handler} className="action-button primary-action text-xs">
+                        {config.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               {m.role === "assistant" && m.final && !m.isError && m.sources?.length > 0 && (
                 <div className="mt-1.5 ml-1 flex max-w-[88%] flex-wrap items-center gap-1 text-[10px] text-gray-500">

@@ -179,6 +179,7 @@ export function connectVoiceSocket({
             trace_id: data.trace_id ?? (data.meta ? data.meta.trace_id : null),
             turn_id: data.turn_id ?? (data.meta ? data.meta.turn_id : null),
             sources: Array.isArray(data.meta?.sources) ? data.meta.sources : [],
+            actions: Array.isArray(data.meta?.actions) ? data.meta.actions : [],
           });
           return;
         }

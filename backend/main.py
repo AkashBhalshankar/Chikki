@@ -12,6 +12,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from ai import ChikkiAIError, _is_joke_request, stream_chikki
+from actions import ActionTagFilter
 from analytics_store import record_event, summary as analytics_summary
 from jd_match import analyze_job
 from contact_store import notify_contact, read_contacts, save_contact
@@ -280,6 +281,7 @@ async def process_chikki_turn(
     turn_started = time.monotonic()
     first_token_ms: int | None = None
     turn_meta: dict = {}
+    tag_filter = ActionTagFilter()
     mode = "voice" if voice_mode else "text"
 
     async def log_turn(ok: bool, error_kind: str | None = None):
@@ -326,10 +328,13 @@ async def process_chikki_turn(
             delta, trace_id = event_value
             if first_token_ms is None:
                 first_token_ms = int((time.monotonic() - turn_started) * 1000)
-            full_reply.append(delta)
-            sentence_buffer += delta
             if trace_id:
                 last_trace_id = trace_id
+            delta = tag_filter.feed(delta)
+            if not delta:
+                continue
+            full_reply.append(delta)
+            sentence_buffer += delta
 
             await websocket.send_json({
                 "type": "token",
@@ -359,6 +364,17 @@ async def process_chikki_turn(
                         })
 
         await stream_task
+
+        tail = tag_filter.finish()
+        if tail:
+            full_reply.append(tail)
+            sentence_buffer += tail
+            await websocket.send_json({
+                "type": "token",
+                "token": tail,
+                "trace_id": last_trace_id,
+                "turn_id": turn_id,
+            })
 
         if sentence_buffer.strip() and voice_mode:
             b64_audio = await synthesize_b64(
@@ -395,6 +411,7 @@ async def process_chikki_turn(
                 "turn_id": turn_id,
                 "kind": "joke" if is_joke else None,
                 "sources": sources_for(retrieved),
+                "actions": tag_filter.actions,
             },
             "turn_id": turn_id,
         })

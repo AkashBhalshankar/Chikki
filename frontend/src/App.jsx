@@ -859,6 +859,7 @@ export default function App() {
             isError: meta?.isError,
             kind: meta?.kind,
             sources: meta?.sources || [],
+            actions: meta?.actions || [],
             trace_id: tid || currentTraceIdRef.current,
           };
           if (!hasPacedAudio) {
@@ -934,6 +935,7 @@ export default function App() {
           onOpenDashboard={() => setShowDashboard(true)}
           onOpenContact={openContact}
           onOpenMatch={openMatch}
+          onOpenBooking={CONTACT_ACTIONS.booking ? () => window.open(CONTACT_ACTIONS.booking, "_blank", "noopener") : null}
           language={currentLang}
           onLanguageChange={setCurrentLang}
         />

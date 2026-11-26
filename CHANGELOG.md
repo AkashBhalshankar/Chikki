@@ -10,6 +10,10 @@
 - Chikki project details moved from the hardcoded system prompt into `knowledge/chikki.md`.
 - Added admin endpoint `POST /knowledge/refresh`.
 
+### New: in-chat actions (tool calling)
+- Chikki can offer app actions (leave a message, download resume, check role fit, book a call) when a visitor clearly asks; the reply shows a button the visitor confirms.
+- Implemented with hidden `[[action:x]]` tags that are stripped from the text and speech stream and returned as `meta.actions`, so it works with every provider, adds no extra model call, and the model cannot run anything by itself. Only whitelisted actions are accepted.
+
 ### New: role-fit check (job description match)
 - Recruiters paste a job description and get an honest fit score, strong matches, real gaps and talking points, grounded only in the verified resume and knowledge base.
 - One click downloads a resume reordered for that role (existing content only, nothing invented).
