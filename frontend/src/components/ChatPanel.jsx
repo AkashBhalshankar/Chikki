@@ -9,6 +9,7 @@ import { projectsMentioned } from "../projects.js";
 import { nextStep } from "../interview.js";
 import ThinkingIndicator from "./ThinkingIndicator.jsx";
 import { plainText } from "../markdown.js";
+import { shareAnswerCard } from "../answerCard.js";
 import { ProfileLine } from "./ProfileBadge.jsx";
 
 const QUICK_PROMPTS = {
@@ -79,6 +80,7 @@ export default function ChatPanel({
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [whyOpen, setWhyOpen] = useState(null);
+  const [cardState, setCardState] = useState({ index: null, label: "" });
   const [copiedIndex, setCopiedIndex] = useState(null);
 
   const handleCopyAnswer = async (index, text) => {
@@ -143,6 +145,19 @@ export default function ChatPanel({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  const handleShareCard = async (index) => {
+    const question = messages[index - 1]?.role === "user" ? messages[index - 1].content : "";
+    const answer = plainText(messages[index].history_content || messages[index].content);
+    setCardState({ index, label: "Preparing…" });
+    try {
+      const outcome = await shareAnswerCard({ question, answer });
+      setCardState({ index, label: outcome === "cancelled" ? "" : outcome === "shared" ? "✓ Shared" : "✓ Saved" });
+    } catch (_) {
+      setCardState({ index, label: "Could not make the card" });
+    }
+    setTimeout(() => setCardState({ index: null, label: "" }), 2200);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -332,6 +347,9 @@ export default function ChatPanel({
                 <div className={`msg-actions mt-1 ml-1 flex flex-wrap items-center gap-1 text-[11px] text-gray-500 ${i === latestAssistantIndex ? "" : "msg-actions-quiet"}`}>
                   <button type="button" onClick={() => handleCopyAnswer(i, plainText(m.history_content || m.content))} className="msg-action">
                     {copiedIndex === i ? "✓ Copied" : "📋 Copy"}
+                  </button>
+                  <button type="button" onClick={() => handleShareCard(i)} className="msg-action" title="Make a picture of this answer to share">
+                    {cardState.index === i && cardState.label ? cardState.label : "🖼️ Share"}
                   </button>
                   {i === latestAssistantIndex && !thinking && !/in detail/i.test(messages[i - 1]?.content || "") && (
                     <button type="button" onClick={() => onSend("Tell me more about that in detail.")} className="msg-action">

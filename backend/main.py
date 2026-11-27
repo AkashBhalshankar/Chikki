@@ -29,6 +29,7 @@ from github_activity import recent_repos
 from owner_notes import add_note, delete_note, list_notes
 from knowledge import TOP_K, format_context, knowledge_base, sources_for
 from models import ContactRequest, FeedbackRequest, GapAnswerRequest, JobMatchRequest, PitchRequest, VoiceMetricRequest
+from owner_bot import open_gaps, owner_bot
 from faq_cache import faq_cache, is_faq, replay_chunks, resume_fingerprint
 from resume import get_resume_context, sync_resume as sync_resume_profile
 from resume_loader import sync_drive_resume
@@ -72,8 +73,10 @@ async def lifespan(_app: FastAPI):
     # Build the retrieval index in the background so the first question is fast.
     asyncio.get_running_loop().run_in_executor(None, _safe_refresh_knowledge)
     prewarm_task = asyncio.create_task(prewarm_cache())
+    owner_bot.start()
     yield
     prewarm_task.cancel()
+    owner_bot.stop()
 
 
 app = FastAPI(title="Chikki AI Assistant", version=APP_VERSION, lifespan=lifespan)
@@ -317,10 +320,7 @@ async def match_pitch(body: PitchRequest, request: Request):
 @app.get("/gaps", dependencies=[Depends(require_admin)])
 def list_gaps():
     """Questions Chikki could not answer, minus the ones already answered with a note."""
-    notes = list_notes()
-    answered = {" ".join(n["question"].lower().strip(" ?!.").split()) for n in notes}
-    gaps = [g for g in unanswered() if g["key"] not in answered]
-    return {"gaps": gaps, "notes": notes}
+    return {"gaps": open_gaps(), "notes": list_notes()}
 
 
 @app.post("/gaps/answer", dependencies=[Depends(require_admin)])
