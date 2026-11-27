@@ -39,7 +39,7 @@ const STATES = {
   nod: { stroke: "#639922", eyeFill: "#97C459", mouth: "M 78 60 Q 90 66 102 60", coreFill: "#173404", headDip: true },
   wake: { stroke: "#639922", eyeFill: "#97C459", mouth: "M 78 60 Q 90 68 102 60", coreFill: "#173404", stretch: true },
   interrupted: { stroke: "#5B4FE9", eyeFill: "#fff", mouth: "M 84 66 A 6 4 0 1 0 96 66", coreFill: "#1c1c1c", shiver: true, bang: true, wideEyes: true },
-  proud: { stroke: "#639922", eyeFill: "#97C459", mouth: "M 78 60 Q 90 67 102 60", coreFill: "#27500A", medal: true, brows: true },
+  proud: { stroke: "#639922", eyeFill: "#97C459", mouth: "M 78 60 Q 90 67 102 60", coreFill: "#27500A", brows: true },
   sleepy: { stroke: "#3C3489", eyeFill: "#7F77DD", mouth: "M 82 63 Q 90 65 98 63", coreFill: "#1c1c1c", dim: true, closedEyes: true, zzz: true },
 };
 
@@ -388,10 +388,6 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
           <motion.circle cx="90" cy="100" r="10" strokeWidth="1.5" initial={false}
             animate={{ fill: cfg.coreFill, stroke: cfg.stroke, opacity: cfg.dim ? [0.3, 0.6, 0.3] : cfg.ringsIn ? [0.5, 1, 0.5] : 1 }}
             transition={{ fill: COLOR, stroke: COLOR, opacity: { duration: cfg.dim ? 3 : 1, repeat: cfg.dim || cfg.ringsIn ? Infinity : 0 } }} />
-
-          <Pop show={cfg.medal} id="medal">
-            <path d="M 90 114 L 92.4 119 L 98 119.7 L 94 123.5 L 95 129 L 90 126.3 L 85 129 L 86 123.5 L 82 119.7 L 87.6 119 Z" fill="#F4D77A" stroke="#D8A52F" strokeWidth="0.8" />
-          </Pop>
 
           <motion.g style={{ transformOrigin: "53px 80px" }} initial={false}
             animate={cfg.wave ? { rotate: [0, -25, 0, -25, 0], y: 0 } : cfg.jump || cfg.armsUp ? { y: -16, rotate: 0 } : cfg.stretch ? { y: [-8, 0], rotate: [-10, 0] } : { y: 0, rotate: 0 }}
