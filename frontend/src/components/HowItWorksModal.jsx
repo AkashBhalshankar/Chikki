@@ -34,7 +34,7 @@ export default function HowItWorksModal({ isOpen, onClose, githubUrl }) {
       aria-modal="true"
       aria-labelledby="how-title"
     >
-      <div className="max-w-2xl w-full max-h-[92vh] overflow-y-auto rounded-2xl border border-gray-700 bg-[#0d0d12] p-5 shadow-2xl chikki-scroll">
+      <div className="max-w-2xl w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-gray-700 bg-[#0d0d12] p-5 shadow-2xl chikki-scroll">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 id="how-title" className="text-sm font-bold text-chikki-purpleLight tracking-wide">

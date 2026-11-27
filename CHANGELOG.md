@@ -1,5 +1,12 @@
 # Changelog
 
+## Finishing touches
+
+- More menu is grouped: Explore, Settings, Links.
+- Calm mode (Settings): stops Chikki's sway and bobbing, the drifting background and the mouse glow.
+- Light and dark themes checked screen by screen for text contrast; small grey labels raised to at least 4.5:1.
+- Consistent corner radii and window heights.
+
 ## Native feel
 
 - Chikki sways while idle, has eyebrows and puffed cheeks for more moods, and three lights on his chest.

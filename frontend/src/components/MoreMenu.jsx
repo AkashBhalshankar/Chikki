@@ -31,8 +31,10 @@ export default function MoreMenu({ items, direction = "down", label = "More" }) 
     };
   }, [open]);
 
-  const visible = items.filter(Boolean);
-  if (visible.length === 0) return null;
+  // a { heading } entry titles the group below it; a heading with nothing under it is dropped
+  const present = items.filter(Boolean);
+  const visible = present.filter((item, index) => !item.heading || (present[index + 1] && !present[index + 1].heading));
+  if (!visible.some((item) => !item.heading)) return null;
 
   const itemClass = (danger) =>
     `flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs transition-colors hover:bg-chikki-purple/15 ${
@@ -59,6 +61,13 @@ export default function MoreMenu({ items, direction = "down", label = "More" }) 
           }`}
         >
           {visible.map((item) => {
+            if (item.heading) {
+              return (
+                <div key={item.key} role="presentation" className="more-heading">
+                  {item.heading}
+                </div>
+              );
+            }
             const close = () => !item.keepOpen && setOpen(false);
             return item.href ? (
               <a

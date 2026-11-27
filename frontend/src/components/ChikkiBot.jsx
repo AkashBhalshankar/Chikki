@@ -131,8 +131,12 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
   const festive = season === undefined ? seasonFor(new Date()) : season;
   const [isHovered, setIsHovered] = useState(false);
   const [outfit, setOutfit] = useState(() => readSettings().outfit);
+  const [calm, setCalm] = useState(() => readSettings().calm);
   useEffect(() => {
-    const refresh = () => setOutfit(readSettings().outfit);
+    const refresh = () => {
+      setOutfit(readSettings().outfit);
+      setCalm(readSettings().calm);
+    };
     window.addEventListener("chikki:settings", refresh);
     return () => window.removeEventListener("chikki:settings", refresh);
   }, []);
@@ -226,7 +230,7 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
   // the name of the face being shown, for the small extras below
   const shownName = override && !isSpeaking ? override : isSpeaking ? safeExpression : safeState;
   // he drifts slowly from side to side while idle, and holds still for anything livelier
-  const swaying = !isHovered && !override && (safeState === "idle" || safeState === "listening");
+  const swaying = !calm && !isHovered && !override && (safeState === "idle" || safeState === "listening");
   const browKind = BROWS[shownName];
   const showBrows = browKind && !cfg.brows && !cfg.browsAngry && !cfg.browRaised;
 
@@ -257,7 +261,7 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
       }}
       style={{ cursor: onClick ? "pointer" : "default", ...(fluid ? { aspectRatio: faceOnly ? "104 / 71" : "180 / 210" } : {}) }}
       animate={{
-        y: cfg.jump ? [0, -14, 0] : cfg.bounce ? [0, -3, 0] : cfg.dim ? [0, 2, 0] : [0, -4, 0],
+        y: calm ? 0 : cfg.jump ? [0, -14, 0] : cfg.bounce ? [0, -3, 0] : cfg.dim ? [0, 2, 0] : [0, -4, 0],
         x: cfg.shiver ? [0, -2, 2, 0] : swaying ? [0, 6, 0, -6, 0] : 0,
       }}
       transition={{
@@ -282,7 +286,7 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
 
       {!faceOnly && (
         <motion.g
-          animate={{ opacity: isSpeaking ? 1 : [0.55, 0.95, 0.55] }}
+          animate={{ opacity: isSpeaking || calm ? 1 : [0.55, 0.95, 0.55] }}
           transition={{ duration: safeState === "thinking" ? 1.2 : 3.4, repeat: Infinity, ease: "easeInOut" }}
         >
           <motion.circle cx="90" cy="98" r="76" fill="url(#chikkiAura)"

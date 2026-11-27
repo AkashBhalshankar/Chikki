@@ -15,7 +15,7 @@ export default function InterviewModal({ isOpen, onClose, onStart }) {
   const role = INTERVIEW_ROLES.find((item) => item.id === roleId);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 font-mono" role="dialog" aria-modal="true" aria-labelledby="interview-title">
-      <div className="max-w-md w-full max-h-[92vh] overflow-y-auto rounded-2xl border border-gray-700 bg-[#0d0d12] p-5 shadow-2xl chikki-scroll">
+      <div className="max-w-md w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-gray-700 bg-[#0d0d12] p-5 shadow-2xl chikki-scroll">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 id="interview-title" className="text-sm font-bold text-chikki-purpleLight tracking-wide">INTERVIEW MODE</h2>

@@ -4,11 +4,11 @@ import { readSettings } from "../settings.js";
 // A soft glow that follows the mouse on desktop and swells over buttons and links. Not shown on touch screens, for
 // people who prefer reduced motion, or when switched off in Settings.
 export default function CursorGlow() {
-  const [enabled, setEnabled] = useState(() => readSettings().cursor);
+  const [enabled, setEnabled] = useState(() => readSettings().cursor && !readSettings().calm);
   const ref = useRef(null);
 
   useEffect(() => {
-    const refresh = () => setEnabled(readSettings().cursor);
+    const refresh = () => setEnabled(readSettings().cursor && !readSettings().calm);
     window.addEventListener("chikki:settings", refresh);
     return () => window.removeEventListener("chikki:settings", refresh);
   }, []);

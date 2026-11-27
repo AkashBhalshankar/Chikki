@@ -49,7 +49,7 @@ export default function SettingsModal({ isOpen, onClose, onChange }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 font-mono" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-      <div className="max-w-md w-full max-h-[92vh] overflow-y-auto rounded-2xl border border-gray-700 bg-[#0d0d12] p-5 shadow-2xl chikki-scroll space-y-5">
+      <div className="max-w-md w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-gray-700 bg-[#0d0d12] p-5 shadow-2xl chikki-scroll space-y-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 id="settings-title" className="text-sm font-bold text-chikki-purpleLight tracking-wide">SETTINGS</h2>
@@ -58,6 +58,12 @@ export default function SettingsModal({ isOpen, onClose, onChange }) {
           <button type="button" onClick={onClose} aria-label="Close" className="text-gray-300 hover:text-white text-xs px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-gray-700">✕</button>
         </div>
         <Choice label="Accent colour" options={ACCENTS} value={settings.accent} onChange={(accent) => update({ accent })} />
+        <Choice
+          label="Calm mode (less movement)"
+          options={[{ id: "off", label: "Off" }, { id: "on", label: "On" }]}
+          value={settings.calm ? "on" : "off"}
+          onChange={(value) => update({ calm: value === "on" })}
+        />
         <Choice label="Background theme (dark mode)" options={SKINS} value={settings.skin} onChange={(skin) => update({ skin })} />
         <Choice label="Chikki's outfit" options={OUTFITS} value={settings.outfit} onChange={(outfit) => update({ outfit })} />
         <Choice label="Text size" options={TEXT_SIZES} value={settings.textSize} onChange={(textSize) => update({ textSize })} />

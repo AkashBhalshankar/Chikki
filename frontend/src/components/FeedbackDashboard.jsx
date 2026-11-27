@@ -272,7 +272,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
                 <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   <button
                     onClick={() => setFilter("all")}
-                    className={`text-xs px-3 py-1 rounded-md transition-colors ${
+                    className={`text-xs px-3 py-1 rounded-lg transition-colors ${
                       filter === "all" ? "bg-chikki-purple/30 text-chikki-purpleLight border border-chikki-purple" : "text-gray-400 hover:bg-zinc-800"
                     }`}
                   >
@@ -280,7 +280,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
                   </button>
                   <button
                     onClick={() => setFilter("with-comments")}
-                    className={`text-xs px-3 py-1 rounded-md transition-colors ${
+                    className={`text-xs px-3 py-1 rounded-lg transition-colors ${
                       filter === "with-comments" ? "bg-indigo-600/30 text-indigo-200 border border-indigo-500 font-semibold" : "text-gray-400 hover:bg-zinc-800"
                     }`}
                   >
@@ -288,7 +288,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
                   </button>
                   <button
                     onClick={() => setFilter("needs-improvement")}
-                    className={`text-xs px-3 py-1 rounded-md transition-colors ${
+                    className={`text-xs px-3 py-1 rounded-lg transition-colors ${
                       filter === "needs-improvement" ? "bg-rose-500/20 text-rose-300 border border-rose-500/50" : "text-gray-400 hover:bg-zinc-800"
                     }`}
                   >
@@ -296,7 +296,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
                   </button>
                   <button
                     onClick={() => setFilter("helpful")}
-                    className={`text-xs px-3 py-1 rounded-md transition-colors ${
+                    className={`text-xs px-3 py-1 rounded-lg transition-colors ${
                       filter === "helpful" ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/50" : "text-gray-400 hover:bg-zinc-800"
                     }`}
                   >

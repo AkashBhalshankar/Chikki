@@ -9,7 +9,7 @@ export default function LanguageSelector({ language, onChange }) {
     <div
       role="group"
       aria-label="Conversation language"
-      className="flex items-center gap-0.5 rounded-md border border-gray-800 bg-gray-900 p-0.5 text-[10px]"
+      className="flex items-center gap-0.5 rounded-lg border border-gray-800 bg-gray-900 p-0.5 text-[10px]"
     >
       {LANGUAGES.map((item) => (
         <button

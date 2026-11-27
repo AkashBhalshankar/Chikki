@@ -211,14 +211,12 @@ export default function ChatPanel({
             <MoreMenu
               direction={direction}
               items={[
+                { key: "h-explore", heading: "Explore" },
                 onOpenProjects && { key: "projects", label: "🗂️ Projects", onClick: onOpenProjects },
-                onOpenSettings && { key: "settings", label: "⚙️ Settings", onClick: onOpenSettings },
                 onOpenInterview && { key: "interview", label: "🎤 Interview mode", onClick: onOpenInterview },
                 onOpenHow && { key: "how", label: "🧠 How Chikki works", onClick: onOpenHow },
-                onShare && { key: "share", label: linkCopied ? "✓ Link copied" : "🔗 Copy link", onClick: handleShareClick, keepOpen: true },
-                canCall && actions.phone && { key: "call", label: "📞 Call Akash", href: telHref(actions.phone) },
-                actions.linkedin && { key: "linkedin", label: "💼 LinkedIn", href: actions.linkedin },
-                actions.github && { key: "github", label: "💻 GitHub", href: actions.github },
+                { key: "h-settings", heading: "Settings" },
+                onOpenSettings && { key: "settings", label: "⚙️ Settings", onClick: onOpenSettings },
                 onToggleTheme && { key: "theme", label: theme === "light" ? "🌙 Dark theme" : "☀️ Light theme", onClick: onToggleTheme },
                 onClear && messages.length > 0 && {
                   key: "clear",
@@ -227,6 +225,11 @@ export default function ChatPanel({
                   keepOpen: !confirmClear,
                   danger: true,
                 },
+                { key: "h-links", heading: "Links" },
+                onShare && { key: "share", label: linkCopied ? "✓ Link copied" : "🔗 Copy link", onClick: handleShareClick, keepOpen: true },
+                canCall && actions.phone && { key: "call", label: "📞 Call Akash", href: telHref(actions.phone) },
+                actions.linkedin && { key: "linkedin", label: "💼 LinkedIn", href: actions.linkedin },
+                actions.github && { key: "github", label: "💻 GitHub", href: actions.github },
               ]}
             />
     </>

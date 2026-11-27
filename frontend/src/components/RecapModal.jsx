@@ -24,7 +24,7 @@ export default function RecapModal({ isOpen, onClose, messages }) {
   };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 font-mono" role="dialog" aria-modal="true" aria-labelledby="recap-title">
-      <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-gray-700 bg-[#0d0d12] p-5 shadow-2xl">
+      <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border border-gray-700 bg-[#0d0d12] p-5 shadow-2xl">
         <div className="flex items-start justify-between gap-3">
           <h2 id="recap-title" className="text-sm font-bold tracking-wide text-chikki-purpleLight">CHAT RECAP</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-lg border border-gray-700 bg-zinc-800 px-2.5 py-1 text-xs text-gray-300 hover:bg-zinc-700 hover:text-white">✕</button>

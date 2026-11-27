@@ -14,7 +14,7 @@ export default function JourneyModal({ isOpen, onClose, onAsk }) {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 font-mono" role="dialog" aria-modal="true" aria-labelledby="journey-title">
-      <div className="flex max-h-[88vh] w-full max-w-xl flex-col rounded-2xl border border-gray-700 bg-[#0d0d12] p-5 shadow-2xl">
+      <div className="flex max-h-[90vh] w-full max-w-xl flex-col rounded-2xl border border-gray-700 bg-[#0d0d12] p-5 shadow-2xl">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 id="journey-title" className="text-sm font-bold tracking-wide text-chikki-purpleLight">WORK JOURNEY</h2>

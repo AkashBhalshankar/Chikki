@@ -1749,15 +1749,18 @@ export default function App() {
             <MoreMenu
               direction="up"
               items={[
+                { key: "h-explore", heading: "Explore" },
                 { key: "projects", label: "🗂️ Projects", onClick: openProjects },
-                { key: "settings", label: "⚙️ Settings", onClick: openSettings },
-                { key: "interview", label: "🎤 Interview mode", onClick: openInterview },
                 { key: "journey", label: "🧭 Work journey", onClick: openJourney },
+                { key: "interview", label: "🎤 Interview mode", onClick: openInterview },
                 { key: "how", label: "🧠 How Chikki works", onClick: openHow },
+                { key: "h-settings", heading: "Settings" },
+                { key: "settings", label: "⚙️ Settings", onClick: openSettings },
+                { key: "theme", label: theme === "light" ? "🌙 Dark theme" : "☀️ Light theme", onClick: toggleTheme },
+                { key: "h-links", heading: "Links" },
                 canCall && CONTACT_ACTIONS.phone && { key: "call", label: "📞 Call Akash", href: telHref(CONTACT_ACTIONS.phone) },
                 CONTACT_ACTIONS.linkedin && { key: "linkedin", label: "💼 LinkedIn", href: CONTACT_ACTIONS.linkedin },
                 CONTACT_ACTIONS.github && { key: "github", label: "💻 GitHub", href: CONTACT_ACTIONS.github },
-                { key: "theme", label: theme === "light" ? "🌙 Dark theme" : "☀️ Light theme", onClick: toggleTheme },
               ]}
             />
           </div>

@@ -10,6 +10,10 @@ export function startParallax() {
     let py = 0;
     const apply = () => {
       frame = 0;
+      if (root.dataset.calm) {
+        px = 0;
+        py = 0;
+      }
       root.style.setProperty("--px", px.toFixed(3));
       root.style.setProperty("--py", py.toFixed(3));
     };

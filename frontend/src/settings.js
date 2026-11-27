@@ -4,7 +4,7 @@ const KEY = "chikki_settings";
 
 export const DEFAULTS = {
   voice: "neerja", speed: 1, pause: "normal", sounds: true, transcript: false, accent: "violet",
-  skin: "midnight", textSize: "normal", readable: false, outfit: "none", haptics: true, contrast: false, cursor: true,
+  skin: "midnight", textSize: "normal", readable: false, outfit: "none", haptics: true, contrast: false, cursor: true, calm: false,
 };
 
 export const ACCENTS = [
@@ -86,6 +86,7 @@ export function normalizeSettings(raw) {
     haptics: typeof value.haptics === "boolean" ? value.haptics : DEFAULTS.haptics,
     contrast: typeof value.contrast === "boolean" ? value.contrast : DEFAULTS.contrast,
     cursor: typeof value.cursor === "boolean" ? value.cursor : DEFAULTS.cursor,
+    calm: typeof value.calm === "boolean" ? value.calm : DEFAULTS.calm,
   };
 }
 
@@ -124,6 +125,8 @@ export function applyLook(settings) {
     const root = document.documentElement;
     if (settings.skin && settings.skin !== "midnight") root.dataset.skin = settings.skin;
     else delete root.dataset.skin;
+    if (settings.calm) root.dataset.calm = "on";
+    else delete root.dataset.calm;
     if (settings.contrast) root.dataset.contrast = "high";
     else delete root.dataset.contrast;
     if (settings.readable) root.dataset.font = "readable";

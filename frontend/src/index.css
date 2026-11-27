@@ -877,7 +877,7 @@ html[data-theme="light"][data-contrast="high"] .border-gray-700 { border-color: 
 .skill-chip-button:hover { background: rgba(var(--accent-rgb), 0.28); }
 .skill-chip-button:active { transform: scale(0.95); }
 .journey-line { border-left: 2px solid rgba(var(--accent-rgb), 0.35); margin-left: 6px; padding-left: 14px; }
-.journey-item { position: relative; display: flex; width: 100%; flex-direction: column; gap: 2px; text-align: left; border-radius: 10px; padding: 8px 10px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.03); transition: border-color 0.2s, background 0.2s; }
+.journey-item { position: relative; display: flex; width: 100%; flex-direction: column; gap: 2px; text-align: left; border-radius: 12px; padding: 8px 10px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.03); transition: border-color 0.2s, background 0.2s; }
 .journey-item::before { content: ""; position: absolute; left: -21px; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-radius: 9999px; background: rgb(var(--accent-rgb)); box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.7); }
 .journey-item:hover { border-color: rgba(var(--accent-rgb), 0.55); background: rgba(var(--accent-rgb), 0.1); }
 html[data-theme="light"] .journey-item { border-color: #dde1ee; background: #fff; }
@@ -888,7 +888,7 @@ html[data-theme="light"] .journey-item { border-color: #dde1ee; background: #fff
 .egg { position: fixed; inset: 0; z-index: 80; pointer-events: none; overflow: hidden; }
 .egg-confetti i { position: absolute; top: -12px; width: 8px; height: 12px; border-radius: 2px; animation-name: egg-fall; animation-timing-function: linear; animation-fill-mode: forwards; }
 @keyframes egg-fall { to { transform: translateY(105vh) rotate(540deg); } }
-.egg-card { position: absolute; left: 50%; top: 18%; translate: -50% 0; max-width: min(86vw, 360px); text-align: center; padding: 12px 16px; border-radius: 14px; background: rgba(15, 15, 24, 0.92); border: 1px solid rgba(var(--accent-rgb), 0.6); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); animation: msg-in 0.4s ease both; }
+.egg-card { position: absolute; left: 50%; top: 18%; translate: -50% 0; max-width: min(86vw, 360px); text-align: center; padding: 12px 16px; border-radius: 12px; background: rgba(15, 15, 24, 0.92); border: 1px solid rgba(var(--accent-rgb), 0.6); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); animation: msg-in 0.4s ease both; }
 @media (prefers-reduced-motion: reduce) { .egg-confetti i, .emoji-float, .play-orb { animation: none; } }
 
 /* on phones the follow-up questions are one swipeable row, so they take less height */
@@ -951,3 +951,27 @@ html[data-theme="light"] .shimmer-line { background-image: linear-gradient(90deg
 }
 @keyframes sheet-up { from { translate: 0 100%; } }
 @media (prefers-reduced-motion: reduce) { [role="dialog"][aria-modal="true"] > div { animation: none !important; } }
+
+/* the More menu's group titles */
+.more-heading { padding: 8px 12px 4px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #71717a; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.more-menu .more-heading:first-child { border-top: 0; }
+html[data-theme="light"] .more-heading { color: #52525b; border-top-color: rgba(15, 23, 42, 0.1); }
+
+/* Calm mode: the page stops moving on its own (Chikki's sway, the drifting background, the mouse glow) */
+html[data-calm="on"] *, html[data-calm="on"] *::before, html[data-calm="on"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0s !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* Readable secondary text: the small grey labels were a little too faint on the dark background (and, in the light
+   theme, just under the accessible minimum). Raised to at least 4.5:1. */
+.text-gray-600 { color: #8a8f9b; }
+.text-gray-500 { color: #8a909c; }
+.more-heading { color: #8a909c; }
+html[data-theme="light"] .text-gray-600 { color: #4b5563; }
+html[data-theme="light"] .text-gray-500 { color: #565e6b; }
+html[data-theme="light"] .more-heading { color: #4b5563; }
+html[data-theme="light"] .text-emerald-300 { color: #046c4e; }
+html[data-theme="light"] .text-emerald-400 { color: #047857; }
