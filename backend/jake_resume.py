@@ -332,8 +332,7 @@ def _render(data: dict, focus: str, linkedin_url: str, github_url: str, scale: f
     terms = _focus_terms(focus)
     for job in data["experience"]:
         job["bullets"].sort(key=lambda b: _score(b, terms), reverse=True)
-    data["experience"].sort(key=lambda j: _score(" ".join(j["bullets"]), terms), reverse=True) if terms else None
-    data["projects"].sort(key=lambda p: _score(p["title"] + p["tech"] + " ".join(p["bullets"]), terms), reverse=True)
+    # Jobs and projects keep a fixed order (UBS, MassMutual; Chikki, ShareInSync, NaChitram); only bullets within a job follow the topic.
 
     body = PS("body", fontName=REGULAR, fontSize=10, leading=10.9, textColor=colors.black)
     bullet = PS("bullet", parent=body, leftIndent=0.3 * inch, firstLineIndent=-0.12 * inch, spaceAfter=1)

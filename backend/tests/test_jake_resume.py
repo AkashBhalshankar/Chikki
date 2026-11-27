@@ -57,3 +57,13 @@ def test_a_pdf_it_made_reads_back_the_same():
     assert len(job["bullets"]) == len(original["bullets"])
     assert again["projects"][0]["link"] == "Live Demo"
     assert again["education"][0]["org"] == "KITS"
+
+
+def test_jobs_and_projects_keep_their_order_whatever_the_topic():
+    text = SAMPLE.replace(
+        "Education",
+        "ShareInSync — Sharing PWA | React Live App\n• Built sharing.\nEducation",
+    )
+    pdf = jake_resume.build_jake_pdf(text, focus="sharing webrtc react")
+    page = PdfReader(BytesIO(pdf)).pages[0].extract_text()
+    assert page.index("Chikki") < page.index("ShareInSync") < page.index("NaChitram")
