@@ -1382,7 +1382,7 @@ export default function App() {
               }
             }}
           >
-            <ChikkiBot state={chikkiState} expression={voiceExpression} className="fit-bot fit-bot-lg" />
+            <ChikkiBot state={chikkiState} expression={voiceExpression} className="fit-svg" />
           </div>
 
           {/* Subtitles & State Readout */}
@@ -1479,19 +1479,19 @@ export default function App() {
           )}
 
           {/* Suggestion Rail */}
-          <div className="suggestion-rail fit-hide-short mt-4 w-full max-w-lg">
+          <div className="suggestion-rail fit-hide-tiny mt-3 w-full max-w-lg">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[10px] uppercase tracking-[0.16em] text-gray-500">Try asking</span>
               <span className="text-[10px] text-gray-600">or say it aloud</span>
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {[...followUpSuggestions, ...currentPrompts].slice(0, 4).map((prompt) => (
+              {[...followUpSuggestions, ...currentPrompts].slice(0, 4).map((prompt, index) => (
                 <button
                   key={prompt}
                   type="button"
                   onClick={() => handleResult(prompt)}
                   disabled={chikkiState === "thinking"}
-                  className="prompt-button hover:border-chikki-purple hover:text-chikki-purpleLight disabled:opacity-40"
+                  className={`prompt-button hover:border-chikki-purple hover:text-chikki-purpleLight disabled:opacity-40 ${index >= 2 ? "chip-fit-extra" : ""}`}
                 >
                   <span className="text-chikki-purpleLight mr-2">›</span> {prompt}
                 </button>
@@ -1500,7 +1500,7 @@ export default function App() {
           </div>
 
           {/* Feedback Bar */}
-          <div className={`mt-4 flex flex-col items-center gap-2 ${hasVoiceAnswer ? "" : "hidden"}`}>
+          <div className={`mt-2 flex flex-col items-center gap-2 ${hasVoiceAnswer ? "" : "hidden"}`}>
             <div className="flex items-center gap-3 text-[11px] text-gray-500">
               <span>Was that helpful?</span>
               <button
@@ -1605,7 +1605,7 @@ export default function App() {
           </div>
         </main>
 
-        <div className="fit-hide-short"><AppFooter /></div>
+        <div className="fit-hide-short fit-hide-mid"><AppFooter /></div>
       </div>
 
       <FeedbackDashboard

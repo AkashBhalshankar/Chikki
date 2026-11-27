@@ -44,7 +44,7 @@ export default function StandbyScreen({
           <div className="fit-hide-short mb-3 px-2">
             <ProfileCard />
           </div>
-          <ChikkiBot state={state} className="fit-bot" />
+          <div className="fit-botbox"><ChikkiBot state={state} className="fit-svg" /></div>
 
           <div className="mt-3 flex items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-gray-600">
             {serverState === "waking" ? (
@@ -72,7 +72,7 @@ export default function StandbyScreen({
             </p>
           )}
 
-          <p className="fit-hide-short mt-3 max-w-md px-2 text-sm leading-relaxed text-gray-300">
+          <p className="fit-hide-short fit-hide-phone mt-3 max-w-md px-2 text-sm leading-relaxed text-gray-300">
             Ask about Akash&apos;s skills, projects or fit for your role. Every answer is checked against his verified resume.
           </p>
 

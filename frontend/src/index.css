@@ -103,12 +103,19 @@ input {
 /* Start and voice screens fit the window on their own: Chikki and the spacing scale with the window height,
    lower-priority blocks drop out on short windows, and only as a last resort the middle scrolls inside. */
 .fit-viewport { height: 100vh; height: 100dvh; overflow: hidden; }
-.fit-main { min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
-.fit-inner { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%; }
-.fit-bot { width: clamp(84px, 20vh, 170px); height: auto; }
-.fit-bot-lg { width: clamp(96px, 27vh, 230px); }
-.chikki-stage.fit-stage { min-height: 0; padding: 0.25rem 0; }
-@media (max-height: 720px) { .fit-hide-short { display: none; } }
+/* Nothing scrolls: the middle is a column where Chikki takes whatever height is left over. */
+.fit-main { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.fit-inner { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; }
+.fit-inner > * { flex-shrink: 0; }
+.fit-botbox, .chikki-stage.fit-stage {
+  flex: 1 1 0; min-height: 56px; max-height: 250px; width: min(100%, 480px);
+  display: flex; align-items: center; justify-content: center; padding: 0.25rem 0;
+}
+.fit-botbox > svg, .chikki-stage.fit-stage > svg { height: 100%; width: auto; max-width: 100%; }
+@media (max-height: 760px) { .fit-hide-short { display: none; } }
+@media (max-height: 900px) { .fit-inner .chip-fit-extra, .fit-hide-mid { display: none; } }
+@media (max-width: 640px) and (max-height: 900px) { .fit-hide-phone { display: none; } }
+@media (max-height: 560px) { .fit-hide-tiny { display: none; } }
 
 /* Wider on desktop so Chikki gets a column of its own beside the chat */
 .chat-shell { max-width: 72rem; }
