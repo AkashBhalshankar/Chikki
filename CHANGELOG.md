@@ -1,5 +1,9 @@
 # Changelog
 
+## NaChitram
+- Chikki now knows the NaChitram Chrome extension (what it does, how it is built, its privacy design) from `backend/knowledge/nachitram.md`, lists it with the other projects (`projects.md`), and shows it as a project card.
+- Project questions are told to cover every project in the resume and the notes, and may use up to 6 bullets.
+
 ## Install, access and efficiency
 - Chikki can be installed as an app (manifest, icons, a service worker that caches nothing so deploys are never stale). Chrome reports no installability problems.
 - Accessibility: visible keyboard focus, the conversation is announced to screen readers, labelled input, and people who ask their device for less motion get calmer animations.

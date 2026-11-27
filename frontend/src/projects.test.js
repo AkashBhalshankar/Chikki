@@ -7,7 +7,8 @@ test("a card is offered for each project an answer names, in order, at most thre
   const names = (text) => projectsMentioned(text).map((p) => p.id);
   assert.deepEqual(names("He built ShareInSync and also Chikki."), ["shareinsync", "chikki"]);
   assert.deepEqual(names("Nothing about projects here."), []);
-  assert.equal(projectsMentioned("Chikki, ShareInSync, AgriMentor and NavLearn").length, 3);
+  assert.deepEqual(names("He also built NaChitram."), ["nachitram"]);
+  assert.equal(projectsMentioned("Chikki, ShareInSync, AgriMentor, NaChitram and NavLearn").length, 3);
   assert.equal(names("The Request Management Service at UBS")[0], "request-management");
 });
 

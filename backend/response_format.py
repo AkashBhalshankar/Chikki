@@ -43,7 +43,7 @@ LAYOUTS = {
         "items per bullet (for example \"- **AI and agents:** LangGraph, LangChain, RAG\"). No closing line."
     ),
     "experience": (
-        "Layout: one bullet per company, project or role, each as \"- **Name** (role or type): one concrete "
+        "Layout: one bullet per company, project or role (up to 6 bullets, never drop one the visitor asked for), each as \"- **Name** (role or type): one concrete "
         "result or technology\". Lead with the most relevant. A short lead-in line is optional. No closing line."
     ),
     "verdict": (

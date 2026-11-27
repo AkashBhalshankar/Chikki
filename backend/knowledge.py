@@ -318,7 +318,9 @@ def format_context(chunks: list[Chunk]) -> str:
         "RETRIEVED KNOWLEDGE (verified write-ups; use only when relevant)\n"
         "==================================================\n"
         "Use these excerpts to add specific, accurate detail. They are verified facts about "
-        "implemented work. Never contradict the resume above, and do not mention source numbers aloud.\n\n"
+        "implemented work. Never contradict the resume above, and do not mention source numbers aloud. "
+        "When the visitor asks about his projects or work in general, cover every project named in the resume "
+        "or in these excerpts, not only the resume's.\n\n"
         + "\n\n".join(blocks)
     )
 

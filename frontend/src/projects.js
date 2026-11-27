@@ -12,6 +12,15 @@ export const PROJECTS = [
     match: ["chikki"],
   },
   {
+    id: "nachitram",
+    name: "NaChitram",
+    kind: "Chrome extension: screen, webcam and whiteboard recorder",
+    summary: "A free recorder for teachers and creators with a live whiteboard, camera bubble and a private teleprompter. Everything stays in the browser.",
+    stack: ["Chrome Manifest V3", "MediaRecorder", "Web Audio", "Local browser storage"],
+    highlights: ["No account, servers or cloud upload", "Long recordings are written to local storage in chunks, so a crash loses nothing"],
+    match: ["nachitram"],
+  },
+  {
     id: "request-management",
     name: "Request Management Service",
     kind: "Enterprise multi-agent platform at UBS",
