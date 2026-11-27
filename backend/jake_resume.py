@@ -25,7 +25,7 @@ DEFAULT_GITHUB = "https://github.com/AkashBhalshankar"
 SITE = "https://akashbhalshankar.com"
 # Listed in Akash's knowledge base but missing from the Drive resume, so it is added when the Drive text lacks it.
 NACHITRAM = {
-    "title": "NaChitram — Screen, Webcam & Whiteboard Recorder (Chrome Extension)",
+    "title": "NaChitram — Screen, Webcam & Whiteboard Recorder",
     "tech": "Chrome Extension (MV3), MediaRecorder, Web Audio",
     "link": "Chrome Web Store",
     "url": "https://chromewebstore.google.com/detail/scioflow-screen-webcam-wh/nklfcnddfghefifdpgmlkccbanmmoido",
