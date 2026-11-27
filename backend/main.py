@@ -38,6 +38,7 @@ from security import (
     MAX_MESSAGE_CHARS,
     MAX_TTS_CHARS,
     chat_limiter,
+    chat_daily_limiter,
     client_ip,
     contact_limiter,
     match_limiter,
@@ -784,6 +785,17 @@ async def handle_chikki_ws(websocket: WebSocket):
                     websocket,
                     "You're asking faster than I can think! Please wait a moment and try again.",
                     "rate_limit",
+                    turn_id,
+                )
+                continue
+
+            if not chat_daily_limiter.allow(ip):
+                logger.warning("Daily chat limit exceeded for %s", ip)
+                await _send_error(
+                    websocket,
+                    "You've asked a lot today, thank you for the interest! Please come back tomorrow, "
+                    "or use the Contact button to reach Akash directly.",
+                    "daily_limit",
                     turn_id,
                 )
                 continue

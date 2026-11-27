@@ -64,6 +64,8 @@ class RateLimiter:
 
 # Per-IP limits. Tunable through environment variables.
 chat_limiter = RateLimiter(_int_env("RATE_LIMIT_CHAT_PER_MIN", 20), 60)
+# One visitor (or script) cannot use up the free AI quota: a daily ceiling on top of the per-minute limit.
+chat_daily_limiter = RateLimiter(_int_env("RATE_LIMIT_CHAT_PER_DAY", 150), 86400)
 tts_limiter = RateLimiter(_int_env("RATE_LIMIT_TTS_PER_MIN", 30), 60)
 stt_limiter = RateLimiter(_int_env("RATE_LIMIT_STT_PER_MIN", 20), 60)
 resume_limiter = RateLimiter(_int_env("RATE_LIMIT_RESUME_PER_MIN", 6), 60)

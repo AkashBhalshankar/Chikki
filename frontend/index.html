@@ -46,6 +46,20 @@
         <p>Loading Chikki…</p>
       </div>
     </div>
+    <noscript><p style="font-family:sans-serif;text-align:center;padding:2rem;color:#999">Chikki needs JavaScript to run. Please enable it and reload.</p></noscript>
+    <script>
+      // If the app has not started after a while (a slow connection or a blocked file), say so instead of waiting forever.
+      setTimeout(function () {
+        var boot = document.querySelector(".boot");
+        if (!boot) return;
+        boot.querySelector("p").textContent = "Taking longer than usual…";
+        var button = document.createElement("button");
+        button.textContent = "Reload";
+        button.style.cssText = "margin-top:6px;padding:6px 14px;border-radius:8px;border:1px solid #7f77dd;background:transparent;color:#afa9ec;font:inherit;cursor:pointer";
+        button.onclick = function () { location.reload(); };
+        boot.appendChild(button);
+      }, 15000);
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

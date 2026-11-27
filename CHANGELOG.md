@@ -1,5 +1,13 @@
 # Changelog
 
+## Accessibility, abuse protection, friendlier errors
+
+- Daily ceiling per visitor (RATE_LIMIT_CHAT_PER_DAY, default 150) on top of the per-minute limit, with a kind message and the Contact option.
+- Offline / cannot-reach-Chikki banner with Contact and Reload; error replies get Try again and Contact buttons.
+- A crash shows a friendly page (Reload / Start fresh) instead of a blank screen; a damaged saved chat no longer stops the page loading.
+- If the app never starts the loading screen offers a Reload after 15 seconds.
+- Accessibility: focus moves into every window and stays there, returns on close; skip link; page language follows the chosen language; status text announced; High contrast setting.
+
 ## UI polish round 2
 
 - Settings: background themes (Midnight, Sunrise, Forest, Ocean), Chikki's outfit, text size, easy-to-read font, vibration.

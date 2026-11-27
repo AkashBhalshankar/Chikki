@@ -28,6 +28,8 @@ import ShortcutsModal from "./components/ShortcutsModal.jsx";
 import { readSettings } from "./settings.js";
 import { playChime } from "./sounds.js";
 import { buzz } from "./haptics.js";
+import ConnectionBanner from "./components/ConnectionBanner.jsx";
+import useDialogFocus from "./hooks/useDialogFocus.js";
 import { glowFor, reactionForTranscript } from "./expressions.js";
 import RecapModal from "./components/RecapModal.jsx";
 import InterviewModal from "./components/InterviewModal.jsx";
@@ -127,7 +129,11 @@ const EXPRESSION_LABELS = {
 function loadStoredMessages() {
   try {
     const raw = localStorage.getItem(CHAT_HISTORY_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const saved = raw ? JSON.parse(raw) : [];
+    // a damaged or hand-edited history must never stop the page from loading
+    return Array.isArray(saved)
+      ? saved.filter((m) => m && typeof m === "object" && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      : [];
   } catch (_) {
     return [];
   }
@@ -498,6 +504,24 @@ export default function App() {
     if (rgb) document.documentElement.style.setProperty("--mood-rgb", rgb);
     else document.documentElement.style.removeProperty("--mood-rgb");
   }, [glowState]);
+  useDialogFocus();
+  useEffect(() => {
+    document.documentElement.lang = { "te-IN": "te", "hi-IN": "hi" }[currentLang] || "en";
+  }, [currentLang]);
+  // connection notice: shown when the phone is offline, or the socket has stayed closed for a few seconds
+  const [socketLost, setSocketLost] = useState(false);
+  const [offline, setOffline] = useState(() => typeof navigator !== "undefined" && navigator.onLine === false);
+  const lostTimerRef = useRef(null);
+  useEffect(() => {
+    const goOffline = () => setOffline(true);
+    const goOnline = () => setOffline(false);
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    return () => {
+      window.removeEventListener("offline", goOffline);
+      window.removeEventListener("online", goOnline);
+    };
+  }, []);
   const [showRecap, setShowRecap] = useState(false);
   const openRecap = useCallback(() => setShowRecap(true), []);
   const closeRecap = useCallback(() => setShowRecap(false), []);
@@ -1103,6 +1127,8 @@ export default function App() {
         setVoiceExpression(replyExpressionRef.current);
       },
       onOpen: () => {
+        window.clearTimeout(lostTimerRef.current);
+        setSocketLost(false);
         socketReadyRef.current = true;
         if (inputModeRef.current === "voice") setChikkiState("listening");
 
@@ -1276,6 +1302,8 @@ export default function App() {
 
       onClose: () => {
         socketReadyRef.current = false;
+        window.clearTimeout(lostTimerRef.current);
+        lostTimerRef.current = window.setTimeout(() => setSocketLost(true), 3500);
       },
     });
 
@@ -1333,6 +1361,7 @@ export default function App() {
   if (inputMode === "chat") {
     return (
       <>
+        <ConnectionBanner offline={offline} lost={socketLost} onContact={openContact} />
         <ChatPanel
           messages={messages}
           onSend={handleChatSend}
@@ -1396,6 +1425,7 @@ export default function App() {
 
   return (
     <div className="view-fade fit-viewport dot-grid px-4 py-4 sm:px-8 sm:py-5 flex flex-col font-mono">
+      <ConnectionBanner offline={offline} lost={socketLost} onContact={openContact} />
       <div className="app-shell flex min-h-0 flex-1 flex-col w-full">
         {/* Header */}
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-4">
@@ -1479,7 +1509,7 @@ export default function App() {
                 </p>
               </div>
             ) : (
-              <p key={chikkiState} className="fade-swap min-h-[1.5rem] text-sm text-gray-300">
+              <p key={chikkiState} aria-live="polite" className="fade-swap min-h-[1.5rem] text-sm text-gray-300">
                 {chikkiState === "thinking"
                   ? <ThinkingWord />
                   : chikkiState === "error"

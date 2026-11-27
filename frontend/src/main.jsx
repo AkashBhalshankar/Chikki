@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { MotionConfig } from "framer-motion";
 import App from "./App.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import "./index.css";
 import { applyLook, readSettings } from "./settings.js";
 
@@ -11,7 +12,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     {/* "user" means people who ask their device for less motion get calmer animations */}
     <MotionConfig reducedMotion="user">
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </MotionConfig>
   </React.StrictMode>
 );

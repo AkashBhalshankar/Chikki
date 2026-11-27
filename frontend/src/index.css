@@ -825,3 +825,27 @@ html[data-theme="light"] .msg-action:hover { color: var(--accent-700); backgroun
 @keyframes boot-float { 50% { transform: translateY(-5px); } }
 @keyframes boot-blink { 0%, 92%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
 @media (prefers-reduced-motion: reduce) { .boot-bot, .boot-bot i, .boot-bar i { animation: none; } }
+
+/* The banner shown when the phone is offline or Chikki cannot be reached */
+.conn-banner { background: #3b2a0b; color: #fde68a; border-bottom: 1px solid rgba(245, 158, 11, 0.5); }
+.conn-banner-btn { border: 1px solid rgba(253, 230, 138, 0.6); border-radius: 0.5rem; padding: 0.15rem 0.6rem; font-size: 11px; color: inherit; background: transparent; }
+.conn-banner-btn:hover { background: rgba(253, 230, 138, 0.15); }
+html[data-theme="light"] .conn-banner { background: #fef3c7; color: #78350f; border-bottom-color: #f59e0b; }
+html[data-theme="light"] .conn-banner-btn { border-color: #b45309; }
+
+/* High contrast: brighter secondary text, firmer borders, thicker focus rings */
+html[data-contrast="high"] .text-gray-300 { color: #f4f4f5 !important; }
+html[data-contrast="high"] .text-gray-400,
+html[data-contrast="high"] .text-gray-500,
+html[data-contrast="high"] .text-gray-600 { color: #d4d4d8 !important; }
+html[data-contrast="high"] .border-gray-800,
+html[data-contrast="high"] .border-gray-700 { border-color: #8b8b95 !important; }
+html[data-contrast="high"] .prompt-button,
+html[data-contrast="high"] .action-button { border-color: #a1a1aa; }
+html[data-contrast="high"] :focus-visible { outline: 3px solid #fde047; outline-offset: 2px; }
+html[data-theme="light"][data-contrast="high"] .text-gray-300,
+html[data-theme="light"][data-contrast="high"] .text-gray-400,
+html[data-theme="light"][data-contrast="high"] .text-gray-500,
+html[data-theme="light"][data-contrast="high"] .text-gray-600 { color: #18181b !important; }
+html[data-theme="light"][data-contrast="high"] .border-gray-800,
+html[data-theme="light"][data-contrast="high"] .border-gray-700 { border-color: #3f3f46 !important; }

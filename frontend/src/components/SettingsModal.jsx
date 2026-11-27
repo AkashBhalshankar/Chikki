@@ -62,6 +62,12 @@ export default function SettingsModal({ isOpen, onClose, onChange }) {
         <Choice label="Chikki's outfit" options={OUTFITS} value={settings.outfit} onChange={(outfit) => update({ outfit })} />
         <Choice label="Text size" options={TEXT_SIZES} value={settings.textSize} onChange={(textSize) => update({ textSize })} />
         <Choice
+          label="High contrast"
+          options={[{ id: "off", label: "Standard" }, { id: "on", label: "High contrast" }]}
+          value={settings.contrast ? "on" : "off"}
+          onChange={(value) => update({ contrast: value === "on" })}
+        />
+        <Choice
           label="Easy-to-read font"
           options={[{ id: "off", label: "Standard" }, { id: "on", label: "Easy to read" }]}
           value={settings.readable ? "on" : "off"}

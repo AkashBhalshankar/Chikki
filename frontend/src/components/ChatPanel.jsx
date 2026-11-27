@@ -253,6 +253,9 @@ export default function ChatPanel({
 
   return (
     <div className="view-fade chat-viewport dot-grid px-3 py-4 sm:px-8 sm:py-6 flex flex-col font-mono">
+      <a href="#ask-input" onClick={(event) => { event.preventDefault(); inputRef.current?.focus(); }} className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-[70] focus:rounded-lg focus:bg-indigo-600 focus:px-3 focus:py-2 focus:text-xs focus:text-white">
+        Skip to the question box
+      </a>
       <div className="app-shell chat-shell flex min-h-0 flex-1 flex-col mx-auto w-full">
         
         {/* Header */}
@@ -388,6 +391,21 @@ export default function ChatPanel({
                   )}
                 </div>
               </div>
+
+              {m.role === "assistant" && m.isError && m.final && (
+                <div className="mt-1.5 ml-1 flex flex-wrap items-center gap-2">
+                  {i === latestAssistantIndex && !["daily_limit", "too_long"].includes(m.kind) && messages[i - 1]?.role === "user" && (
+                    <button type="button" disabled={thinking} onClick={() => onSend(messages[i - 1].content)} className="action-button text-xs disabled:opacity-40">
+                      ↻ Try again
+                    </button>
+                  )}
+                  {onOpenContact && (
+                    <button type="button" onClick={onOpenContact} className="action-button primary-action text-xs">
+                      ✉️ Contact Akash
+                    </button>
+                  )}
+                </div>
+              )}
 
               {m.role === "assistant" && m.final && !m.isError && m.content?.trim() && (
                 <div className={`msg-actions mt-1 ml-1 flex flex-wrap items-center gap-1 text-[11px] text-gray-500 ${i === latestAssistantIndex ? "" : "msg-actions-quiet"}`}>
@@ -597,6 +615,7 @@ export default function ChatPanel({
             onChange={(e) => setValue(e.target.value)}
             disabled={thinking}
             placeholder="Ask about Akash's skills, projects..."
+            id="ask-input"
             aria-label="Ask Chikki a question"
             className="flex-1 rounded-lg border border-gray-800 bg-chikki-panel px-3.5 py-2.5 text-xs sm:text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-chikki-purple disabled:opacity-50 min-h-[44px]"
           />
