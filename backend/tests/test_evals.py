@@ -52,3 +52,25 @@ def test_run_survives_provider_errors():
     results = evals.run([case(id="ok", any_of=["FastAPI"]), case(id="bad")], responder=responder)
     assert [r["passed"] for r in results] == [True, False]
     assert "provider down" in results[1]["failures"][0]
+
+
+def test_text_mode_allows_formatting_but_not_leaked_tags():
+    bullets = "- **LangGraph** agents\n- **FastAPI** services"
+    assert evals.evaluate(case(mode="text"), bullets, []) == []
+    assert evals.evaluate(case(), bullets, [])  # a spoken reply must stay plain
+    assert evals.evaluate(case(mode="text"), "Fine. [[next:A?|B?]]", [])
+
+
+def test_layout_regex_and_word_limits():
+    skills = case(mode="text", regex=["^\s*[-\u2022]\s+\S.*\n\s*[-\u2022]\s+\S"])
+    assert evals.evaluate(skills, "Headline\n\n- one\n- two", []) == []
+    assert any("layout check" in f for f in evals.evaluate(skills, "Just a sentence.", []))
+    table = case(mode="text", regex=["\|.+\|"])
+    assert evals.evaluate(table, "| a | b |\n|---|---|\n| 1 | 2 |", []) == []
+    assert evals.evaluate(case(mode="text", max_words=5), "one two three four five six seven", [])
+    assert evals.evaluate(case(mode="text", none_regex=["TODO"]), "TODO later", [])
+
+
+def test_new_cases_cover_layout_projects_and_nachitram():
+    ids = {c["id"] for c in evals.load_cases()}
+    assert {"layout-skills", "layout-compare-table", "projects-live-first", "nachitram-is-private"} <= ids

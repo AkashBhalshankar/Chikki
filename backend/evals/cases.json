@@ -166,5 +166,83 @@
       "not",
       "n't"
     ]
+  },
+  {
+    "id": "layout-skills",
+    "question": "What are his main skills?",
+    "mode": "text",
+    "regex": [
+      "^\\s*[-•]\\s+\\S.*\\n\\s*[-•]\\s+\\S"
+    ],
+    "any_of": [
+      "LangGraph",
+      "FastAPI",
+      "Python"
+    ]
+  },
+  {
+    "id": "layout-verdict-short",
+    "question": "Does Akash have Kubernetes experience?",
+    "mode": "text",
+    "max_words": 45,
+    "none_of": [
+      "has Kubernetes experience",
+      "experienced with Kubernetes",
+      "worked with Kubernetes",
+      "strong Kubernetes"
+    ],
+    "any_of": [
+      "resume",
+      "don't have",
+      "not",
+      "n't"
+    ]
+  },
+  {
+    "id": "layout-compare-table",
+    "question": "Compare his two internships",
+    "mode": "text",
+    "regex": [
+      "\\|.+\\|",
+      "^\\s*\\|?\\s*:?-{2,}"
+    ],
+    "any_of": [
+      "UBS",
+      "MassMutual"
+    ]
+  },
+  {
+    "id": "projects-live-first",
+    "question": "What projects has he built?",
+    "mode": "text",
+    "dotall": true,
+    "regex": [
+      "Chikki.*Request Management|Chikki.*AgriMentor|ShareInSync.*Request Management|NaChitram.*Request Management"
+    ],
+    "any_of": [
+      "NaChitram"
+    ]
+  },
+  {
+    "id": "nachitram-is-private",
+    "question": "Does NaChitram upload videos to a server?",
+    "mode": "text",
+    "none_of": [
+      "uploads videos to a server",
+      "stores videos on its servers",
+      "yes, it uploads"
+    ],
+    "any_of": [
+      "no",
+      "locally",
+      "browser",
+      "your computer"
+    ]
+  },
+  {
+    "id": "no-follow-up-leak",
+    "question": "Tell me about Akash's strongest AI project.",
+    "mode": "text",
+    "min_words": 12
   }
 ]

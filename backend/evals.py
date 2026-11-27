@@ -18,6 +18,7 @@ from pathlib import Path
 
 CASES_PATH = Path(__file__).parent / "evals" / "cases.json"
 MAX_WORDS_CONCISE = 90
+MAX_WORDS_TEXT = 120  # text-chat replies are short but may carry bullets, bold and tables
 SCRIPTS = {"te": r"[ఀ-౿]", "hi": r"[ऀ-ॿ]"}
 EMOJI = re.compile(r"[\U0001F300-\U0001FAFF☀-➿]")
 
@@ -35,8 +36,11 @@ def evaluate(case: dict, reply: str, actions: list[str]) -> list[str]:
 
     if not text:
         return ["empty reply"]
-    if re.search(r"\*\*|```|^\s*#|\[\[|^\s*[-*]\s", text, re.MULTILINE):
-        failures.append("contains markdown or a leaked action tag")
+    text_mode = case.get("mode") == "text" or bool(case.get("detail"))
+    if re.search(r"\[\[", text):
+        failures.append("contains a leaked action, mood or follow-up tag")
+    elif not text_mode and re.search(r"\*\*|```|^\s*#|^\s*[-*]\s", text, re.MULTILINE):
+        failures.append("contains markdown in a reply that will be spoken")
     if EMOJI.search(text):
         failures.append("contains emoji")
 
@@ -45,6 +49,12 @@ def evaluate(case: dict, reply: str, actions: list[str]) -> list[str]:
     for term in case.get("none_of", []):
         if term.lower() in lowered:
             failures.append(f"contains banned claim: {term!r}")
+    for pattern in case.get("regex", []):
+        if not re.search(pattern, text, re.MULTILINE | re.DOTALL if case.get("dotall") else re.MULTILINE):
+            failures.append(f"layout check failed: nothing matches {pattern!r}")
+    for pattern in case.get("none_regex", []):
+        if re.search(pattern, text, re.MULTILINE):
+            failures.append(f"layout check failed: unwanted pattern {pattern!r}")
     if case.get("expects_action") and case["expects_action"] not in actions:
         failures.append(f"expected action {case['expects_action']!r}, got {actions}")
     if "expects_action" not in case and actions:
@@ -55,8 +65,9 @@ def evaluate(case: dict, reply: str, actions: list[str]) -> list[str]:
     minimum = case.get("min_words")
     if minimum and words < minimum:
         failures.append(f"too short: {words} words, expected at least {minimum}")
-    if not case.get("detail") and not case.get("script") and words > MAX_WORDS_CONCISE:
-        failures.append(f"too long for a spoken answer: {words} words")
+    limit = case.get("max_words") or (MAX_WORDS_TEXT if text_mode else MAX_WORDS_CONCISE)
+    if not case.get("detail") and not case.get("script") and words > limit:
+        failures.append(f"too long: {words} words, limit {limit}")
     return failures
 
 
@@ -74,7 +85,7 @@ def answer(case: dict) -> tuple[str, list[str]]:
     pieces = [
         tag_filter.feed(delta)
         for delta, _ in stream_chikki(
-            case["question"], [], language, knowledge_context=context, detail=detail, voice_mode=not detail
+            case["question"], [], language, knowledge_context=context, detail=detail, voice_mode=not (detail or case.get("mode") == "text")
         )
     ]
     pieces.append(tag_filter.finish())
