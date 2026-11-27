@@ -20,6 +20,7 @@ from reportlab.platypus import HRFlowable, KeepTogether, Paragraph, SimpleDocTem
 
 FONT_DIR = Path(__file__).parent / "fonts"
 REGULAR, BOLD, ITALIC = "CMU-Regular", "CMU-Bold", "CMU-Italic"
+ICONS_BRANDS, ICONS_SOLID = "FA-Brands", "FA-Solid"  # Font Awesome Free icons (SIL OFL)
 DEFAULT_LINKEDIN = "https://www.linkedin.com/in/akash-bhalshanakar/"
 DEFAULT_GITHUB = "https://github.com/AkashBhalshankar"
 SITE = "https://akashbhalshankar.com"
@@ -68,6 +69,8 @@ def _register_fonts() -> bool:
     try:
         for name, file in ((REGULAR, "cmunrm.ttf"), (BOLD, "cmunbx.ttf"), (ITALIC, "cmunti.ttf")):
             pdfmetrics.registerFont(TTFont(name, str(FONT_DIR / file)))
+        pdfmetrics.registerFont(TTFont(ICONS_BRANDS, str(FONT_DIR / "fa-brands.ttf")))
+        pdfmetrics.registerFont(TTFont(ICONS_SOLID, str(FONT_DIR / "fa-solid.ttf")))
         pdfmetrics.registerFontFamily(REGULAR, normal=REGULAR, bold=BOLD, italic=ITALIC, boldItalic=BOLD)
         _fonts_ready = True
     except Exception as error:  # a missing font file must not break the download
@@ -337,10 +340,18 @@ def _render(data: dict, focus: str, linkedin_url: str, github_url: str, scale: f
             parts.append(escape(piece))
     if parts:
         story.append(Paragraph(" | ".join(parts), contact))
+    def icon_link(font: str, glyph: str, label: str, url: str) -> str:
+        return (
+            f'<link href="{escape(url)}"><font name="{font}" size="{9.5 * scale:.1f}">{glyph}</font>'
+            f'&nbsp;<u>{escape(label)}</u></link>'
+        )
+
     story.append(Paragraph(
-        f'<link href="{escape(linkedin)}"><u>{escape(_short(linkedin))}</u></link> | '
-        f'<link href="{escape(github)}"><u>{escape(_short(github))}</u></link> | '
-        f'<link href="{SITE}"><u>akashbhalshankar.com</u></link>',
+        "&nbsp;&nbsp;|&nbsp;&nbsp;".join([
+            icon_link(ICONS_BRANDS, "&#xf09b;", "GitHub", github),
+            icon_link(ICONS_BRANDS, "&#xf08c;", "LinkedIn", linkedin),
+            icon_link(ICONS_SOLID, "&#xf544;", "Chikki", SITE),
+        ]),
         contact,
     ))
 
