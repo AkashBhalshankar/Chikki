@@ -1,5 +1,13 @@
 # Changelog
 
+## Reach, speed and safety nets
+- Link preview: sharing the site on LinkedIn, WhatsApp or email shows a title, a one-line pitch and a preview picture.
+- A scheduled ping (every 10 minutes, `.github/workflows/keepwarm.yml`) keeps the free Render backend awake; it needs the `BACKEND_URL` secret.
+- Instant answers: the start-screen questions and the interview questions are answered from a stored reply after the first time, with no model call (cleared when the resume changes; never stores a cut-off or edited reply).
+- "Why this answer?" shows the notes Chikki looked up; a "Share" button turns an answer into a picture; Analytics shows a visitor funnel (visited, asked, downloaded the resume, left a message).
+- Telegram owner commands (`/stats`, `/gaps`, `/answer N text`, `/health`), answered only in your chat. Off unless `TELEGRAM_COMMANDS=on`, and meant for one server only.
+- Evals now cover text-chat layout, comparison tables, project order and NaChitram; a browser test (`npm run e2e`) clicks through the app in real Chrome and runs in CI.
+
 ## UI enhancements
 - Text chat replies appear as they are written, and the working animation hands over to the text.
 - Start screen: a one-line pitch, Resume and Contact buttons and the three live projects.

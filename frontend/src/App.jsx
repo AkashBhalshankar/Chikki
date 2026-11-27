@@ -343,15 +343,6 @@ export default function App() {
   });
   const toggleTheme = useCallback(() => setTheme((current) => applyTheme(nextTheme(current))), []);
 
-  // One visit per browser session, so Analytics can show how many visitors go on to ask or get in touch.
-  useEffect(() => {
-    try {
-      if (sessionStorage.getItem("chikki_visit_sent")) return;
-      sessionStorage.setItem("chikki_visit_sent", "1");
-    } catch (_) {}
-    sendVisit(sessionId);
-  }, [sessionId]);
-
   // Chikki waves hello when the page first opens, then settles.
   useEffect(() => {
     setChikkiState((current) => (current === "idle" ? "greet" : current));
@@ -463,6 +454,15 @@ export default function App() {
     }
     return sid;
   });
+
+  // One visit per browser session, so Analytics can show how many visitors go on to ask or get in touch.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("chikki_visit_sent")) return;
+      sessionStorage.setItem("chikki_visit_sent", "1");
+    } catch (_) {}
+    sendVisit(sessionId);
+  }, [sessionId]);
 
   const [currentTraceId, setCurrentTraceId] = useState(null);
   const currentTraceIdRef = useRef(null);
