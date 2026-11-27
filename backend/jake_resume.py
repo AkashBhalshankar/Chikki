@@ -183,6 +183,12 @@ def parse_resume_text(text: str) -> dict | None:
     return parsed
 
 
+
+def _with_tilde(text: str) -> str:
+    """Computer Modern's "~" sits high above the digit that follows it, so it is lowered to the middle of the line."""
+    return text.replace("~", '<font name="Helvetica">~</font>')
+
+
 def _bold_label(item: str) -> str:
     label, sep, rest = item.partition(": ")
     if sep and len(label) <= 45 and "." not in label:
@@ -361,7 +367,7 @@ def _render(data: dict, focus: str, linkedin_url: str, github_url: str, scale: f
             continue
         story.extend(section(name))
         if name == "summary":
-            story.append(Paragraph(escape(content), body))
+            story.append(Paragraph(_with_tilde(escape(content)), body))
         elif name in ("experience", "education"):
             for job in content:
                 block = [
