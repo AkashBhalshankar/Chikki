@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeSettings, PAUSES, DEFAULTS } from "./settings.js";
+import { normalizeSettings, PAUSES, DEFAULTS, settleDelay } from "./settings.js";
 import { seasonFor } from "./seasonal.js";
 import { timeAgo } from "./github.js";
 
@@ -33,4 +33,12 @@ test("time ago reads naturally", () => {
   assert.equal(timeAgo("2026-11-20", now), "7 days ago");
   assert.equal(timeAgo("2026-08-27", now), "3 months ago");
   assert.equal(timeAgo("", now), "");
+});
+
+test("a finished-sounding sentence is sent sooner and an unfinished one waits longer", () => {
+  const pause = PAUSES.normal;
+  assert.ok(settleDelay("tell me about his projects", pause, true) < pause.afterFinal);
+  assert.ok(settleDelay("tell me about his projects and", pause, true) > pause.afterFinal);
+  assert.equal(settleDelay("projects", pause, false), pause.afterInterim);
+  assert.equal(settleDelay("", pause, true), pause.afterFinal);
 });

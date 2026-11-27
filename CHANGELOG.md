@@ -1,5 +1,13 @@
 # Changelog
 
+## Speed and tone
+
+- Provider race: the best provider starts alone; if silent for 1.2s the next one starts too and whichever speaks first wins.
+- Quickest provider is tried first (measured), startup check seeds dead providers, rate-limited ones are skipped as long as they say.
+- Instant polite replies for plain thanks, hello and goodbye (no model call, English/Telugu/Hindi).
+- Courtesy rules added to Chikki's instructions.
+- Smarter end-of-speech detection: finished-sounding sentences are sent sooner, ones ending on 'and', 'the', 'um' wait longer.
+
 ## Reach, speed and safety nets
 - Link preview: sharing the site on LinkedIn, WhatsApp or email shows a title, a one-line pitch and a preview picture.
 - A scheduled ping (every 10 minutes, `.github/workflows/keepwarm.yml`) keeps the free Render backend awake; it needs the `BACKEND_URL` secret.

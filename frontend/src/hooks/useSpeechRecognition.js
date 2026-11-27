@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { correctTranscript, isLowConfidence } from "../speechText.js";
 import { transcribeAudio } from "../services/api.js";
 import { logVoice } from "../voiceLog.js";
-import { PAUSES, readSettings } from "../settings.js";
+import { PAUSES, readSettings, settleDelay } from "../settings.js";
 
 const SERVER_STT = import.meta.env.VITE_SERVER_STT !== "false";
 const MIN_AUDIO_BYTES = 1500;
@@ -295,7 +295,7 @@ export function useSpeechRecognition({
               ).trim();
             }
             dispatchCommand();
-          }, finalText ? PAUSES[readSettings().pause].afterFinal : PAUSES[readSettings().pause].afterInterim);
+          }, settleDelay((speechBufferRef.current + " " + interimText).trim(), PAUSES[readSettings().pause], Boolean(finalText)));
         }
       };
 

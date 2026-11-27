@@ -29,6 +29,23 @@ export const PAUSES = {
   patient: { id: "patient", label: "Patient", afterFinal: 1300, afterInterim: 2600 },
 };
 
+const TRAILING_CONNECTORS = new Set([
+  "and", "but", "or", "so", "the", "a", "an", "of", "to", "for", "with", "about", "in", "on", "is", "are", "was",
+  "that", "which", "because", "also", "like", "um", "uh", "hmm",
+]);
+
+// How long to wait for more speech after a result. A finished-sounding sentence is sent sooner; one that ends
+// on "and", "the", "um"... is clearly not finished, so it gets longer. Words are what the recogniser heard.
+export function settleDelay(text, pause, isFinal) {
+  const base = isFinal ? pause.afterFinal : pause.afterInterim;
+  const words = String(text || "").trim().toLowerCase().replace(/[.,?!।]+$/g, "").split(/\s+/).filter(Boolean);
+  if (!words.length) return base;
+  if (TRAILING_CONNECTORS.has(words[words.length - 1])) return Math.round(base * 1.6);
+  const endsLikeASentence = /[.?!।]\s*$/.test(String(text).trim());
+  if (isFinal && (endsLikeASentence || words.length >= 4)) return Math.max(280, Math.round(base * 0.65));
+  return base;
+}
+
 export function normalizeSettings(raw) {
   const value = raw && typeof raw === "object" ? raw : {};
   return {

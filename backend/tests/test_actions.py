@@ -68,7 +68,7 @@ def test_unexpected_turn_error_still_replies(client, monkeypatch):
 
     monkeypatch.setattr(main, "stream_chikki", broken_stream)
     with client.websocket_connect("/ws/voice") as ws:
-        ws.send_json({"message": "hello there", "voice": False, "turn_id": "t9"})
+        ws.send_json({"message": "What is his strongest skill?", "voice": False, "turn_id": "t9"})
         data = ws.receive_json()
     assert data["meta"]["isError"] is True and data["meta"]["kind"] == "internal"
 

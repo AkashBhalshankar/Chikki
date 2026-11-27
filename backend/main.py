@@ -12,7 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from ai import ChikkiAIError, _is_joke_request, is_detail_request, stream_chikki
+from quick_replies import quick_reply
+from ai import seed_providers, ChikkiAIError, _is_joke_request, is_detail_request, stream_chikki
 from actions import ActionTagFilter, filter_actions
 from conversation_alerts import visitor_code
 from analytics_store import record_event, summary as analytics_summary, unanswered
@@ -73,6 +74,7 @@ async def lifespan(_app: FastAPI):
     # Build the retrieval index in the background so the first question is fast.
     asyncio.get_running_loop().run_in_executor(None, _safe_refresh_knowledge)
     prewarm_task = asyncio.create_task(prewarm_cache())
+    asyncio.get_running_loop().run_in_executor(None, seed_providers)
     owner_bot.start()
     yield
     prewarm_task.cancel()
@@ -408,9 +410,10 @@ async def process_chikki_turn(
     token_queue = asyncio.Queue()
     event_loop = asyncio.get_running_loop()
     is_joke = _is_joke_request(user_msg)
+    quick_text = None if is_joke else quick_reply(user_msg, language)
 
     retrieved = []
-    if not is_joke:
+    if not is_joke and not quick_text:
         # Include the previous question so follow-ups like "tell me more" still retrieve.
         previous_question = next(
             (turn["content"] for turn in reversed(conversation_history) if turn["role"] == "user"), ""
@@ -424,7 +427,7 @@ async def process_chikki_turn(
         except Exception:
             logger.exception("Knowledge retrieval failed; answering without it")
     knowledge_context = format_context(retrieved)
-    if not is_joke:
+    if not is_joke and not quick_text:
         try:
             knowledge_context += await asyncio.to_thread(github_context, user_msg)
         except Exception:
@@ -444,7 +447,7 @@ async def process_chikki_turn(
             language,
             mode,
             latency,
-            gap=ok and not is_joke and not retrieved,
+            gap=ok and not is_joke and not retrieved and not quick_text,
             error_kind=error_kind if not ok else None,
             blocked=list(dict.fromkeys(blocked_terms)),
         )
@@ -467,9 +470,9 @@ async def process_chikki_turn(
 
     # The questions visitors ask most are answered from a stored reply, so they appear at once.
     fingerprint = ""
-    faq_hit = None
+    faq_hit = quick_text
     raw_tokens: list[str] = []
-    if not is_joke and not detail and is_faq(user_msg):
+    if not is_joke and not detail and not quick_text and is_faq(user_msg):
         try:
             fingerprint = resume_fingerprint(get_resume_context())
             faq_hit = faq_cache.get(user_msg, language, voice_mode, fingerprint)
@@ -503,7 +506,7 @@ async def process_chikki_turn(
             event_loop.call_soon_threadsafe(token_queue.put_nowait, ("done", None))
 
     guard = None
-    if not is_joke and grounding_mode() != "off":
+    if not is_joke and not quick_text and grounding_mode() != "off":
         try:
             guard = await asyncio.to_thread(build_guard, knowledge_context, language)
         except Exception:

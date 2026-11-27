@@ -186,7 +186,7 @@ def test_failed_turn_is_reported(client, monkeypatch):
 
     monkeypatch.setattr(main, "stream_chikki", broken)
     with client.websocket_connect("/ws/voice") as ws:
-        ws.send_json({"message": "hello there friend", "voice": False, "turn_id": "t2", "session_id": "s"})
+        ws.send_json({"message": "What is his strongest skill?", "voice": False, "turn_id": "t2", "session_id": "s"})
         while ws.receive_json()["type"] != "text":
             pass
     (args, kwargs), = spy.calls

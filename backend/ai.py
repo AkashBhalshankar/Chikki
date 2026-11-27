@@ -1,5 +1,6 @@
 import logging
 import os
+import queue
 import re
 import threading
 import time
@@ -57,6 +58,8 @@ PRIORITY_ORDER = ["groq", "gemini", "nvidia", "openrouter"]
 # A provider that has not started answering by then is dropped for the next one (a slow answer is a worse
 # experience than a quick fallback).
 FIRST_WORD_TIMEOUT = 8.0
+# If the first provider is silent for this long, the next one starts too and whichever speaks first is used.
+HEDGE_DELAY = 1.2
 _clients = {}
 
 
@@ -166,6 +169,119 @@ def rate_limit_cooldown(error: Exception) -> float:
     hours, minutes, seconds = (float(part or 0) for part in match.groups())
     wait = hours * 3600 + minutes * 60 + seconds
     return max(CircuitBreaker.DEFAULT_COOLDOWN, min(wait + 5, MAX_RATE_LIMIT_COOLDOWN))
+
+
+class _AllProvidersFailed(Exception):
+    def __init__(self, error: Exception | None):
+        super().__init__(str(error))
+        self.error = error
+
+
+def _hedged_stream(candidates, start, meta=None, hedge_delay=None):
+    """Streams from the first provider that produces a word.
+
+    The best provider starts alone. If it has not spoken within `hedge_delay`, the next one starts as well (or
+    straight away if it fails), and the first to produce a word wins; the other is told to stop. This removes the
+    wait for a slow or failing provider without spending a second request on every question.
+    """
+    hedge_delay = HEDGE_DELAY if hedge_delay is None else hedge_delay
+    events: queue.Queue = queue.Queue()
+    outs: dict[str, queue.Queue] = {}
+    stops: dict[str, threading.Event] = {}
+    waiting = list(candidates)
+    live: set[str] = set()
+    last_error: Exception | None = None
+
+    def run(provider: str) -> None:
+        out, stop = outs[provider], stops[provider]
+        began, got = time.monotonic(), False
+        try:
+            for pair in start(provider):
+                if stop.is_set():
+                    return
+                if not pair[0]:
+                    continue
+                out.put(("tok", pair))
+                if not got:
+                    got = True
+                    events.put(("first", provider, time.monotonic() - began))
+            if not got:
+                events.put(("empty", provider, None))
+        except Exception as error:  # noqa: BLE001 - reported to the caller through the queues
+            if got:
+                out.put(("err", error))
+            else:
+                events.put(("fail", provider, error))
+        finally:
+            out.put(None)
+
+    def launch() -> None:
+        provider = waiting.pop(0)
+        outs[provider], stops[provider] = queue.Queue(), threading.Event()
+        live.add(provider)
+        threading.Thread(target=run, args=(provider,), name=f"llm-{provider}", daemon=True).start()
+
+    if not waiting:
+        raise _AllProvidersFailed(None)
+    launch()
+    winner = None
+    while winner is None:
+        if not live and not waiting:
+            raise _AllProvidersFailed(last_error)
+        try:
+            kind, provider, payload = events.get(timeout=hedge_delay if waiting else FIRST_WORD_TIMEOUT + 4)
+        except queue.Empty:
+            if waiting:
+                launch()
+                continue
+            raise _AllProvidersFailed(last_error or TimeoutError("timed out waiting for a provider"))
+        if kind == "first":
+            winner = provider
+            circuit_breaker.record_latency(provider, payload)
+        else:
+            live.discard(provider)
+            if kind == "empty":
+                logger.warning("Provider %s returned an empty stream", provider)
+                circuit_breaker.record_failure(provider, "empty")
+            else:
+                last_error = payload
+                error_kind = _classify_error(payload)
+                circuit_breaker.record_failure(
+                    provider, error_kind, rate_limit_cooldown(payload) if error_kind == "rate_limit" else None
+                )
+            if not live and waiting:
+                launch()
+
+    for provider, stop in stops.items():
+        if provider != winner:
+            stop.set()
+    if meta is not None:
+        meta["provider"] = winner
+    try:
+        while True:
+            item = outs[winner].get()
+            if item is None:
+                break
+            if item[0] == "err":
+                raise item[1]
+            yield item[1]
+        circuit_breaker.record_success(winner)
+    finally:
+        stops[winner].set()
+
+
+def seed_providers() -> None:
+    """Checks the providers once at startup so the first visitor does not pay for a dead one."""
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        return
+    try:
+        results = probe_providers(timeout=8.0)
+    except Exception:  # noqa: BLE001
+        logger.exception("Startup provider check failed")
+        return
+    for provider, (ok, kind) in results.items():
+        if not ok:
+            circuit_breaker.record_failure(provider, kind, 300.0 if kind == "rate_limit" else None)
 
 
 DETAIL_PATTERN = re.compile(
@@ -406,6 +522,22 @@ def stream_chikki(
     candidates = circuit_breaker.order(PRIORITY_ORDER)
 
     accepted_candidate_attempts = 0
+    if not is_joke:
+        usable = [p for p in candidates if PROVIDERS.get(p, {}).get("api_key")]
+        try:
+            yield from _hedged_stream(
+                usable,
+                lambda p: _stream_provider(
+                    p, system_prompt, history, request_message, language,
+                    max_tokens_override=max_tokens_override,
+                    request_timeout=FIRST_WORD_TIMEOUT,
+                ),
+                meta,
+            )
+            return
+        except _AllProvidersFailed as failure:
+            last_error = failure.error
+        candidates = []
     for provider in candidates:
         if not PROVIDERS.get(provider, {}).get("api_key"):
             continue
@@ -444,26 +576,7 @@ def stream_chikki(
                     break
                 continue
 
-            started = time.monotonic()
-            iterator = _stream_provider(
-                provider, system_prompt, history, request_message, language,
-                max_tokens_override=max_tokens_override,
-                request_timeout=FIRST_WORD_TIMEOUT,
-            )
-            first_token_pair = next(iterator, ("", ""))
-
-            if first_token_pair[0]:
-                circuit_breaker.record_latency(provider, time.monotonic() - started)
-                if meta is not None:
-                    meta["provider"] = provider
-                yield first_token_pair
-                for token_pair in iterator:
-                    yield token_pair
-                circuit_breaker.record_success(provider)
-                return
-
-            logger.warning("Provider %s returned an empty stream", provider)
-            circuit_breaker.record_failure(provider, "empty")
+            continue
 
         except GeneratorExit:
             return
