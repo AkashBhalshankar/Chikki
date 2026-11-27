@@ -40,10 +40,45 @@ export default function useDialogFocus() {
       }
     };
 
+    // on a phone a window is a bottom sheet: pull its top edge down to close it
+    let dragStart = null;
+    let dragCard = null;
+    const onTouchStart = (event) => {
+      if (!current || window.innerWidth > 639) return;
+      const card = current.firstElementChild;
+      const touch = event.touches[0];
+      if (!card || !card.contains(event.target)) return;
+      const top = card.getBoundingClientRect().top;
+      if (touch.clientY - top > 56) return; // only the top strip starts a drag, so scrolling inside still works
+      dragStart = touch.clientY;
+      dragCard = card;
+    };
+    const onTouchMove = (event) => {
+      if (dragStart === null || !dragCard) return;
+      const dy = Math.max(0, event.touches[0].clientY - dragStart);
+      dragCard.style.transition = "none";
+      dragCard.style.transform = `translateY(${dy}px)`;
+    };
+    const onTouchEnd = (event) => {
+      if (dragStart === null || !dragCard) return;
+      const dy = (event.changedTouches[0]?.clientY ?? dragStart) - dragStart;
+      dragCard.style.transition = "transform 0.2s ease";
+      dragCard.style.transform = "";
+      dragStart = null;
+      dragCard = null;
+      if (dy > 90) window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    };
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchmove", onTouchMove, { passive: true });
+    document.addEventListener("touchend", onTouchEnd);
+
     const observer = new MutationObserver(sync);
     observer.observe(document.body, { childList: true, subtree: true });
     document.addEventListener("keydown", onKey);
     return () => {
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", onTouchEnd);
       observer.disconnect();
       document.removeEventListener("keydown", onKey);
     };

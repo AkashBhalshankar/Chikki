@@ -55,3 +55,16 @@ export function pokeReaction(part, recentPokes) {
   if (part === "belly") return { name: "laughing", ms: 1700 };
   return { name: "greet", ms: 1700 };
 }
+
+// A short, friendly line for the start screen: the time of day, or the festival if it is one.
+const FESTIVE_LINES = { santa: "Merry Christmas", party: "Happy New Year", tricolor: "Jai Hind", diya: "Happy Diwali" };
+
+export function timeGreeting(date = new Date(), festive = null) {
+  if (festive && FESTIVE_LINES[festive]) return FESTIVE_LINES[festive];
+  const hour = date.getHours();
+  if (hour < 5) return "Hello, night owl";
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  if (hour < 22) return "Good evening";
+  return "Hello, night owl";
+}

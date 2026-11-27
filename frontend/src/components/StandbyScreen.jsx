@@ -3,6 +3,8 @@ import AppFooter from "./AppFooter.jsx";
 import { ProfileCard } from "./ProfileBadge.jsx";
 import GithubStrip from "./GithubStrip.jsx";
 import WakeGame from "./WakeGame.jsx";
+import { timeGreeting } from "../play.js";
+import { seasonFor } from "../seasonal.js";
 import { PROJECTS } from "../projects.js";
 
 export default function StandbyScreen({
@@ -54,7 +56,7 @@ export default function StandbyScreen({
               <span><span className="text-chikki-green">●</span> Online</span>
             )}
             <span className="text-gray-800">/</span>
-            <span>Standby</span>
+            <span>{timeGreeting(new Date(), seasonFor(new Date()))} · Standby</span>
           </div>
 
           {sharedLabel && typeof onTypeInstead === "function" && (

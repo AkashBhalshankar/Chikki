@@ -15,6 +15,7 @@ import Reveal from "./Reveal.jsx";
 import { timeMarker } from "../chatTime.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.js";
 import { buzz } from "../haptics.js";
+import { setGaze } from "../gaze.js";
 import SkillMap from "./SkillMap.jsx";
 import { wantsSkillMap } from "../play.js";
 import { ProfileLine } from "./ProfileBadge.jsx";
@@ -87,6 +88,8 @@ export default function ChatPanel({
   const scrollRef = useRef(null);
   const [scrolled, setScrolled] = useState(false);
   const [burst, setBurst] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [showJump, setShowJump] = useState(false);
   const lastScroll = useRef({ top: 0, at: 0, reacted: 0 });
   const isTouch = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
   const { pull, ready: pullReady } = usePullToRefresh(scrollRef, {
@@ -106,6 +109,13 @@ export default function ChatPanel({
   const [whyOpen, setWhyOpen] = useState(null);
   const [cardState, setCardState] = useState({ index: null, label: "" });
   const [copiedIndex, setCopiedIndex] = useState(null);
+
+  // while you type, Chikki's eyes follow the end of your text along the question box
+  const lookAtInput = (length) => {
+    const box = inputRef.current?.getBoundingClientRect();
+    if (!box) return;
+    setGaze({ x: box.left + Math.min(box.width - 24, 16 + length * 7.5), y: box.top + box.height / 2 });
+  };
 
   const handleCopyAnswer = async (index, text) => {
     try {
@@ -333,11 +343,18 @@ export default function ChatPanel({
         </div>
 
         {/* Chat Body */}
+        <div className="relative mt-3 flex min-h-0 flex-1 flex-col">
+        {messages.length > 0 && progress > 0 && (
+          <div className="scroll-progress" aria-hidden="true"><i style={{ width: `${Math.round(progress * 100)}%` }} /></div>
+        )}
         <div
           ref={scrollRef}
           onScroll={(event) => {
             const top = event.currentTarget.scrollTop;
             setScrolled(top > 48);
+            const range = event.currentTarget.scrollHeight - event.currentTarget.clientHeight;
+            setProgress(range > 0 ? top / range : 0);
+            setShowJump(range - top > 160);
             // a very fast scroll makes Chikki dizzy for a moment (at most every few seconds)
             const now = performance.now();
             const last = lastScroll.current;
@@ -348,7 +365,7 @@ export default function ChatPanel({
               window.dispatchEvent(new CustomEvent("chikki:react", { detail: { name: "confused", ms: 1400 } }));
             }
           }}
-          className="chat-scroll-container surface-line chikki-scroll mt-3 w-full overflow-y-auto rounded-lg p-3 sm:p-4 space-y-4"
+          className="chat-scroll-container surface-line chikki-scroll w-full overflow-y-auto rounded-lg p-3 sm:p-4 space-y-4"
           role="log"
           aria-live="polite"
           aria-label="Conversation with Chikki"
@@ -616,6 +633,16 @@ export default function ChatPanel({
 
           {thinking && !(messages[messages.length - 1]?.role === "assistant" && messages[messages.length - 1]?.content?.trim() && !messages[messages.length - 1]?.final) && <ThinkingIndicator />}
         </div>
+        {showJump && (
+          <button
+            type="button"
+            className="jump-latest"
+            onClick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" })}
+          >
+            ↓ Latest
+          </button>
+        )}
+        </div>
 
         {interview && (() => {
           const step = nextStep(interview.role, interview.asked);
@@ -658,7 +685,14 @@ export default function ChatPanel({
             ref={inputRef}
             type="text"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              setValue(e.target.value);
+              lookAtInput(e.target.value.length);
+            }}
+            onFocus={() => lookAtInput(value.length)}
+            onBlur={() => {
+              if (!playing) setGaze(null);
+            }}
             disabled={thinking}
             placeholder="Ask about Akash's skills, projects..."
             id="ask-input"

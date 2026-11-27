@@ -4,7 +4,7 @@ import { EGG_JOKES } from "../play.js";
 const COLORS = ["#F4D77A", "#F28BA5", "#97C459", "#8FE1D8", "#D85A30", "#AFA9EC"];
 
 // The hidden surprise: confetti, a party face and a joke. Found with the Konami code or a triple-click on the title.
-export default function EasterEgg({ token }) {
+export default function EasterEgg({ token, title = "🎉 You found the secret!", text = null }) {
   const [visible, setVisible] = useState(false);
   const [joke, setJoke] = useState(EGG_JOKES[0]);
 
@@ -26,8 +26,8 @@ export default function EasterEgg({ token }) {
         ))}
       </div>
       <div className="egg-card">
-        <div className="text-sm font-semibold text-white">🎉 You found the secret!</div>
-        <p className="mt-1 text-xs text-gray-300">{joke}</p>
+        <div className="text-sm font-semibold text-white">{title}</div>
+        <p className="mt-1 text-xs text-gray-300">{text || joke}</p>
       </div>
     </div>
   );

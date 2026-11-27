@@ -34,6 +34,8 @@ import JourneyModal from "./components/JourneyModal.jsx";
 import PlayOrb from "./components/PlayOrb.jsx";
 import EasterEgg from "./components/EasterEgg.jsx";
 import MicOrb from "./components/MicOrb.jsx";
+import StatusPill from "./components/StatusPill.jsx";
+import { flushSync } from "react-dom";
 import { konamiStep } from "./play.js";
 import { glowFor, reactionForTranscript } from "./expressions.js";
 import RecapModal from "./components/RecapModal.jsx";
@@ -530,6 +532,18 @@ export default function App() {
       window.removeEventListener("online", goOnline);
     };
   }, []);
+  const swapScreen = useCallback((update) => {
+    try {
+      if (typeof document.startViewTransition === "function" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        document.startViewTransition(() => flushSync(update));
+        return;
+      }
+    } catch (_) {
+      // fall through to a plain switch
+    }
+    update();
+  }, []);
+  const [sentToken, setSentToken] = useState(0);
   const [showJourney, setShowJourney] = useState(false);
   const openJourney = useCallback(() => setShowJourney(true), []);
   const closeJourney = useCallback(() => setShowJourney(false), []);
@@ -745,7 +759,10 @@ export default function App() {
     }, ms);
   }, []);
 
-  const handleContactSent = useCallback(() => flashExpression("celebrate", 3000), [flashExpression]);
+  const handleContactSent = useCallback(() => {
+    flashExpression("celebrate", 3000);
+    setSentToken(Date.now());
+  }, [flashExpression]);
 
   const unlockAudioContext = () => {
     try {
@@ -1000,8 +1017,10 @@ export default function App() {
     socketRef.current?.interrupt();
     unlockAudioContext();
     if (expressionHoldTimerRef.current) window.clearTimeout(expressionHoldTimerRef.current);
-    setInputMode("voice");
-    setActive(true);
+    swapScreen(() => {
+      setInputMode("voice");
+      setActive(true);
+    });
     setChikkiState("listening");
     setVoiceExpression("confident");
     setFollowUpSuggestions([]);
@@ -1110,8 +1129,10 @@ export default function App() {
     playChime("listen");
     stopAudioImmediate();
     unlockAudioContext();
-    setInputMode("voice");
-    setActive(true);
+    swapScreen(() => {
+      setInputMode("voice");
+      setActive(true);
+    });
     setChikkiState("listening");
     startListening?.();
   }, [startListening, stopAudioImmediate]);
@@ -1133,10 +1154,12 @@ export default function App() {
   const handleSwitchToChat = useCallback(() => {
     stopAudioImmediate();
     socketRef.current?.interrupt();
-    setInputMode("chat");
+    swapScreen(() => {
+      setInputMode("chat");
+      if (!active) setActive(true);
+    });
     setShowTypeSuggestion(false);
-    if (!active) setActive(true);
-  }, [active, stopAudioImmediate]);
+  }, [active, stopAudioImmediate, swapScreen]);
 
   const handleSwitchToVoice = useCallback(() => {
     returnToVoiceHome();
@@ -1402,6 +1425,8 @@ export default function App() {
     return (
       <>
         <ConnectionBanner offline={offline} lost={socketLost} onContact={openContact} />
+        <StatusPill label={chatThinking ? "Thinking" : null} />
+        <EasterEgg token={sentToken} title="Message sent! 🎉" text="Akash will get back to you soon." />
         <ChatPanel
           messages={messages}
           onSend={handleChatSend}
@@ -1472,6 +1497,8 @@ export default function App() {
   return (
     <div className="view-fade fit-viewport dot-grid px-4 py-4 sm:px-8 sm:py-5 flex flex-col font-mono">
       <ConnectionBanner offline={offline} lost={socketLost} onContact={openContact} />
+      <StatusPill label={{ listening: "Listening", thinking: "Thinking", speaking: "Speaking", error: "Trouble" }[chikkiState] || null} />
+      <EasterEgg token={sentToken} title="Message sent! 🎉" text="Akash will get back to you soon." />
       <div className="app-shell flex min-h-0 flex-1 flex-col w-full">
         {/* Header */}
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-4">
@@ -1541,11 +1568,8 @@ export default function App() {
             ) : voiceNotice && chikkiState !== "speaking" && chikkiState !== "thinking" ? (
               <p className="text-xs sm:text-sm text-amber-200" role="status">{voiceNotice}</p>
             ) : chikkiState === "speaking" && latestAssistant ? (
-              <div className="flex flex-col items-center gap-1 animate-fadeIn">
-                <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">🤖 Chikki</span>
-                <p className="text-xs sm:text-sm text-gray-200 line-clamp-3 leading-relaxed">
-                  &ldquo;{latestAssistant.content}&rdquo;
-                </p>
+              <div className="speech-bubble animate-fadeIn">
+                <p className="text-xs sm:text-sm text-gray-100 line-clamp-3 leading-relaxed">{latestAssistant.content}</p>
               </div>
             ) : latestUser && (chikkiState === "thinking" || chikkiState === "curious") ? (
               <div className="flex flex-col items-center gap-1 animate-fadeIn">

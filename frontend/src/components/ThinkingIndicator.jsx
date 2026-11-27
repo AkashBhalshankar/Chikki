@@ -39,12 +39,19 @@ export function ThinkingWord({ className = "" }) {
 export default function ThinkingIndicator() {
   const { word, face, index } = useWorkingWord();
   return (
-    <div className="flex items-center gap-3 px-1 py-1 text-sm text-gray-400" role="status" aria-live="polite">
-      <ChikkiBot state={face} faceOnly size={64} />
-      <span className="flex items-center gap-2">
-        <span key={index} className="thinking-word">{word}…</span>
-        <span className="typing-dots" aria-hidden="true"><i /><i /><i /></span>
-      </span>
+    <div className="px-1 py-1 text-sm text-gray-400" role="status" aria-live="polite">
+      <div className="flex items-center gap-3">
+        <ChikkiBot state={face} faceOnly size={64} />
+        <span className="flex items-center gap-2">
+          <span key={index} className="thinking-word">{word}…</span>
+          <span className="typing-dots" aria-hidden="true"><i /><i /><i /></span>
+        </span>
+      </div>
+      <div className="mt-2 w-full max-w-sm space-y-1.5" aria-hidden="true">
+        <span className="shimmer-line" style={{ width: "92%" }} />
+        <span className="shimmer-line" style={{ width: "74%" }} />
+        <span className="shimmer-line" style={{ width: "52%" }} />
+      </div>
     </div>
   );
 }

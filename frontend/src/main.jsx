@@ -3,10 +3,14 @@ import ReactDOM from "react-dom/client";
 import { MotionConfig } from "framer-motion";
 import App from "./App.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import CursorGlow from "./components/CursorGlow.jsx";
+import Splash from "./components/Splash.jsx";
+import { startParallax } from "./parallax.js";
 import "./index.css";
 import { applyLook, readSettings } from "./settings.js";
 
 applyLook(readSettings());
+startParallax();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -14,6 +18,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <MotionConfig reducedMotion="user">
       <ErrorBoundary>
         <App />
+        <CursorGlow />
+        <Splash />
       </ErrorBoundary>
     </MotionConfig>
   </React.StrictMode>

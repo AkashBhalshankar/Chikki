@@ -1,5 +1,15 @@
 # Changelog
 
+## Native feel
+
+- Chikki sways while idle, has eyebrows and puffed cheeks for more moods, and three lights on his chest.
+- Speech bubble for what he is saying; status pill at the top; skeleton shimmer while an answer is prepared.
+- Chikki glides between screens (browsers with view transitions) and steps back when a window opens.
+- Phones: windows are bottom sheets you can pull down to close; the installed app opens with a short splash.
+- Desktop: a soft mouse glow (Settings can turn it off) and a background that drifts with the mouse or phone tilt.
+- Chat: scroll progress bar and a Latest button; Chikki's eyes follow your typing.
+- Start screen greets by time of day or festival; sending a message to Akash shows confetti.
+
 ## Playful and interactive
 
 - Poke Chikki: head, belly and hands react differently; five quick pokes make him dizzy; a long hover earns a wink.

@@ -259,6 +259,8 @@ input {
     radial-gradient(60rem 32rem at 12% -8%, rgba(var(--skin-rgb, var(--accent-rgb)), 0.16), transparent 62%),
     radial-gradient(48rem 30rem at 100% 108%, rgba(var(--mood-rgb, var(--accent-rgb)), 0.13), transparent 60%);
   background-size: 24px 24px, auto, auto;
+  background-repeat: repeat, no-repeat, no-repeat;
+  background-position: calc(var(--px, 0) * -6px) calc(var(--py, 0) * -6px), calc(var(--px, 0) * 22px) calc(var(--py, 0) * 14px), calc(var(--px, 0) * -26px) calc(var(--py, 0) * -16px);
   background-attachment: fixed;
 }
 
@@ -300,7 +302,7 @@ html[data-font="readable"] .answer-card,
 html[data-font="readable"] .user-bubble { line-height: 1.75; }
 
 /* Chikki hops in when a screen appears */
-.chikki-svg { animation: bot-enter 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.chikki-svg { animation: bot-enter 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) backwards; transition: scale 0.3s ease, opacity 0.3s ease; }
 @keyframes bot-enter { from { translate: 0 22px; scale: 0.82; opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .chikki-svg { animation: none; } }
 
@@ -896,3 +898,54 @@ html[data-theme="light"] .journey-item { border-color: #dde1ee; background: #fff
   .suggest-row .prompt-button { flex: 0 0 82%; scroll-snap-align: start; }
   .suggest-row .chip-extra, .suggest-row .chip-fit-extra { display: flex !important; }
 }
+
+/* Chikki glides between screens where the browser supports view transitions (only the main Chikki has the name) */
+.fit-botbox .chikki-svg, .chikki-stage.fit-stage .chikki-svg, .chat-chikki .chikki-svg { view-transition-name: chikki; }
+::view-transition-group(chikki) { animation-duration: 0.5s; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+/* he steps back a little when a window is open */
+body:has([role="dialog"][aria-modal="true"]) .chikki-svg { scale: 0.9; opacity: 0.7; }
+
+/* the status pill at the top centre */
+.status-pill { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 50%; translate: -50% 0; z-index: 48; display: inline-flex; align-items: center; gap: 8px; border-radius: 9999px; padding: 4px 14px 4px 10px; font-size: 11px; letter-spacing: 0.06em; color: #f4f4f5; background: rgba(8, 8, 12, 0.88); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); backdrop-filter: blur(8px); animation: pill-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; pointer-events: none; }
+.status-pill-dot { width: 8px; height: 8px; border-radius: 9999px; animation: pill-dot 1.2s ease-in-out infinite; }
+@keyframes pill-in { from { opacity: 0; scale: 0.7; translate: -50% -8px; } }
+@keyframes pill-dot { 50% { opacity: 0.35; scale: 0.8; } }
+html[data-theme="light"] .status-pill { background: rgba(255, 255, 255, 0.92); color: #18181b; border-color: #dde1ee; }
+@media (prefers-reduced-motion: reduce) { .status-pill, .status-pill-dot { animation: none; } }
+
+/* what Chikki is saying, as a speech bubble under him */
+.speech-bubble { position: relative; max-width: 30rem; margin-top: 10px; padding: 8px 14px; border-radius: 16px; background: rgba(var(--accent-rgb), 0.14); border: 1px solid rgba(var(--accent-rgb), 0.4); }
+.speech-bubble::before { content: ""; position: absolute; top: -7px; left: 50%; width: 12px; height: 12px; margin-left: -6px; transform: rotate(45deg); background: rgba(var(--accent-rgb), 0.14); border-left: 1px solid rgba(var(--accent-rgb), 0.4); border-top: 1px solid rgba(var(--accent-rgb), 0.4); }
+html[data-theme="light"] .speech-bubble p { color: #18181b; }
+
+/* the glow that follows the mouse */
+.cursor-glow { position: fixed; left: 0; top: 0; z-index: 90; width: 120px; height: 120px; border-radius: 9999px; pointer-events: none; background: radial-gradient(circle, rgba(var(--accent-rgb), 0.22), transparent 68%); mix-blend-mode: screen; transition: width 0.25s ease, height 0.25s ease, opacity 0.25s; }
+.cursor-glow.is-big { opacity: 1; background: radial-gradient(circle, rgba(var(--accent-rgb), 0.38), transparent 68%); }
+html[data-theme="light"] .cursor-glow { mix-blend-mode: multiply; }
+
+/* shimmer lines while an answer is being prepared */
+.shimmer-line { display: block; height: 9px; border-radius: 9px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(var(--accent-rgb), 0.28) 50%, rgba(255, 255, 255, 0.05) 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+html[data-theme="light"] .shimmer-line { background-image: linear-gradient(90deg, rgba(15, 23, 42, 0.06) 25%, rgba(var(--accent-rgb), 0.3) 50%, rgba(15, 23, 42, 0.06) 75%); }
+@media (prefers-reduced-motion: reduce) { .shimmer-line { animation: none; } }
+
+/* how far down a long chat you are, and a way back to the newest message */
+.scroll-progress { position: absolute; left: 6px; right: 6px; top: 0; z-index: 5; height: 2px; border-radius: 2px; background: rgba(255, 255, 255, 0.06); overflow: hidden; pointer-events: none; }
+.scroll-progress i { display: block; height: 100%; background: rgb(var(--accent-rgb)); transition: width 0.12s linear; }
+.jump-latest { position: absolute; right: 14px; bottom: 12px; z-index: 6; border-radius: 9999px; padding: 6px 12px; font-size: 11px; color: #fff; background: rgba(var(--accent-rgb), 0.9); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); animation: msg-in 0.25s ease both; }
+
+/* the opening when the installed app is launched */
+.splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #09090b; animation: splash-out 0.35s ease 0.95s forwards; }
+.splash-name { font-family: ui-monospace, monospace; letter-spacing: 0.4em; font-size: 20px; color: #afa9ec; }
+.splash-tag { font-size: 11px; color: #8b8fa8; }
+@keyframes splash-out { to { opacity: 0; visibility: hidden; } }
+
+/* a window on a phone is a bottom sheet: it slides up and can be pulled down to close */
+@media (max-width: 639px) {
+  [role="dialog"][aria-modal="true"] { align-items: flex-end !important; padding: 0 !important; }
+  [role="dialog"][aria-modal="true"] > div { width: 100% !important; max-width: none !important; border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; max-height: 90vh !important; padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)); animation: sheet-up 0.34s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  [role="dialog"][aria-modal="true"] > div::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 4px; margin: -8px auto 12px; background: rgba(255, 255, 255, 0.28); }
+  html[data-theme="light"] [role="dialog"][aria-modal="true"] > div::before { background: rgba(15, 23, 42, 0.25); }
+}
+@keyframes sheet-up { from { translate: 0 100%; } }
+@media (prefers-reduced-motion: reduce) { [role="dialog"][aria-modal="true"] > div { animation: none !important; } }

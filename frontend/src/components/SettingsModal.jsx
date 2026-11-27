@@ -89,6 +89,12 @@ export default function SettingsModal({ isOpen, onClose, onChange }) {
           onChange={(value) => update({ transcript: value === "on" })}
         />
         <Choice
+          label="Mouse glow (desktop)"
+          options={[{ id: "on", label: "On" }, { id: "off", label: "Off" }]}
+          value={settings.cursor ? "on" : "off"}
+          onChange={(value) => update({ cursor: value === "on" })}
+        />
+        <Choice
           label="Vibration on phones"
           options={[{ id: "on", label: "On" }, { id: "off", label: "Off" }]}
           value={settings.haptics ? "on" : "off"}

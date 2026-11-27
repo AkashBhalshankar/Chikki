@@ -106,3 +106,14 @@ test("pokes react by body part and a flurry makes Chikki dizzy", () => {
   assert.equal(pokeReaction("hand", 1).name, "greet");
   assert.equal(pokeReaction("head", 5).name, "confused");
 });
+
+import { timeGreeting } from "./play.js";
+
+test("the greeting follows the time of day and the festival", () => {
+  assert.equal(timeGreeting(new Date(2026, 5, 1, 8)), "Good morning");
+  assert.equal(timeGreeting(new Date(2026, 5, 1, 14)), "Good afternoon");
+  assert.equal(timeGreeting(new Date(2026, 5, 1, 19)), "Good evening");
+  assert.equal(timeGreeting(new Date(2026, 5, 1, 2)), "Hello, night owl");
+  assert.equal(timeGreeting(new Date(2026, 5, 1, 9), "diya"), "Happy Diwali");
+  assert.equal(timeGreeting(new Date(2026, 5, 1, 9), "unknown"), "Good morning");
+});

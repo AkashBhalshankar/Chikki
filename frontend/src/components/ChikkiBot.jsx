@@ -103,6 +103,14 @@ function Outfit({ kind }) {
   return null;
 }
 
+// Small eyebrows for the moods that did not already have them.
+const BROWS = {
+  happy: "arch", excited: "arch", joyful: "arch", laughing: "arch", playful: "arch", love: "arch", grateful: "arch",
+  encouraging: "arch", celebrate: "arch", surprised: "arch", wink: "arch", greet: "arch",
+  sad: "sad", apologetic: "sad", shy: "sad", sleepy: "sad",
+};
+const PUFFED = new Set(["laughing", "joyful", "playful"]);
+
 // A decoration that fades and scales in and out as the face changes.
 function Pop({ show, children, id }) {
   return (
@@ -215,6 +223,12 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
   const blinks = cfg.blink || (!cfg.closedEyes && !cfg.wink && hasEyes); // everyone blinks now and then
   const talkingLive = cfg.talking && liveMouth;
   const armColor = safeState === "error" ? "#8a8a8a" : "#D85A30";
+  // the name of the face being shown, for the small extras below
+  const shownName = override && !isSpeaking ? override : isSpeaking ? safeExpression : safeState;
+  // he drifts slowly from side to side while idle, and holds still for anything livelier
+  const swaying = !isHovered && !override && (safeState === "idle" || safeState === "listening");
+  const browKind = BROWS[shownName];
+  const showBrows = browKind && !cfg.brows && !cfg.browsAngry && !cfg.browRaised;
 
   return (
     <motion.svg
@@ -244,9 +258,12 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
       style={{ cursor: onClick ? "pointer" : "default", ...(fluid ? { aspectRatio: faceOnly ? "104 / 71" : "180 / 210" } : {}) }}
       animate={{
         y: cfg.jump ? [0, -14, 0] : cfg.bounce ? [0, -3, 0] : cfg.dim ? [0, 2, 0] : [0, -4, 0],
-        x: cfg.shiver ? [0, -2, 2, 0] : 0,
+        x: cfg.shiver ? [0, -2, 2, 0] : swaying ? [0, 6, 0, -6, 0] : 0,
       }}
-      transition={{ duration: cfg.jump ? 0.5 : 2.2, repeat: Infinity, ease: "easeInOut" }}
+      transition={{
+        y: { duration: cfg.jump ? 0.5 : 2.2, repeat: Infinity, ease: "easeInOut" },
+        x: { duration: cfg.shiver ? 0.4 : 10, repeat: Infinity, ease: "easeInOut" },
+      }}
     >
       <defs>
         <linearGradient id="chikkiHead" x1="0" y1="0" x2="0" y2="1">
@@ -321,6 +338,19 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
             <path d="M 81 28 Q 90 36 99 28 Z" fill="#B5651D" />
           </g>
         )}
+
+        <Pop show={showBrows && browKind === "arch"} id="browArch">
+          <path d="M 73 41 Q 80 36.5 87 41" fill="none" stroke={eyeColor} strokeWidth="1.6" strokeLinecap="round" opacity="0.85" />
+          <path d="M 93 41 Q 100 36.5 107 41" fill="none" stroke={eyeColor} strokeWidth="1.6" strokeLinecap="round" opacity="0.85" />
+        </Pop>
+        <Pop show={showBrows && browKind === "sad"} id="browSad">
+          <path d="M 73 44 L 86 39.5" fill="none" stroke={eyeColor} strokeWidth="1.6" strokeLinecap="round" opacity="0.85" />
+          <path d="M 94 39.5 L 107 44" fill="none" stroke={eyeColor} strokeWidth="1.6" strokeLinecap="round" opacity="0.85" />
+        </Pop>
+        <Pop show={PUFFED.has(shownName)} id="cheeks">
+          <circle cx="71" cy="60" r="4" fill={eyeColor} opacity="0.2" />
+          <circle cx="109" cy="60" r="4" fill={eyeColor} opacity="0.2" />
+        </Pop>
 
         <Pop show={cfg.browsAngry} id="browsAngry">
           <path d="M 71 36 L 82 41" stroke="#F0A078" strokeWidth="2.2" strokeLinecap="round" />
@@ -447,6 +477,21 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
             <motion.circle cx="90" cy="100" r="24" fill="none" stroke="#AFA9EC" strokeWidth="2"
               animate={{ scale: [1.58, 0.58], opacity: [0, 0.9] }} style={{ transformOrigin: "90px 100px" }} transition={{ duration: 1.3, repeat: Infinity, delay: 0.45 }} />
           </Pop>
+
+          {/* three small lights on the chest: they chase each other while he thinks and pulse while he talks */}
+          {[82, 90, 98].map((x, i) => (
+            <motion.circle
+              key={x}
+              cx={x}
+              cy="84"
+              r="1.9"
+              fill={cfg.stroke}
+              animate={
+                safeState === "thinking" ? { opacity: [0.15, 1, 0.15] } : isSpeaking ? { opacity: [0.35, 1, 0.35] } : { opacity: 0.4 }
+              }
+              transition={{ duration: safeState === "thinking" ? 0.9 : 0.7, repeat: Infinity, delay: i * 0.2 }}
+            />
+          ))}
 
           <motion.circle cx="90" cy="100" r="10" strokeWidth="1.5" initial={false}
             animate={{ fill: cfg.coreFill, stroke: cfg.stroke, opacity: cfg.dim ? [0.3, 0.6, 0.3] : cfg.ringsIn ? [0.5, 1, 0.5] : 1 }}

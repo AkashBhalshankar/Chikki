@@ -4,7 +4,7 @@ const KEY = "chikki_settings";
 
 export const DEFAULTS = {
   voice: "neerja", speed: 1, pause: "normal", sounds: true, transcript: false, accent: "violet",
-  skin: "midnight", textSize: "normal", readable: false, outfit: "none", haptics: true, contrast: false,
+  skin: "midnight", textSize: "normal", readable: false, outfit: "none", haptics: true, contrast: false, cursor: true,
 };
 
 export const ACCENTS = [
@@ -85,6 +85,7 @@ export function normalizeSettings(raw) {
     outfit: OUTFITS.some((x) => x.id === value.outfit) ? value.outfit : DEFAULTS.outfit,
     haptics: typeof value.haptics === "boolean" ? value.haptics : DEFAULTS.haptics,
     contrast: typeof value.contrast === "boolean" ? value.contrast : DEFAULTS.contrast,
+    cursor: typeof value.cursor === "boolean" ? value.cursor : DEFAULTS.cursor,
   };
 }
 
