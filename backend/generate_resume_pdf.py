@@ -20,6 +20,7 @@ from resume import load_resume
 
 DEFAULT_RESUME_PATH = Path(__file__).parent / "resume.json"
 DEFAULT_OUTPUT_PATH = Path(__file__).parent / "akash-bhalshankar-resume.pdf"
+_PDF_CACHE: dict = {}
 ACCENT = colors.HexColor("#174A63")
 ACCENT_RULE = colors.HexColor("#4D9A9A")
 MUTED_TEXT = colors.HexColor("#52636E")
@@ -423,15 +424,22 @@ def build_resume_pdf(
 ) -> bytes:
     if not resume_path.exists():
         source = _resume_source_text()
+        key = (hash(source), focus.strip().lower(), linkedin_url, github_url)
+        cached = _PDF_CACHE.get(key)
+        if cached:
+            return cached
+        pdf = None
         try:
             from jake_resume import build_jake_pdf
 
-            jake = build_jake_pdf(source, focus, linkedin_url, github_url)
-            if jake:
-                return jake
+            pdf = build_jake_pdf(source, focus, linkedin_url, github_url)
         except Exception as error:  # the older layout still produces a resume
             print(f"[resume] Jake layout failed, using the older layout: {error}")
-        return _build_ats_pdf_from_text(source, focus, linkedin_url, github_url)
+        pdf = pdf or _build_ats_pdf_from_text(source, focus, linkedin_url, github_url)
+        if len(_PDF_CACHE) >= 24:
+            _PDF_CACHE.pop(next(iter(_PDF_CACHE)))
+        _PDF_CACHE[key] = pdf
+        return pdf
 
     profile = load_resume(resume_path)
     profile = tailor_resume(profile, focus)

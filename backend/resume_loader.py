@@ -113,11 +113,33 @@ def sync_drive_resume() -> str:
         return ""
 
 
+_REFRESHING = False
+
+
+def _refresh_in_background() -> None:
+    global _REFRESHING
+    if _REFRESHING:
+        return
+    _REFRESHING = True
+
+    def run() -> None:
+        global _REFRESHING
+        try:
+            sync_drive_resume()
+        finally:
+            _REFRESHING = False
+
+    import threading
+
+    threading.Thread(target=run, daemon=True).start()
+
+
 def get_current_resume_text() -> str:
-    """Returns cached text and refreshes it periodically from the configured source."""
+    """Returns the cached text at once; a stale copy is refreshed in the background so nobody waits on Google Drive."""
     global _CACHED_RESUME_TEXT
-    cache_is_fresh = time.monotonic() - _CACHE_UPDATED_AT < RESUME_CACHE_TTL_SECONDS
-    if _CACHED_RESUME_TEXT and cache_is_fresh:
+    if _CACHED_RESUME_TEXT:
+        if time.monotonic() - _CACHE_UPDATED_AT >= RESUME_CACHE_TTL_SECONDS:
+            _refresh_in_background()
         return _CACHED_RESUME_TEXT
 
     text = sync_drive_resume()

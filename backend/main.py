@@ -70,12 +70,21 @@ def _safe_refresh_knowledge():
         logger.exception("Initial knowledge index build failed")
 
 
+def _warm_resume_pdf() -> None:
+    """Build the default resume PDF once at startup so the first download is instant."""
+    try:
+        build_resume_pdf()
+    except Exception:
+        logger.warning("Resume warm-up skipped", exc_info=True)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     # Build the retrieval index in the background so the first question is fast.
     asyncio.get_running_loop().run_in_executor(None, _safe_refresh_knowledge)
     prewarm_task = asyncio.create_task(prewarm_cache())
     asyncio.get_running_loop().run_in_executor(None, seed_providers)
+    asyncio.get_running_loop().run_in_executor(None, _warm_resume_pdf)
     owner_bot.start()
     yield
     prewarm_task.cancel()

@@ -84,7 +84,35 @@ export function sendVoiceMetric(outcome, firstAudioMs = null, language = "en-IN"
   }
 }
 
+// A small "preparing" note so the click is acknowledged straight away while the server builds the PDF.
+function showResumeNote() {
+  try {
+    const note = document.createElement("div");
+    note.setAttribute("role", "status");
+    note.textContent = "Preparing your resume…";
+    note.style.cssText = "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:80;padding:10px 16px;border-radius:999px;background:#111827;color:#fff;font:600 13px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.2)";
+    document.body.appendChild(note);
+    return () => note.remove();
+  } catch {
+    return () => {};
+  }
+}
+
+let resumeBusy = false;
+
 export async function downloadResumePdf(url, focus = "", profileLinks = {}) {
+  if (resumeBusy) return;
+  resumeBusy = true;
+  const hideNote = showResumeNote();
+  try {
+    await fetchAndSaveResume(url, focus, profileLinks);
+  } finally {
+    resumeBusy = false;
+    hideNote();
+  }
+}
+
+async function fetchAndSaveResume(url, focus, profileLinks) {
   const requestUrl = new URL(url, window.location.origin);
   const res = await fetch(requestUrl, {
     method: "POST",
