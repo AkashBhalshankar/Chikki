@@ -54,6 +54,9 @@ PROVIDERS = {
 }
 
 PRIORITY_ORDER = ["groq", "gemini", "nvidia", "openrouter"]
+# A provider that has not started answering by then is dropped for the next one (a slow answer is a worse
+# experience than a quick fallback).
+FIRST_WORD_TIMEOUT = 8.0
 _clients = {}
 
 
@@ -78,7 +81,16 @@ class CircuitBreaker:
     def __init__(self, clock=time.monotonic):
         self._clock = clock
         self._open_until: dict[str, float] = {}
+        self._latency: dict[str, float] = {}  # smoothed seconds to the first word, per provider
         self._lock = threading.Lock()
+
+    def record_latency(self, provider: str, seconds: float) -> None:
+        with self._lock:
+            previous = self._latency.get(provider)
+            self._latency[provider] = seconds if previous is None else 0.6 * previous + 0.4 * seconds
+
+    def latency(self, provider: str) -> float | None:
+        return self._latency.get(provider)
 
     def record_failure(self, provider: str, kind: str, cooldown: float | None = None) -> None:
         cooldown = cooldown if cooldown is not None else self.COOLDOWNS.get(kind, self.DEFAULT_COOLDOWN)
@@ -95,7 +107,14 @@ class CircuitBreaker:
             return self._clock() < self._open_until.get(provider, 0.0)
 
     def order(self, providers: list[str]) -> list[str]:
-        healthy = [p for p in providers if not self.is_open(p)]
+        """Healthy providers first, quickest first. One that has not been timed yet keeps its place in the
+        configured priority, so the preferred provider is tried (and measured) before the others."""
+        def speed(provider: str) -> tuple[float, int]:
+            measured = self._latency.get(provider)
+            rank = providers.index(provider)
+            return (measured if measured is not None else 0.5 + rank * 0.1, rank)
+
+        healthy = sorted((p for p in providers if not self.is_open(p)), key=speed)
         cooling = [p for p in providers if self.is_open(p)]
         return healthy + cooling
 
@@ -425,13 +444,16 @@ def stream_chikki(
                     break
                 continue
 
+            started = time.monotonic()
             iterator = _stream_provider(
                 provider, system_prompt, history, request_message, language,
                 max_tokens_override=max_tokens_override,
+                request_timeout=FIRST_WORD_TIMEOUT,
             )
             first_token_pair = next(iterator, ("", ""))
 
             if first_token_pair[0]:
+                circuit_breaker.record_latency(provider, time.monotonic() - started)
                 if meta is not None:
                     meta["provider"] = provider
                 yield first_token_pair
