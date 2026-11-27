@@ -44,6 +44,13 @@ def build_digest(days: int = 7) -> str:
     if latency is not None:
         lines.append(f"Median reply time: {latency / 1000:.1f}s")
 
+    funnel = data.get("funnel", {})
+    if funnel.get("visitors"):
+        lines.append(
+            f"Funnel: {funnel['visitors']} visitors, {funnel['asked']} asked a question, "
+            f"{funnel['resume_downloads']} resume downloads, {funnel['messages']} messages"
+        )
+
     visitors = data.get("visitors", {})
     if visitors.get("sessions"):
         lines.append(f"Engaged visitors (3+ questions): {visitors['engaged']} of {visitors['sessions']}")

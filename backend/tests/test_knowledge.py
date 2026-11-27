@@ -63,7 +63,9 @@ def test_keyword_retrieval_ignores_readme_and_returns_sources(tmp_path):
     results = kb.retrieve("How does the speech synthesis work?")
     assert results and results[0].heading == "Voice"
     assert all(chunk.source != "README.md" for chunk in kb._chunks)
-    assert sources_for(results)[0] == {"title": "Chikki Project", "section": "Voice", "url": ""}
+    first = sources_for(results)[0]
+    assert (first["title"], first["section"], first["url"]) == ("Chikki Project", "Voice", "")
+    assert first["excerpt"] and "\n" not in first["excerpt"]
     assert "Edge-TTS" in format_context(results)
 
 

@@ -112,3 +112,28 @@ def test_digest_reports_engaged_visitors(feedback_db):
         record_event("turn", "q", "en-IN", "text", "groq", 1, 1, True, None, 1, False, 0, "S1")
     record_event("turn", "q", "en-IN", "text", "groq", 1, 1, True, None, 1, False, 0, "S2")
     assert "Engaged visitors (3+ questions): 1 of 2" in digest.build_digest(7)
+
+
+def test_excerpt_is_one_line_and_cut_at_a_word():
+    from knowledge import _excerpt
+
+    text = "## Heading\n" + "word " * 200
+    out = _excerpt(text)
+    assert "\n" not in out and out.endswith("...") and len(out) <= 330 and not out.startswith("#")
+    assert _excerpt("Short note.") == "Short note."
+
+
+def test_visits_feed_the_funnel(feedback_db, monkeypatch):
+    from fastapi.testclient import TestClient
+    import main
+    import security
+    from analytics_store import record_event, summary
+
+    monkeypatch.setattr(main, "feedback_limiter", security.RateLimiter(100, 60))
+    client = TestClient(main.app)
+    assert client.post("/analytics/visit", json={"session_id": "abc"}).status_code == 200
+    assert client.post("/analytics/visit", json={"session_id": "def"}).status_code == 200
+    assert client.post("/analytics/visit", json={}).status_code == 200  # no session: nothing recorded
+    record_event("turn", "q", "en-IN", "text", "groq", 1, 1, True, None, 1, False, 0, main.visitor_code("abc"))
+    funnel = summary(7)["funnel"]
+    assert funnel["visitors"] == 2 and funnel["asked"] == 1 and funnel["resume_downloads"] == 0

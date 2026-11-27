@@ -78,6 +78,7 @@ export default function ChatPanel({
   const [commentText, setCommentText] = useState("");
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [whyOpen, setWhyOpen] = useState(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
 
   const handleCopyAnswer = async (index, text) => {
@@ -392,6 +393,16 @@ export default function ChatPanel({
                       ✓ Checked against the resume
                     </span>
                   )}
+                  {m.sources?.some((source) => source.excerpt) && (
+                    <button
+                      type="button"
+                      onClick={() => setWhyOpen((open) => (open === i ? null : i))}
+                      aria-expanded={whyOpen === i}
+                      className="mr-1 rounded-full border border-gray-700 px-2 py-0.5 text-gray-400 transition-colors hover:text-chikki-purpleLight"
+                    >
+                      🔎 Why this answer?
+                    </button>
+                  )}
                   {m.sources?.length > 0 && <span className="uppercase tracking-wider">Sources:</span>}
                   {m.sources.map((source) => {
                     const label = source.section && source.section !== source.title
@@ -416,6 +427,18 @@ export default function ChatPanel({
                       </span>
                     );
                   })}
+                </div>
+              )}
+
+              {whyOpen === i && m.sources?.some((source) => source.excerpt) && (
+                <div className="mt-2 ml-1 max-w-[96%] space-y-2 rounded-lg border border-gray-800 bg-zinc-900/60 p-3 text-[11px] leading-relaxed text-gray-300 sm:max-w-[88%]">
+                  <p className="text-gray-400">Notes Chikki looked up for this answer. It also reads Akash&apos;s full resume every time.</p>
+                  {m.sources.filter((source) => source.excerpt).map((source) => (
+                    <div key={`${source.title}-${source.section}`}>
+                      <div className="font-semibold text-gray-200">{source.section && source.section !== source.title ? `${source.title} · ${source.section}` : source.title}</div>
+                      <p className="mt-0.5 text-gray-400">“{source.excerpt}”</p>
+                    </div>
+                  ))}
                 </div>
               )}
 

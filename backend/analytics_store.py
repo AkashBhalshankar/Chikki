@@ -138,11 +138,18 @@ def summary(days: int = 30) -> Dict[str, Any]:
     gaps = Counter(_normalize(r["question"]) for r in questions if r["ok"] and r["source_count"] == 0).most_common(10)
 
     per_session = Counter(r["session"] for r in turns if r.get("session"))
+    visit_sessions = {r["session"] for r in rows if r["type"] == "visit" and r.get("session")}
     voice = [r for r in rows if r["type"] == "voice"]
     first_audio = [r["latency_ms"] for r in voice if r["ok"] and r["latency_ms"] is not None]
 
     return {
         "days": days,
+        "funnel": {
+            "visitors": len(visit_sessions),
+            "asked": len(per_session),
+            "resume_downloads": len(downloads),
+            "messages": contacts,
+        },
         "visitors": {
             "sessions": len(per_session),
             "engaged": sum(1 for count in per_session.values() if count >= 3),

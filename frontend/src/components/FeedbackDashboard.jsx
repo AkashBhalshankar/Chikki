@@ -445,6 +445,22 @@ function UsagePanel({ usage }) {
           </div>
         ))}
       </div>
+      {usage.funnel && usage.funnel.visitors > 0 && (
+        <div className={card}>
+          <div className={heading}>Visitor funnel</div>
+          <div className="space-y-2">
+            {[["Visited", usage.funnel.visitors], ["Asked a question", usage.funnel.asked], ["Downloaded the resume", usage.funnel.resume_downloads], ["Left a message", usage.funnel.messages]].map(([label, value]) => (
+              <div key={label} className="flex items-center gap-3 text-xs">
+                <span className="w-40 shrink-0 text-gray-300">{label}</span>
+                <div className="h-2 flex-1 overflow-hidden rounded bg-zinc-800">
+                  <div className="h-full rounded bg-chikki-purple/80" style={{ width: `${Math.min(100, (value / Math.max(usage.funnel.visitors, 1)) * 100)}%` }} />
+                </div>
+                <span className="w-8 text-right text-gray-200">{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className={card}>
         <div className={heading}>Questions per day</div>
         <div className="flex h-20 items-end gap-0.5">

@@ -30,7 +30,7 @@ import { playChime } from "./sounds.js";
 import InterviewModal from "./components/InterviewModal.jsx";
 import { nextStep, roleById } from "./interview.js";
 import { expressionForTurn, expressionForUserInput } from "./expressions.js";
-import { connectVoiceSocket, downloadResumePdf, fetchGreetingAudio, sendFeedback, sendVoiceMetric, wakeServer } from "./services/api.js";
+import { connectVoiceSocket, downloadResumePdf, fetchGreetingAudio, sendFeedback, sendVisit, sendVoiceMetric, wakeServer } from "./services/api.js";
 
 const NO_SPEECH_FALLBACK_THRESHOLD = 3;
 const CHAT_HISTORY_KEY = "chikki_chat_history";
@@ -342,6 +342,15 @@ export default function App() {
     } catch (_) {}
   });
   const toggleTheme = useCallback(() => setTheme((current) => applyTheme(nextTheme(current))), []);
+
+  // One visit per browser session, so Analytics can show how many visitors go on to ask or get in touch.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("chikki_visit_sent")) return;
+      sessionStorage.setItem("chikki_visit_sent", "1");
+    } catch (_) {}
+    sendVisit(sessionId);
+  }, [sessionId]);
 
   // Chikki waves hello when the page first opens, then settles.
   useEffect(() => {

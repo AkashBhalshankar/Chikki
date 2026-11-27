@@ -56,6 +56,20 @@ export async function wakeServer(timeoutMs = 90000) {
   }
 }
 
+/** Fire-and-forget: counts this browser session as one visit (the funnel starts here). */
+export function sendVisit(sessionId) {
+  try {
+    fetch(`${BASE_URL}/analytics/visit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // analytics must never affect the page
+  }
+}
+
 /** Fire-and-forget: how a spoken turn went (time to first sound, or which fallback was used). */
 export function sendVoiceMetric(outcome, firstAudioMs = null, language = "en-IN") {
   try {

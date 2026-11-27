@@ -250,6 +250,19 @@ def recent_feedback(limit: int = Query(50, ge=1, le=200)):
     return read_feedback(limit=limit)
 
 
+class VisitRequest(BaseModel):
+    session_id: str = Field(default="", max_length=100)
+
+
+@app.post("/analytics/visit")
+def record_visit(req: VisitRequest, request: Request):
+    """Counts one visit per browser session, so the owner can see how many visitors go on to ask or contact."""
+    enforce_rate_limit(feedback_limiter, request)
+    if req.session_id:
+        record_event("visit", session=visitor_code(req.session_id))
+    return {"status": "ok"}
+
+
 @app.post("/analytics/voice")
 def record_voice_metric(req: VoiceMetricRequest, request: Request):
     """Records how a spoken turn went: time to first sound and any fallback used."""

@@ -325,6 +325,14 @@ def format_context(chunks: list[Chunk]) -> str:
     )
 
 
+def _excerpt(text: str, limit: int = 320) -> str:
+    """The start of a passage on one line, cut at a word boundary, for the "Why this answer?" panel."""
+    flat = re.sub(r"\s+", " ", re.sub(r"^#+\s*", "", text, flags=re.MULTILINE)).strip()
+    if len(flat) <= limit:
+        return flat
+    return flat[:limit].rsplit(" ", 1)[0] + "..."
+
+
 def sources_for(chunks: list[Chunk]) -> list[dict]:
     seen = set()
     sources = []
@@ -333,7 +341,7 @@ def sources_for(chunks: list[Chunk]) -> list[dict]:
         if key in seen:
             continue
         seen.add(key)
-        sources.append({"title": chunk.title, "section": chunk.heading, "url": chunk.url})
+        sources.append({"title": chunk.title, "section": chunk.heading, "url": chunk.url, "excerpt": _excerpt(chunk.text)})
     return sources
 
 
