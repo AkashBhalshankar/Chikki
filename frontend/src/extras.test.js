@@ -8,6 +8,8 @@ test("settings fall back to defaults for anything unknown", () => {
   assert.deepEqual(normalizeSettings(null), DEFAULTS);
   assert.deepEqual(normalizeSettings({ voice: "robot", speed: 9, pause: "never", sounds: "yes" }), DEFAULTS);
   assert.equal(normalizeSettings({ voice: "sonia", speed: 1.15, pause: "patient", sounds: false }).pause, "patient");
+  assert.equal(DEFAULTS.transcript, false);
+  assert.equal(normalizeSettings({ transcript: true }).transcript, true);
   assert.ok(PAUSES.fast.afterFinal < PAUSES.normal.afterFinal && PAUSES.normal.afterFinal < PAUSES.patient.afterFinal);
 });
 

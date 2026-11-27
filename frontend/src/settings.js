@@ -2,7 +2,7 @@
 
 const KEY = "chikki_settings";
 
-export const DEFAULTS = { voice: "neerja", speed: 1, pause: "normal", sounds: true };
+export const DEFAULTS = { voice: "neerja", speed: 1, pause: "normal", sounds: true, transcript: false };
 
 export const VOICES = [
   { id: "neerja", label: "Neerja (Indian English)" },
@@ -30,6 +30,7 @@ export function normalizeSettings(raw) {
     speed: SPEEDS.some((s) => s.value === value.speed) ? value.speed : DEFAULTS.speed,
     pause: PAUSES[value.pause] ? value.pause : DEFAULTS.pause,
     sounds: typeof value.sounds === "boolean" ? value.sounds : DEFAULTS.sounds,
+    transcript: typeof value.transcript === "boolean" ? value.transcript : DEFAULTS.transcript,
   };
 }
 

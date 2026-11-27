@@ -65,6 +65,12 @@ export default function SettingsModal({ isOpen, onClose, onChange }) {
           value={settings.sounds ? "on" : "off"}
           onChange={(value) => update({ sounds: value === "on" })}
         />
+        <Choice
+          label="Show transcript in voice mode"
+          options={[{ id: "on", label: "On" }, { id: "off", label: "Off" }]}
+          value={settings.transcript ? "on" : "off"}
+          onChange={(value) => update({ transcript: value === "on" })}
+        />
         <p className="text-[10px] text-gray-500">Hindi and Telugu always use their own voice. Changes apply to the next answer.</p>
       </div>
     </div>

@@ -415,6 +415,7 @@ export default function App() {
   const [showHow, setShowHow] = useState(false);
   const openHow = useCallback(() => setShowHow(true), []);
   const closeHow = useCallback(() => setShowHow(false), []);
+  const [prefs, setPrefs] = useState(readSettings);
   const [showSettings, setShowSettings] = useState(false);
   const openSettings = useCallback(() => setShowSettings(true), []);
   const closeSettings = useCallback(() => setShowSettings(false), []);
@@ -1260,8 +1261,7 @@ export default function App() {
         <JobMatchModal isOpen={showMatch} onClose={closeMatch} onDownloadResume={handleDownloadTailoredResume} />
         <HowItWorksModal isOpen={showHow} onClose={closeHow} githubUrl={CONTACT_ACTIONS.github} />
         <ProjectsModal isOpen={showProjects} onClose={closeProjects} githubUrl={CONTACT_ACTIONS.github} />
-      <SettingsModal isOpen={showSettings} onClose={closeSettings} />
-        <SettingsModal isOpen={showSettings} onClose={closeSettings} />
+        <SettingsModal isOpen={showSettings} onClose={closeSettings} onChange={setPrefs} />
         <InterviewModal isOpen={showInterview} onClose={closeInterview} onStart={startInterview} />
       </>
     );
@@ -1406,7 +1406,7 @@ export default function App() {
             </button>
           )}
 
-          {messages.some((m) => m.content?.trim()) && (
+          {prefs.transcript && messages.some((m) => m.content?.trim()) && (
             <details className="mt-3 w-full max-w-lg text-left">
               <summary className="cursor-pointer select-none text-center text-[11px] text-gray-500 hover:text-chikki-purpleLight">📝 Transcript</summary>
               <div className="chikki-scroll mt-2 max-h-48 space-y-2 overflow-y-auto rounded-lg border border-gray-800 bg-zinc-900/40 p-3 text-xs">
@@ -1568,6 +1568,7 @@ export default function App() {
       <JobMatchModal isOpen={showMatch} onClose={closeMatch} onDownloadResume={handleDownloadTailoredResume} />
       <HowItWorksModal isOpen={showHow} onClose={closeHow} githubUrl={CONTACT_ACTIONS.github} />
       <ProjectsModal isOpen={showProjects} onClose={closeProjects} githubUrl={CONTACT_ACTIONS.github} />
+      <SettingsModal isOpen={showSettings} onClose={closeSettings} onChange={setPrefs} />
       <InterviewModal isOpen={showInterview} onClose={closeInterview} onStart={startInterview} />
     </div>
   );
