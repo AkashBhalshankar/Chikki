@@ -1425,8 +1425,6 @@ export default function App() {
     return (
       <>
         <ConnectionBanner offline={offline} lost={socketLost} onContact={openContact} />
-        <StatusPill label={chatThinking ? "Thinking" : null} />
-        <EasterEgg token={sentToken} title="Message sent! 🎉" text="Akash will get back to you soon." />
         <ChatPanel
           messages={messages}
           onSend={handleChatSend}
@@ -1446,9 +1444,6 @@ export default function App() {
           onOpenSettings={openSettings}
           onOpenShortcuts={openShortcuts}
           onOpenInterview={openInterview}
-          onOpenJourney={openJourney}
-          onTogglePlay={toggleOrb}
-          playing={showOrb}
           interview={interview}
           onInterviewNext={interviewNext}
           onInterviewEnd={interviewEnd}
@@ -1460,8 +1455,6 @@ export default function App() {
           language={currentLang}
           onLanguageChange={setCurrentLang}
           onOpenRecap={openRecap}
-          chikkiState={idleLook || (chatThinking ? "thinking" : messages.some((m) => m.role === "assistant" && m.final) ? voiceExpression : "idle")}
-          chikkiExpression={voiceExpression}
         />
         <FeedbackDashboard
           isOpen={showDashboard}
@@ -1481,9 +1474,6 @@ export default function App() {
         <ShortcutsModal isOpen={showShortcuts} onClose={closeShortcuts} />
         <InterviewModal isOpen={showInterview} onClose={closeInterview} onStart={startInterview} />
         <RecapModal isOpen={showRecap} onClose={closeRecap} messages={messages} />
-        <JourneyModal isOpen={showJourney} onClose={closeJourney} onAsk={handleChatSend} />
-        {showOrb && <PlayOrb onClose={() => setShowOrb(false)} />}
-        <EasterEgg token={eggToken} />
       </>
     );
   }

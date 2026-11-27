@@ -5,7 +5,7 @@ export function ProjectCard({ project, compact = false }) {
   const [peeking, setPeeking] = useState(false);
   return (
     <div className="project-card rounded-xl border border-gray-800 bg-zinc-900/40 p-3.5">
-      {project.image && (
+      {project.image && !compact && (
         <img
           src={project.image}
           alt={`Screenshot of ${project.name}`}
@@ -31,7 +31,7 @@ export function ProjectCard({ project, compact = false }) {
           ))}
         </ul>
       )}
-      {project.peek && peeking && (
+      {project.peek && peeking && !compact && (
         <iframe
           src={project.url}
           title={`Live preview of ${project.name}`}
@@ -43,7 +43,7 @@ export function ProjectCard({ project, compact = false }) {
       )}
       {project.url && (
         <div className="mt-2.5 flex flex-wrap gap-2">
-          {project.peek && (
+          {project.peek && !compact && (
             <button type="button" onClick={() => setPeeking((value) => !value)} className="action-button !min-h-0 px-3 py-1 text-[11px]" aria-expanded={peeking}>
               {peeking ? "Hide preview" : "👀 Peek inside"}
             </button>

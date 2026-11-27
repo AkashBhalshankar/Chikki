@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AppFooter from "./AppFooter.jsx";
 import LanguageSelector from "./LanguageSelector.jsx";
 import { isMobileDevice, telHref } from "../device.js";
@@ -7,17 +7,9 @@ import RichText from "./RichText.jsx";
 import { ProjectCard } from "./ProjectsModal.jsx";
 import { projectsMentioned } from "../projects.js";
 import { nextStep } from "../interview.js";
-import ChikkiBot from "./ChikkiBot.jsx";
 import ThinkingIndicator from "./ThinkingIndicator.jsx";
 import { plainText } from "../markdown.js";
 import { shareAnswerCard } from "../answerCard.js";
-import Reveal from "./Reveal.jsx";
-import { timeMarker } from "../chatTime.js";
-import usePullToRefresh from "../hooks/usePullToRefresh.js";
-import { buzz } from "../haptics.js";
-import { setGaze } from "../gaze.js";
-import SkillMap from "./SkillMap.jsx";
-import { wantsSkillMap } from "../play.js";
 import { ProfileLine } from "./ProfileBadge.jsx";
 
 const QUICK_PROMPTS = {
@@ -77,28 +69,9 @@ export default function ChatPanel({
   onToggleTheme,
   language = "en-IN",
   onLanguageChange,
-  onOpenRecap,
-  playing = false,
-  onTogglePlay,
-  onOpenJourney,
-  chikkiState = "idle",
-  chikkiExpression = "confident",
 }) {
   const [value, setValue] = useState("");
   const scrollRef = useRef(null);
-  const [scrolled, setScrolled] = useState(false);
-  const [burst, setBurst] = useState(null);
-  const [progress, setProgress] = useState(0);
-  const [showJump, setShowJump] = useState(false);
-  const lastScroll = useRef({ top: 0, at: 0, reacted: 0 });
-  const isTouch = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
-  const { pull, ready: pullReady } = usePullToRefresh(scrollRef, {
-    enabled: isTouch && !thinking,
-    onRefresh: () => {
-      buzz(15);
-      window.location.reload();
-    },
-  });
   const inputRef = useRef(null);
 
   const [activeFeedbackMsgId, setActiveFeedbackMsgId] = useState(null);
@@ -109,13 +82,6 @@ export default function ChatPanel({
   const [whyOpen, setWhyOpen] = useState(null);
   const [cardState, setCardState] = useState({ index: null, label: "" });
   const [copiedIndex, setCopiedIndex] = useState(null);
-
-  // while you type, Chikki's eyes follow the end of your text along the question box
-  const lookAtInput = (length) => {
-    const box = inputRef.current?.getBoundingClientRect();
-    if (!box) return;
-    setGaze({ x: box.left + Math.min(box.width - 24, 16 + length * 7.5), y: box.top + box.height / 2 });
-  };
 
   const handleCopyAnswer = async (index, text) => {
     try {
@@ -249,9 +215,6 @@ export default function ChatPanel({
                 onOpenSettings && { key: "settings", label: "⚙️ Settings", onClick: onOpenSettings },
                 onOpenShortcuts && { key: "shortcuts", label: "⌨️ Keyboard shortcuts", onClick: onOpenShortcuts },
                 onOpenInterview && { key: "interview", label: "🎤 Interview mode", onClick: onOpenInterview },
-                onOpenJourney && { key: "journey", label: "🧭 Work journey", onClick: onOpenJourney },
-                onTogglePlay && { key: "play", label: playing ? "✨ Put the sparkle away" : "✨ Play with Chikki", onClick: onTogglePlay },
-                onOpenRecap && messages.length > 0 && { key: "recap", label: "📝 Summarise our chat", onClick: onOpenRecap },
                 onOpenHow && { key: "how", label: "🧠 How Chikki works", onClick: onOpenHow },
                 onShare && { key: "share", label: linkCopied ? "✓ Link copied" : "🔗 Copy link", onClick: handleShareClick, keepOpen: true },
                 canCall && actions.phone && { key: "call", label: "📞 Call Akash", href: telHref(actions.phone) },
@@ -275,7 +238,7 @@ export default function ChatPanel({
       <a href="#ask-input" onClick={(event) => { event.preventDefault(); inputRef.current?.focus(); }} className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-[70] focus:rounded-lg focus:bg-indigo-600 focus:px-3 focus:py-2 focus:text-xs focus:text-white">
         Skip to the question box
       </a>
-      <div className="app-shell chat-shell flex min-h-0 flex-1 flex-col mx-auto w-full">
+      <div className="app-shell flex min-h-0 flex-1 flex-col max-w-4xl mx-auto w-full">
         
         {/* Header */}
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-4">
@@ -313,27 +276,8 @@ export default function ChatPanel({
           </div>
         </header>
 
-        <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:gap-6">
-        {/* Chikki stays in place while only the messages scroll */}
-        <aside className={`chat-chikki ${scrolled ? "is-mini" : ""} flex shrink-0 items-center gap-3 lg:w-[270px] lg:flex-col lg:justify-center lg:gap-3`} aria-label="Chikki">
-          <ChikkiBot state={chikkiState} expression={chikkiExpression} className="h-auto w-14 shrink-0 sm:w-16 lg:w-56" />
-          <div className="chat-chikki-text min-w-0 lg:text-center">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-chikki-purpleLight">
-              {thinking ? "Thinking…" : messages.length ? "Ask me more" : "Hi, I'm Chikki"}
-            </div>
-            <p className="mt-0.5 text-[11px] leading-snug text-gray-500 lg:max-w-[220px]">
-              Answers come from Akash&apos;s verified resume.
-            </p>
-          </div>
-        </aside>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {pull > 0 && (
-          <div className="flex items-center justify-center overflow-hidden text-[11px] text-gray-400 transition-[height]" style={{ height: pull * 0.6 }} aria-hidden="true">
-            {pullReady ? "Release to refresh" : "↓ Pull to refresh"}
-          </div>
-        )}
         {/* Quick Action Links */}
-        <div className="hidden flex-wrap items-center justify-between gap-2 sm:flex">
+        <div className="mt-3 hidden flex-wrap items-center justify-between gap-2 sm:flex">
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {renderActions("down")}
           </div>
@@ -343,29 +287,9 @@ export default function ChatPanel({
         </div>
 
         {/* Chat Body */}
-        <div className="relative mt-3 flex min-h-0 flex-1 flex-col">
-        {messages.length > 0 && progress > 0 && (
-          <div className="scroll-progress" aria-hidden="true"><i style={{ width: `${Math.round(progress * 100)}%` }} /></div>
-        )}
         <div
           ref={scrollRef}
-          onScroll={(event) => {
-            const top = event.currentTarget.scrollTop;
-            setScrolled(top > 48);
-            const range = event.currentTarget.scrollHeight - event.currentTarget.clientHeight;
-            setProgress(range > 0 ? top / range : 0);
-            setShowJump(range - top > 160);
-            // a very fast scroll makes Chikki dizzy for a moment (at most every few seconds)
-            const now = performance.now();
-            const last = lastScroll.current;
-            const speed = Math.abs(top - last.top) / Math.max(1, now - last.at);
-            lastScroll.current = { top, at: now, reacted: last.reacted };
-            if (speed > 3 && now - last.reacted > 4000) {
-              lastScroll.current.reacted = now;
-              window.dispatchEvent(new CustomEvent("chikki:react", { detail: { name: "confused", ms: 1400 } }));
-            }
-          }}
-          className="chat-scroll-container surface-line chikki-scroll w-full overflow-y-auto rounded-lg p-3 sm:p-4 space-y-4"
+          className="chat-scroll-container surface-line chikki-scroll mt-3 w-full overflow-y-auto rounded-lg p-3 sm:p-4 space-y-4"
           role="log"
           aria-live="polite"
           aria-label="Conversation with Chikki"
@@ -373,8 +297,9 @@ export default function ChatPanel({
           {messages.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center p-4 text-center">
               <h2 className="text-lg font-semibold text-gray-100">Hi, I&apos;m Chikki 👋</h2>
-              <p className="mt-1.5 max-w-md text-xs leading-relaxed text-gray-400">
-                Ask about Akash&apos;s experience, projects and skills.
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-gray-400">
+                Ask me anything about Akash&apos;s experience, projects and skills. My answers come from his
+                verified resume, and I&apos;ll say so when something isn&apos;t in it.
               </p>
               <div className="mt-5 grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2">
                 {currentPrompts.map((prompt) => (
@@ -394,13 +319,9 @@ export default function ChatPanel({
 
           {messages.map((m, i) => (
             m.role === "assistant" && !m.isError && !m.content?.trim() ? null : (
-            <Fragment key={i}>
-            {(() => {
-              const marker = timeMarker(messages.slice(0, i).reverse().find((x) => Number.isFinite(x.at))?.at, m.at);
-              return marker ? <div className="time-marker" role="separator">{marker}</div> : null;
-            })()}
             <div
-              className={`msg-enter group flex flex-col ${
+              key={i}
+              className={`group flex flex-col ${
                 m.role === "user" ? "items-end" : "items-start"
               }`}
             >
@@ -418,14 +339,9 @@ export default function ChatPanel({
                 }`}
               >
                 <div className="break-words">
-                  {m.role === "assistant" && !m.isError ? (
-                    <Reveal
-                      text={m.content}
-                      streaming={Boolean(m.isStreaming)}
-                      onQuote={i === latestAssistantIndex && m.final && !thinking ? (line) => onSend(`About this: "${line.slice(0, 140)}". Can you explain that a bit more?`) : undefined}
-                    />
-                  ) : (
-                    <span className="whitespace-pre-wrap">{m.content}</span>
+                  {m.role === "assistant" && !m.isError ? <RichText text={m.content} /> : <span className="whitespace-pre-wrap">{m.content}</span>}
+                  {m.isStreaming && (
+                    <span className="inline-block ml-1 animate-pulse text-chikki-purpleLight font-bold">▊</span>
                   )}
                 </div>
               </div>
@@ -457,27 +373,6 @@ export default function ChatPanel({
                     <button type="button" onClick={() => onSend("Tell me more about that in detail.")} className="msg-action">
                       ➕ More detail
                     </button>
-                  )}
-                  {i === latestAssistantIndex && (
-                    <span className="relative inline-flex items-center gap-1">
-                      {[["❤️", "love", "Love it"], ["😮", "surprised", "Wow"], ["😂", "laughing", "Funny"]].map(([emoji, name, label]) => (
-                        <button
-                          key={name}
-                          type="button"
-                          className="msg-action"
-                          aria-label={label}
-                          title={label}
-                          onClick={() => {
-                            buzz(8);
-                            window.dispatchEvent(new CustomEvent("chikki:react", { detail: { name, ms: 2200 } }));
-                            setBurst({ emoji, id: Date.now() });
-                          }}
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                      {burst && <span key={burst.id} className="emoji-float" aria-hidden="true" onAnimationEnd={() => setBurst(null)}>{burst.emoji}</span>}
-                    </span>
                   )}
                   {i === latestAssistantIndex && onFeedback && (
                     <>
@@ -525,10 +420,6 @@ export default function ChatPanel({
                     <ProjectCard key={project.id} project={project} compact />
                   ))}
                 </div>
-              )}
-
-              {m.role === "assistant" && i === latestAssistantIndex && m.final && !m.isError && !thinking && wantsSkillMap(messages[i - 1]?.content) && (
-                <SkillMap onAsk={onSend} disabled={thinking} />
               )}
 
               {m.role === "assistant" && m.final && !m.isError && (m.verified || m.sources?.length > 0) && (
@@ -627,21 +518,10 @@ export default function ChatPanel({
                 </div>
               )}
             </div>
-            </Fragment>
             )
           ))}
 
           {thinking && !(messages[messages.length - 1]?.role === "assistant" && messages[messages.length - 1]?.content?.trim() && !messages[messages.length - 1]?.final) && <ThinkingIndicator />}
-        </div>
-        {showJump && (
-          <button
-            type="button"
-            className="jump-latest"
-            onClick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" })}
-          >
-            ↓ Latest
-          </button>
-        )}
         </div>
 
         {interview && (() => {
@@ -665,7 +545,7 @@ export default function ChatPanel({
         })()}
 
         {/* Quick Suggestion Chips */}
-        <div className={`suggest-row mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2 ${messages.length === 0 ? "hidden" : ""}`}>
+        <div className={`mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2 ${messages.length === 0 ? "hidden" : ""}`}>
           {[...suggestions, ...currentPrompts].slice(0, 4).map((prompt, index) => (
             <button
               key={prompt}
@@ -685,14 +565,7 @@ export default function ChatPanel({
             ref={inputRef}
             type="text"
             value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-              lookAtInput(e.target.value.length);
-            }}
-            onFocus={() => lookAtInput(value.length)}
-            onBlur={() => {
-              if (!playing) setGaze(null);
-            }}
+            onChange={(e) => setValue(e.target.value)}
             disabled={thinking}
             placeholder="Ask about Akash's skills, projects..."
             id="ask-input"
@@ -715,8 +588,6 @@ export default function ChatPanel({
 
         <div className="hidden sm:block">
           <AppFooter />
-        </div>
-        </div>
         </div>
       </div>
     </div>
