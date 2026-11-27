@@ -1,10 +1,33 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import CursorGlow from "./components/CursorGlow.jsx";
+import Splash from "./components/Splash.jsx";
+import { startParallax } from "./parallax.js";
+import CalmMotion from "./components/CalmMotion.jsx";
 import "./index.css";
+import { applyLook, readSettings } from "./settings.js";
+
+applyLook(readSettings());
+startParallax();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <App />
+    {/* "user" means people who ask their device for less motion get calmer animations */}
+    <CalmMotion>
+      <ErrorBoundary>
+        <App />
+        <CursorGlow />
+        <Splash />
+      </ErrorBoundary>
+    </CalmMotion>
   </React.StrictMode>
 );
+
+// Lets Chikki be installed as an app. The worker caches nothing, so deploys are never stale.
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}

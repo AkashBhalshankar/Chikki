@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --group dev
+      - run: uv run pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - run: npm test
+      - run: npm run build
+
+  e2e:
+    # Opens the built app in real Chrome and clicks through the main screens, so a page that fails to load
+    # (a blank screen) or a menu that does not open is caught before it reaches visitors.
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Start the backend (no AI keys needed for these checks)
+        working-directory: backend
+        env:
+          ALLOWED_ORIGINS: http://localhost:4173
+          ADMIN_TOKEN: ci-token
+          FEEDBACK_DB_PATH: /tmp/ci-feedback.db
+        run: |
+          uv sync
+          nohup uv run uvicorn main:app --port 8000 > /tmp/backend.log 2>&1 &
+      - name: Build and serve the frontend
+        working-directory: frontend
+        env:
+          VITE_API_URL: http://localhost:8000
+        run: |
+          npm install
+          npm run build
+          nohup npx vite preview --port 4173 > /tmp/frontend.log 2>&1 &
+      - name: Wait for both servers
+        run: |
+          for i in $(seq 1 40); do
+            curl -sf http://localhost:8000/health > /dev/null && curl -sf http://localhost:4173/ > /dev/null && exit 0
+            sleep 2
+          done
+          echo "servers did not start"; cat /tmp/backend.log /tmp/frontend.log; exit 1
+      - name: Click through the app
+        working-directory: frontend
+        env:
+          BASE_URL: http://localhost:4173
+          CHROME_PATH: /usr/bin/google-chrome
+          E2E_SEND_CONTACT: "1"
+        run: npm run e2e

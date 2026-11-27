@@ -5,3 +5,9 @@ __pycache__/
 *.pyc
 .DS_Store
 .venv
+
+# Runtime data (feedback, local databases)
+backend/feedback_log.jsonl
+backend/data/
+*.db
+.pytest_cache/

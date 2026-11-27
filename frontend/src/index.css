@@ -2,18 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Accent colour: the default is violet; Voice settings can switch to teal or amber. */
+:root {
+  --accent-rgb: 99, 102, 241;
+  --accent-rgb-dark: 79, 70, 229;
+  --accent-500: #6366f1;
+  --accent-600: #4f46e5;
+  --accent-700: #4338ca;
+  --accent-800: #3730a3;
+  --accent-900: #312e81;
+  --chikki-purple: 127 119 221;
+  --chikki-purple-light: 175 169 236;
+}
+html[data-accent="teal"] {
+  --accent-rgb: 20, 184, 166;
+  --accent-rgb-dark: 13, 148, 136;
+  --accent-500: #14b8a6;
+  --accent-600: #0d9488;
+  --accent-700: #0f766e;
+  --accent-800: #115e59;
+  --accent-900: #134e4a;
+  --chikki-purple: 74 163 162;
+  --chikki-purple-light: 143 225 216;
+}
+html[data-accent="amber"] {
+  --accent-rgb: 245, 158, 11;
+  --accent-rgb-dark: 217, 119, 6;
+  --accent-500: #f59e0b;
+  --accent-600: #d97706;
+  --accent-700: #b45309;
+  --accent-800: #92400e;
+  --accent-900: #78350f;
+  --chikki-purple: 216 165 47;
+  --chikki-purple-light: 244 215 122;
+}
+
 :root {
   --bg-base: #09090b;
   --panel-base: rgba(18, 18, 22, 0.75);
-  --accent-purple: #6366f1;
-  --accent-glow: rgba(99, 102, 241, 0.25);
+  --accent-purple: var(--accent-500);
+  --accent-glow: rgba(var(--accent-rgb), 0.25);
   --border-subtle: rgba(255, 255, 255, 0.08);
 }
 
 body {
   background-color: var(--bg-base);
   color: #e4e4e7;
-  font-family: "JetBrains Mono", monospace;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   margin: 0;
   -webkit-tap-highlight-color: transparent;
   overflow-x: hidden;
@@ -23,6 +58,25 @@ button,
 a,
 input {
   font: inherit;
+}
+
+/* Screens are marked font-mono; reading text uses Inter and only the small labels stay monospace. */
+.font-mono {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.font-mono .uppercase,
+.font-mono [class*="tracking-"],
+.font-mono kbd,
+.font-mono code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Conversation text is the main thing to read, so it is a little larger */
+.answer-card,
+.user-bubble {
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
 
 /* =========================================
@@ -39,15 +93,42 @@ input {
   min-height: 100dvh;
 }
 
-.chat-scroll-container {
-  height: calc(100dvh - 310px);
-  min-height: 280px;
+/* Text chat fills exactly one screen: the page itself never scrolls, only the message list does. */
+.chat-viewport {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
-@media (max-width: 640px) {
-  .chat-scroll-container {
-    height: calc(100dvh - 330px);
-  }
+/* Start and voice screens fit the window on their own: Chikki and the spacing scale with the window height,
+   lower-priority blocks drop out on short windows, and only as a last resort the middle scrolls inside. */
+.fit-viewport { height: 100vh; height: 100dvh; overflow: hidden; }
+/* Nothing scrolls: the middle is a column where Chikki takes whatever height is left over. */
+.fit-main { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.fit-inner { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; }
+.fit-inner > * { flex-shrink: 0; }
+.fit-botbox, .chikki-stage.fit-stage {
+  flex: 1 1 0; min-height: 56px; max-height: 250px; width: min(100%, 480px);
+  display: flex; align-items: center; justify-content: center; padding: 0.25rem 0;
+}
+.fit-botbox > svg, .chikki-stage.fit-stage > svg { height: 100%; width: auto; max-width: 100%; }
+@media (max-height: 760px) { .fit-hide-short { display: none; } }
+@media (max-height: 900px) { .fit-inner .chip-fit-extra, .fit-hide-mid { display: none; } }
+@media (max-width: 640px) and (max-height: 900px) { .fit-hide-phone { display: none; } }
+@media (max-height: 560px) { .fit-hide-tiny { display: none; } }
+
+/* Wider on desktop so Chikki gets a column of its own beside the chat */
+.chat-shell { max-width: 72rem; }
+@media (min-width: 1024px) {
+  .chat-shell .chat-scroll-container { font-size: 0.8125rem; }
+}
+/* On short phones keep Chikki small so the chat has room */
+@media (max-height: 640px) { .chat-chikki svg { width: 2.75rem; } }
+
+.chat-scroll-container {
+  flex: 1 1 0;
+  min-height: 0;
+  overscroll-behavior: contain;
 }
 
 /* =========================================
@@ -63,7 +144,7 @@ input {
 }
 
 .surface-line {
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
   background: rgba(15, 15, 18, 0.8);
   backdrop-filter: blur(12px);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
@@ -83,7 +164,7 @@ input {
   margin: 0 auto;
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.12) 0%, rgba(9, 9, 11, 0.6) 70%);
+  background: radial-gradient(circle at 50% 50%, rgba(var(--accent-rgb), 0.12) 0%, rgba(9, 9, 11, 0.6) 70%);
   transition: all 400ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -96,8 +177,8 @@ input {
 }
 
 .chikki-stage.is-speaking {
-  border-color: rgba(99, 102, 241, 0.4);
-  box-shadow: 0 0 50px -10px rgba(99, 102, 241, 0.3);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: 0 0 50px -10px rgba(var(--accent-rgb), 0.3);
 }
 
 .chikki-stage.is-listening {
@@ -119,29 +200,29 @@ input {
   background: rgba(24, 24, 27, 0.6);
   padding: 0.45rem 0.9rem;
   color: #a1a1aa;
-  font-size: 0.72rem;
-  letter-spacing: 0.02em;
+  font-size: 0.8rem;
+  letter-spacing: 0.01em;
   touch-action: manipulation;
   transition: all 180ms ease;
 }
 
 .action-button:hover {
-  border-color: rgba(99, 102, 241, 0.5);
+  border-color: rgba(var(--accent-rgb), 0.5);
   color: #ffffff;
-  background: rgba(99, 102, 241, 0.12);
+  background: rgba(var(--accent-rgb), 0.12);
   transform: translateY(-1px);
 }
 
 .primary-action {
-  border-color: rgba(99, 102, 241, 0.4);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(79, 70, 229, 0.15) 100%);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.25) 0%, rgba(var(--accent-rgb-dark), 0.15) 100%);
   color: #e0e7ff;
 }
 
 .primary-action:hover {
-  border-color: rgba(99, 102, 241, 0.8);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.35) 0%, rgba(79, 70, 229, 0.25) 100%);
-  box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.4);
+  border-color: rgba(var(--accent-rgb), 0.8);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.35) 0%, rgba(var(--accent-rgb-dark), 0.25) 100%);
+  box-shadow: 0 0 20px -5px rgba(var(--accent-rgb), 0.4);
 }
 
 .prompt-button {
@@ -153,17 +234,17 @@ input {
   background: rgba(18, 18, 22, 0.5);
   padding: 0.6rem 0.85rem;
   color: #a1a1aa;
-  font-size: 0.72rem;
-  line-height: 1.3;
+  font-size: 0.82rem;
+  line-height: 1.35;
   text-align: left;
   touch-action: manipulation;
   transition: all 180ms ease;
 }
 
 .prompt-button:hover {
-  border-color: rgba(99, 102, 241, 0.45);
+  border-color: rgba(var(--accent-rgb), 0.45);
   color: #ffffff;
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
   transform: translateY(-1px);
 }
 
@@ -171,10 +252,98 @@ input {
    Accents & Grid
 ========================================= */
 
+/* Soft glass backdrop: faint dot grid over two glows in the accent colour */
 .dot-grid {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    radial-gradient(60rem 32rem at 12% -8%, rgba(var(--skin-rgb, var(--accent-rgb)), 0.16), transparent 62%),
+    radial-gradient(48rem 30rem at 100% 108%, rgba(var(--mood-rgb, var(--accent-rgb)), 0.13), transparent 60%);
+  background-size: 24px 24px, auto, auto;
+  background-repeat: repeat, no-repeat, no-repeat;
+  background-position: calc(var(--px, 0) * -6px) calc(var(--py, 0) * -6px), calc(var(--px, 0) * 22px) calc(var(--py, 0) * 14px), calc(var(--px, 0) * -26px) calc(var(--py, 0) * -16px);
+  background-attachment: fixed;
 }
+
+/* Chikki's body: gradients so he looks solid, with a soft glow in the accent colour */
+.chikki-svg { filter: drop-shadow(0 8px 16px rgba(var(--accent-rgb), 0.25)); overflow: visible; }
+.bot-g1 { stop-color: #50505f; }
+.bot-g2 { stop-color: #2c2c38; }
+.bot-g3 { stop-color: #3a3a46; }
+.bot-g4 { stop-color: #202029; }
+html[data-theme="light"] .bot-g1 { stop-color: #6b749c; }
+html[data-theme="light"] .bot-g2 { stop-color: #465073; }
+html[data-theme="light"] .bot-g3 { stop-color: #59628a; }
+html[data-theme="light"] .bot-g4 { stop-color: #394263; }
+
+/* buttons press in, chips slide in one by one, status text cross-fades */
+.action-button:active, .prompt-button:active, .msg-action:active { transform: scale(0.96); }
+.prompt-button { animation: chip-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.prompt-button:nth-child(2) { animation-delay: 70ms; }
+.prompt-button:nth-child(3) { animation-delay: 140ms; }
+.prompt-button:nth-child(4) { animation-delay: 210ms; }
+@keyframes chip-in { from { opacity: 0; transform: translateX(-10px); } }
+.fade-swap { animation: fade-swap 0.35s ease both; }
+@keyframes fade-swap { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .prompt-button, .fade-swap { animation: none; } }
+
+/* background skins (dark mode): a tint and a glow colour; the accent colour stays the visitor's own */
+html[data-skin="sunrise"] { --bg-base: #130a07; --skin-rgb: 255, 128, 72; }
+html[data-skin="forest"] { --bg-base: #07120c; --skin-rgb: 52, 168, 100; }
+html[data-skin="ocean"] { --bg-base: #060e1a; --skin-rgb: 56, 140, 230; }
+html[data-font="readable"] body,
+html[data-font="readable"] .font-mono,
+html[data-font="readable"] button,
+html[data-font="readable"] input,
+html[data-font="readable"] textarea {
+  font-family: "Segoe UI", Verdana, Tahoma, system-ui, sans-serif;
+  letter-spacing: 0.01em;
+}
+html[data-font="readable"] .answer-card,
+html[data-font="readable"] .user-bubble { line-height: 1.75; }
+
+/* Chikki hops in when a screen appears */
+.chikki-svg { animation: bot-enter 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) backwards; transition: scale 0.3s ease, opacity 0.3s ease; }
+@keyframes bot-enter { from { translate: 0 22px; scale: 0.82; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .chikki-svg { animation: none; } }
+
+/* answers: skills as chips, links as small buttons, figures highlighted, a quiet way to ask about one line */
+.skill-chip {
+  display: inline-flex; align-items: center; border-radius: 9999px; padding: 0.15rem 0.65rem; font-size: 0.8em;
+  border: 1px solid rgba(var(--accent-rgb), 0.4); background: rgba(var(--accent-rgb), 0.12); color: inherit;
+}
+.link-chip {
+  display: inline-flex; align-items: center; border-radius: 9999px; padding: 0.05rem 0.55rem; font-size: 0.88em;
+  border: 1px solid rgba(var(--accent-rgb), 0.45); background: rgba(var(--accent-rgb), 0.1);
+  color: rgb(var(--chikki-purple-light)); text-decoration: none; transition: background 0.2s, transform 0.15s;
+}
+.link-chip:hover { background: rgba(var(--accent-rgb), 0.22); }
+.link-chip:active { transform: scale(0.96); }
+.stat { font-weight: 600; border-radius: 0.3rem; padding: 0 0.25rem; background: rgba(var(--accent-rgb), 0.16); }
+.quote-btn { margin-left: 0.4rem; opacity: 0; font-size: 0.85em; color: rgb(var(--chikki-purple-light)); background: none; border: 0; cursor: pointer; transition: opacity 0.2s; }
+p:hover > .quote-btn, li:hover > .quote-btn, .quote-btn:focus-visible { opacity: 0.85; }
+@media (hover: none) { .quote-btn { opacity: 0.45; } }
+
+/* day and time markers between messages */
+.time-marker { display: flex; align-items: center; gap: 0.75rem; font-size: 10px; letter-spacing: 0.08em; color: #71717a; }
+.time-marker::before, .time-marker::after { content: ""; flex: 1; height: 1px; background: rgba(255, 255, 255, 0.07); }
+html[data-theme="light"] .time-marker::before, html[data-theme="light"] .time-marker::after { background: rgba(15, 23, 42, 0.1); }
+
+/* on phones Chikki shrinks to a small avatar while you scroll through a long answer */
+.chat-chikki svg { transition: width 0.25s ease; }
+@media (max-width: 1023px) {
+  .chat-chikki.is-mini svg { width: 2rem; }
+  .chat-chikki.is-mini .chat-chikki-text { display: none; }
+}
+
+/* messages ease in */
+.msg-enter { animation: msg-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+.chat-scroll-container .answer-card { box-shadow: 0 6px 22px -14px rgba(var(--accent-rgb), 0.55); backdrop-filter: blur(6px); }
+.chat-scroll-container .user-bubble { box-shadow: 0 6px 20px -12px rgba(var(--accent-rgb), 0.6); }
+@media (prefers-reduced-motion: reduce) { .msg-enter { animation: none; } }
 
 .badge-live {
   position: relative;
@@ -220,5 +389,589 @@ input {
 }
 
 .chikki-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.5);
+  background: rgba(var(--accent-rgb), 0.5);
 }
+
+/* =========================================
+   Listening wave (visual only)
+========================================= */
+
+.listening-wave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 28px;
+}
+
+.wave-bar {
+  width: 4px;
+  height: 8px;
+  border-radius: 9999px;
+  background: rgba(52, 211, 153, 0.75);
+  animation: wave-idle 1.8s ease-in-out infinite;
+}
+
+.listening-wave.is-hearing .wave-bar {
+  background: rgba(129, 140, 248, 0.95);
+  animation: wave-active 0.7s ease-in-out infinite;
+}
+
+@keyframes wave-idle {
+  0%, 100% { height: 6px; opacity: 0.5; }
+  50% { height: 12px; opacity: 0.95; }
+}
+
+@keyframes wave-active {
+  0%, 100% { height: 8px; }
+  50% { height: 26px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave-bar { animation: none; height: 10px; }
+}
+
+/* Chikki's replies get a subtle accent edge */
+.answer-card {
+  border-left: 2px solid rgba(var(--accent-rgb), 0.7);
+}
+
+html[data-theme="light"] .answer-card {
+  border-left-color: rgba(var(--accent-rgb-dark), 0.7);
+}
+
+/* =========================================
+   Profile avatar
+========================================= */
+
+.profile-avatar {
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.35), rgba(var(--accent-rgb-dark), 0.2));
+}
+
+/* =========================================
+   Mobile polish
+========================================= */
+
+body {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (pointer: coarse) {
+  .action-button,
+  .prompt-button {
+    min-height: 44px;
+  }
+}
+
+/* 16px inputs stop iOS Safari from zooming the page when a field is focused */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* =========================================
+   Light theme (html[data-theme="light"])
+========================================= */
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg-base: #f4f4f8;
+  --panel-base: rgba(255, 255, 255, 0.85);
+  --border-subtle: rgba(15, 23, 42, 0.12);
+}
+
+html[data-theme="light"] body { color: #1f2937; }
+
+html[data-theme="light"] .dot-grid {
+  background-image:
+    radial-gradient(rgba(15, 23, 42, 0.07) 1px, transparent 1px),
+    radial-gradient(60rem 32rem at 12% -8%, rgba(var(--accent-rgb), 0.12), transparent 62%),
+    radial-gradient(48rem 30rem at 100% 108%, rgba(var(--accent-rgb), 0.08), transparent 60%);
+}
+
+html[data-theme="light"] .surface-line {
+  border-color: rgba(var(--accent-rgb), 0.28);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="light"] .glass-panel {
+  box-shadow: 0 12px 30px -12px rgba(15, 23, 42, 0.15);
+}
+
+html[data-theme="light"] .chikki-stage {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: radial-gradient(circle at 50% 50%, rgba(var(--accent-rgb), 0.13) 0%, rgba(255, 255, 255, 0.75) 70%);
+}
+
+html[data-theme="light"] .action-button {
+  background: rgba(255, 255, 255, 0.9);
+  color: #52525b;
+}
+
+html[data-theme="light"] .action-button:hover {
+  color: #111827;
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
+html[data-theme="light"] .primary-action {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.2), rgba(var(--accent-rgb-dark), 0.1));
+  color: var(--accent-800);
+}
+
+html[data-theme="light"] .primary-action:hover {
+  color: var(--accent-900);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.3), rgba(var(--accent-rgb-dark), 0.18));
+}
+
+html[data-theme="light"] .prompt-button {
+  background: rgba(255, 255, 255, 0.85);
+  color: #52525b;
+}
+
+html[data-theme="light"] .prompt-button:hover {
+  color: #111827;
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+html[data-theme="light"] .chikki-scroll { scrollbar-color: rgba(15, 23, 42, 0.25) transparent; }
+html[data-theme="light"] .chikki-scroll::-webkit-scrollbar-thumb { background: rgba(15, 23, 42, 0.22); }
+
+html[data-theme="light"] .profile-avatar {
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.2), rgba(var(--accent-rgb-dark), 0.12));
+}
+
+/* text colours */
+html[data-theme="light"] .text-white,
+html[data-theme="light"] .hover\:text-white:hover,
+html[data-theme="light"] .text-gray-100 { color: #111827; }
+html[data-theme="light"] .text-gray-200 { color: #1f2937; }
+html[data-theme="light"] .text-gray-300 { color: #374151; }
+html[data-theme="light"] .text-gray-400 { color: #4b5563; }
+html[data-theme="light"] .text-gray-500 { color: #6b7280; }
+html[data-theme="light"] .text-gray-600 { color: #71717a; }
+html[data-theme="light"] .text-chikki-purpleLight { color: var(--accent-600); }
+html[data-theme="light"] .text-emerald-300 { color: #047857; }
+html[data-theme="light"] .text-emerald-400 { color: #059669; }
+html[data-theme="light"] .text-rose-200,
+html[data-theme="light"] .text-rose-300 { color: #be123c; }
+html[data-theme="light"] .text-rose-400 { color: #e11d48; }
+html[data-theme="light"] .text-indigo-100,
+html[data-theme="light"] .text-indigo-200 { color: var(--accent-800); }
+html[data-theme="light"] .text-indigo-300 { color: var(--accent-600); }
+html[data-theme="light"] .text-amber-200 { color: #92400e; }
+html[data-theme="light"] .text-amber-300 { color: #b45309; }
+html[data-theme="light"] .text-red-200,
+html[data-theme="light"] .text-red-300 { color: #991b1b; }
+html[data-theme="light"] .text-red-400 { color: #dc2626; }
+html[data-theme="light"] [class*="placeholder-gray"]::placeholder { color: #9ca3af; }
+
+/* solid dark surfaces become white */
+html[data-theme="light"] [class*="bg-zinc-900"],
+html[data-theme="light"] [class*="bg-zinc-950"],
+html[data-theme="light"] [class*="bg-gray-900"],
+html[data-theme="light"] .bg-chikki-panel,
+html[data-theme="light"] [class*="bg-[#0d0d12]"] { background-color: #ffffff; }
+
+/* translucent dark panels become faint grey */
+html[data-theme="light"] [class*="bg-zinc-900/30"],
+html[data-theme="light"] [class*="bg-zinc-900/40"],
+html[data-theme="light"] [class*="bg-zinc-900/60"] { background-color: rgba(15, 23, 42, 0.045); }
+
+html[data-theme="light"] [class*="bg-zinc-800"],
+html[data-theme="light"] [class*="bg-gray-800"] { background-color: #eceff4; }
+html[data-theme="light"] [class*="bg-zinc-700"] { background-color: #dfe3ea; }
+html[data-theme="light"] [class*="bg-[#141320]"] { background-color: #f1f0ff; }
+
+/* tinted status surfaces */
+html[data-theme="light"] [class*="bg-rose-950"],
+html[data-theme="light"] [class*="bg-red-950"],
+html[data-theme="light"] [class*="bg-rose-500/20"] { background-color: rgba(244, 63, 94, 0.1); }
+html[data-theme="light"] [class*="bg-indigo-950"],
+html[data-theme="light"] [class*="bg-indigo-900"],
+html[data-theme="light"] [class*="bg-indigo-600/30"] { background-color: rgba(var(--accent-rgb), 0.1); }
+html[data-theme="light"] [class*="bg-emerald-950"],
+html[data-theme="light"] [class*="bg-emerald-500/20"] { background-color: rgba(16, 185, 129, 0.12); }
+
+/* borders */
+html[data-theme="light"] .border-gray-700 { border-color: rgba(15, 23, 42, 0.18); }
+html[data-theme="light"] .border-gray-800 { border-color: rgba(15, 23, 42, 0.12); }
+
+
+/* =========================================
+   Light theme, refined: clearer hierarchy and contrast
+========================================= */
+
+html[data-theme="light"] {
+  --bg-base: #f5f6fb;
+  --border-subtle: rgba(15, 23, 42, 0.14);
+}
+
+html[data-theme="light"] body {
+  background-image: radial-gradient(1100px 520px at 50% -8%, rgba(var(--accent-rgb), 0.14), transparent 70%);
+  background-repeat: no-repeat;
+}
+
+html[data-theme="light"] .dot-grid {
+  background-image:
+    radial-gradient(rgba(15, 23, 42, 0.07) 1px, transparent 1px),
+    radial-gradient(60rem 32rem at 12% -8%, rgba(var(--accent-rgb), 0.12), transparent 62%),
+    radial-gradient(48rem 30rem at 100% 108%, rgba(var(--accent-rgb), 0.08), transparent 60%);
+}
+
+/* cards: white, crisp edge, soft shadow */
+html[data-theme="light"] .surface-line {
+  border: 1px solid #dde1ee;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 12px 32px rgba(15, 23, 42, 0.07);
+}
+
+html[data-theme="light"] .chikki-stage {
+  border: 1px solid #dde1ee;
+  background: radial-gradient(circle at 50% 45%, rgba(var(--accent-rgb), 0.16) 0%, #ffffff 68%);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 12px 32px rgba(15, 23, 42, 0.06);
+}
+
+/* secondary buttons: white with a visible edge and dark text */
+html[data-theme="light"] .action-button {
+  background: #ffffff;
+  border-color: #d3d8e6;
+  color: #27272a;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+html[data-theme="light"] .action-button:hover {
+  background: #eef0ff;
+  border-color: #818cf8;
+  color: #1e1b4b;
+}
+
+/* main buttons: solid indigo so the key actions stand out */
+html[data-theme="light"] .primary-action {
+  background: linear-gradient(135deg, var(--accent-600), var(--accent-500));
+  border-color: var(--accent-700);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(var(--accent-rgb-dark), 0.28);
+}
+
+html[data-theme="light"] .primary-action:hover {
+  background: linear-gradient(135deg, var(--accent-700), var(--accent-600));
+  border-color: var(--accent-800);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(var(--accent-rgb-dark), 0.34);
+}
+
+html[data-theme="light"] .prompt-button {
+  background: #ffffff;
+  border-color: #dde1ee;
+  color: #3f3f46;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+html[data-theme="light"] .prompt-button:hover {
+  background: #eef0ff;
+  border-color: #a5b4fc;
+  color: #1e1b4b;
+}
+
+/* conversation */
+html[data-theme="light"] .user-bubble {
+  background: linear-gradient(135deg, var(--accent-600), var(--accent-500));
+  border-color: var(--accent-700);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(var(--accent-rgb-dark), 0.22);
+}
+
+html[data-theme="light"] .answer-card {
+  background: #ffffff;
+  border-color: #dde1ee;
+  border-left-color: var(--accent-500);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 18px rgba(15, 23, 42, 0.05);
+}
+
+/* darker small text (the mono font is thin at small sizes) */
+html[data-theme="light"] .text-gray-400 { color: #475569; }
+html[data-theme="light"] .text-gray-500 { color: #5b6577; }
+html[data-theme="light"] .text-gray-600 { color: #64748b; }
+html[data-theme="light"] .text-chikki-purpleLight { color: var(--accent-700); }
+
+/* source chips and tinted pills */
+html[data-theme="light"] [class*="bg-emerald-500/10"] { background-color: rgba(16, 185, 129, 0.14); }
+html[data-theme="light"] .text-emerald-300 { color: #047857; }
+
+/* dialogs: a light scrim instead of a muddy dark one */
+html[data-theme="light"] [class*="bg-black/80"] {
+  background-color: rgba(30, 41, 59, 0.42);
+}
+
+html[data-theme="light"] .more-menu {
+  border-color: #dde1ee;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+}
+
+html[data-theme="light"] .profile-card {
+  background: #ffffff;
+  border-color: #dde1ee;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 12px 28px rgba(15, 23, 42, 0.07);
+}
+
+html[data-theme="light"] input:focus,
+html[data-theme="light"] textarea:focus {
+  border-color: var(--accent-500);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18);
+}
+
+
+/* Typing indicator */
+.typing-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.typing-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #818cf8;
+  animation: typing-bounce 1.1s ease-in-out infinite;
+}
+
+.typing-dots i:nth-child(2) { animation-delay: 0.15s; }
+.typing-dots i:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes typing-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
+  40% { transform: translateY(-4px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing-dots i { animation: none; opacity: 0.8; }
+}
+
+/* A lighter slate-indigo robot in the light theme (dark eyes' contrast is kept) */
+html[data-theme="light"] .chikki-stage svg rect[fill="#2A2A2A"] { fill: #3f4766; }
+html[data-theme="light"] .chikki-stage svg rect[stroke="#444"] { stroke: #7c86ad; }
+
+/* Formatting inside Chikki's replies (bold key terms and code) */
+.answer-card strong { color: #fafafa; }
+.answer-card code { background: rgba(255, 255, 255, 0.1); }
+html[data-theme="light"] .answer-card strong { color: #0f172a; }
+html[data-theme="light"] .answer-card code { background: rgba(15, 23, 42, 0.08); color: #1e293b; }
+
+/* The working word fades in each time it changes */
+.thinking-word {
+  animation: thinkingFade 0.45s ease both;
+  letter-spacing: 0.01em;
+}
+@keyframes thinkingFade {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .thinking-word { animation: none; }
+}
+
+/* Keyboard focus is always visible */
+.action-button:focus-visible,
+.prompt-button:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+}
+
+/* Small actions under an answer: always visible on the newest, revealed on hover for older ones.
+   On touch screens there is no hover, so they stay visible. */
+.msg-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  color: inherit;
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s;
+}
+.msg-action:hover { color: #a5b4fc; background: rgba(129, 140, 248, 0.1); }
+@media (hover: hover) {
+  .msg-actions-quiet { opacity: 0; transition: opacity 0.15s; }
+  .group:hover .msg-actions-quiet,
+  .msg-actions-quiet:focus-within { opacity: 1; }
+}
+html[data-theme="light"] .msg-action:hover { color: var(--accent-700); background: rgba(var(--accent-rgb-dark), 0.08); }
+
+/* Views fade in when Chikki switches between voice, text and the start screen */
+.view-fade { animation: viewFade 0.28s ease both; }
+@keyframes viewFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .view-fade { animation: none; } }
+
+/* On phones only the first two suggestion chips show, to leave room for the conversation */
+@media (max-width: 639px) { .chip-extra { display: none; } }
+
+/* loading skeleton shown by index.html until the app starts */
+.boot { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; font-family: ui-monospace, monospace; color: #8b8fa8; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
+.boot-bot { position: relative; width: 56px; height: 46px; border-radius: 14px; background: linear-gradient(#50505f, #2c2c38); border: 2px solid #7f77dd; display: flex; align-items: center; justify-content: center; gap: 12px; animation: boot-float 2s ease-in-out infinite; box-shadow: 0 0 28px rgba(127, 119, 221, 0.35); }
+.boot-bot i { width: 8px; height: 8px; border-radius: 50%; background: #afa9ec; animation: boot-blink 3s infinite; }
+.boot-bar { position: relative; display: block; width: 150px; height: 3px; border-radius: 3px; background: rgba(127, 119, 221, 0.2); overflow: hidden; }
+.boot-bar i { position: absolute; inset: 0 auto 0 0; width: 40%; border-radius: 3px; background: #7f77dd; animation: boot-slide 1.3s ease-in-out infinite; }
+@keyframes boot-slide { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+@keyframes boot-float { 50% { transform: translateY(-5px); } }
+@keyframes boot-blink { 0%, 92%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
+@media (prefers-reduced-motion: reduce) { .boot-bot, .boot-bot i, .boot-bar i { animation: none; } }
+
+/* The banner shown when the phone is offline or Chikki cannot be reached */
+.conn-banner { background: #3b2a0b; color: #fde68a; border-bottom: 1px solid rgba(245, 158, 11, 0.5); }
+.conn-banner-btn { border: 1px solid rgba(253, 230, 138, 0.6); border-radius: 0.5rem; padding: 0.15rem 0.6rem; font-size: 11px; color: inherit; background: transparent; }
+.conn-banner-btn:hover { background: rgba(253, 230, 138, 0.15); }
+html[data-theme="light"] .conn-banner { background: #fef3c7; color: #78350f; border-bottom-color: #f59e0b; }
+html[data-theme="light"] .conn-banner-btn { border-color: #b45309; }
+
+/* High contrast: brighter secondary text, firmer borders, thicker focus rings */
+html[data-contrast="high"] .text-gray-300 { color: #f4f4f5 !important; }
+html[data-contrast="high"] .text-gray-400,
+html[data-contrast="high"] .text-gray-500,
+html[data-contrast="high"] .text-gray-600 { color: #d4d4d8 !important; }
+html[data-contrast="high"] .border-gray-800,
+html[data-contrast="high"] .border-gray-700 { border-color: #8b8b95 !important; }
+html[data-contrast="high"] .prompt-button,
+html[data-contrast="high"] .action-button { border-color: #a1a1aa; }
+html[data-contrast="high"] :focus-visible { outline: 3px solid #fde047; outline-offset: 2px; }
+html[data-theme="light"][data-contrast="high"] .text-gray-300,
+html[data-theme="light"][data-contrast="high"] .text-gray-400,
+html[data-theme="light"][data-contrast="high"] .text-gray-500,
+html[data-theme="light"][data-contrast="high"] .text-gray-600 { color: #18181b !important; }
+html[data-theme="light"][data-contrast="high"] .border-gray-800,
+html[data-theme="light"][data-contrast="high"] .border-gray-700 { border-color: #3f3f46 !important; }
+
+/* the draggable sparkle */
+.play-orb-wrap { position: fixed; z-index: 45; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 4px; }
+.play-orb { width: 44px; height: 44px; border-radius: 9999px; font-size: 22px; cursor: grab; touch-action: none; border: 1px solid rgba(var(--accent-rgb), 0.5); background: rgba(var(--accent-rgb), 0.18); box-shadow: 0 0 22px rgba(var(--accent-rgb), 0.55); animation: orb-float 2.4s ease-in-out infinite; }
+.play-orb:active { cursor: grabbing; }
+.play-orb-close { width: 22px; height: 22px; border-radius: 9999px; font-size: 10px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(0, 0, 0, 0.55); color: #d4d4d8; }
+@keyframes orb-float { 50% { translate: 0 -4px; } }
+
+/* the wait-while-waking game */
+.wake-game { margin-top: 0.75rem; }
+.wake-game-field { position: relative; width: min(280px, 80vw); height: 96px; margin: 0 auto; border-radius: 12px; border: 1px dashed rgba(var(--accent-rgb), 0.4); background: rgba(var(--accent-rgb), 0.05); overflow: hidden; }
+.wake-sparkle { position: absolute; transform: translate(-50%, -50%); width: 36px; height: 36px; font-size: 20px; border-radius: 9999px; transition: left 0.35s ease, top 0.35s ease; }
+
+/* the listening orb */
+.mic-orb { position: relative; display: inline-flex; width: 46px; height: 46px; align-items: center; justify-content: center; }
+.mic-orb-ring { position: absolute; inset: 0; border-radius: 9999px; background: radial-gradient(circle, rgba(52, 211, 153, 0.45), rgba(52, 211, 153, 0.05) 70%); border: 1px solid rgba(52, 211, 153, 0.5); }
+.mic-orb-core { position: relative; font-size: 18px; }
+.mic-orb.is-hearing .mic-orb-ring { border-color: rgba(52, 211, 153, 0.9); }
+@keyframes orb-breathe { 50% { scale: 1.12; } }
+.mic-orb:not(.is-hearing) .mic-orb-ring { animation: orb-breathe 2.8s ease-in-out infinite; }
+
+/* skill map and work journey */
+.skill-chip-button { cursor: pointer; transition: background 0.2s, transform 0.15s; }
+.skill-chip-button:hover { background: rgba(var(--accent-rgb), 0.28); }
+.skill-chip-button:active { transform: scale(0.95); }
+.journey-line { border-left: 2px solid rgba(var(--accent-rgb), 0.35); margin-left: 6px; padding-left: 14px; }
+.journey-item { position: relative; display: flex; width: 100%; flex-direction: column; gap: 2px; text-align: left; border-radius: 12px; padding: 8px 10px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.03); transition: border-color 0.2s, background 0.2s; }
+.journey-item::before { content: ""; position: absolute; left: -21px; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-radius: 9999px; background: rgb(var(--accent-rgb)); box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.7); }
+.journey-item:hover { border-color: rgba(var(--accent-rgb), 0.55); background: rgba(var(--accent-rgb), 0.1); }
+html[data-theme="light"] .journey-item { border-color: #dde1ee; background: #fff; }
+
+/* reactions and the hidden surprise */
+.emoji-float { position: absolute; left: 0; bottom: 100%; font-size: 20px; pointer-events: none; animation: emoji-up 1.1s ease-out forwards; }
+@keyframes emoji-up { from { opacity: 1; translate: 0 0; scale: 0.8; } to { opacity: 0; translate: 6px -46px; scale: 1.5; } }
+.egg { position: fixed; inset: 0; z-index: 80; pointer-events: none; overflow: hidden; }
+.egg-confetti i { position: absolute; top: -12px; width: 8px; height: 12px; border-radius: 2px; animation-name: egg-fall; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes egg-fall { to { transform: translateY(105vh) rotate(540deg); } }
+.egg-card { position: absolute; left: 50%; top: 18%; translate: -50% 0; max-width: min(86vw, 360px); text-align: center; padding: 12px 16px; border-radius: 12px; background: rgba(15, 15, 24, 0.92); border: 1px solid rgba(var(--accent-rgb), 0.6); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); animation: msg-in 0.4s ease both; }
+@media (prefers-reduced-motion: reduce) { .egg-confetti i, .emoji-float, .play-orb { animation: none; } }
+
+/* on phones the follow-up questions are one swipeable row, so they take less height */
+@media (max-width: 639px) {
+  .suggest-row { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 0.5rem; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .suggest-row::-webkit-scrollbar { display: none; }
+  .suggest-row .prompt-button { flex: 0 0 82%; scroll-snap-align: start; }
+  .suggest-row .chip-extra, .suggest-row .chip-fit-extra { display: flex !important; }
+}
+
+/* Chikki glides between screens where the browser supports view transitions (only the main Chikki has the name) */
+.fit-botbox .chikki-svg, .chikki-stage.fit-stage .chikki-svg, .chat-chikki .chikki-svg { view-transition-name: chikki; }
+/* clicks must never be swallowed while the glide plays */
+::view-transition { pointer-events: none; }
+::view-transition-group(chikki) { animation-duration: 0.3s; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+/* he steps back a little when a window is open */
+body:has([role="dialog"][aria-modal="true"]) .chikki-svg { scale: 0.9; opacity: 0.7; }
+
+/* the status pill at the top centre */
+.status-pill { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 50%; translate: -50% 0; z-index: 48; display: inline-flex; align-items: center; gap: 8px; border-radius: 9999px; padding: 4px 14px 4px 10px; font-size: 11px; letter-spacing: 0.06em; color: #f4f4f5; background: rgba(8, 8, 12, 0.88); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); backdrop-filter: blur(8px); animation: pill-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; pointer-events: none; }
+.status-pill-dot { width: 8px; height: 8px; border-radius: 9999px; animation: pill-dot 1.2s ease-in-out infinite; }
+@keyframes pill-in { from { opacity: 0; scale: 0.7; translate: -50% -8px; } }
+@keyframes pill-dot { 50% { opacity: 0.35; scale: 0.8; } }
+html[data-theme="light"] .status-pill { background: rgba(255, 255, 255, 0.92); color: #18181b; border-color: #dde1ee; }
+@media (prefers-reduced-motion: reduce) { .status-pill, .status-pill-dot { animation: none; } }
+
+/* what Chikki is saying, as a speech bubble under him */
+.speech-bubble { position: relative; max-width: 30rem; margin-top: 10px; padding: 8px 14px; border-radius: 16px; background: rgba(var(--accent-rgb), 0.14); border: 1px solid rgba(var(--accent-rgb), 0.4); }
+.speech-bubble::before { content: ""; position: absolute; top: -7px; left: 50%; width: 12px; height: 12px; margin-left: -6px; transform: rotate(45deg); background: rgba(var(--accent-rgb), 0.14); border-left: 1px solid rgba(var(--accent-rgb), 0.4); border-top: 1px solid rgba(var(--accent-rgb), 0.4); }
+html[data-theme="light"] .speech-bubble p { color: #18181b; }
+
+/* the glow that follows the mouse */
+.cursor-glow { position: fixed; left: 0; top: 0; z-index: 90; width: 120px; height: 120px; border-radius: 9999px; pointer-events: none; background: radial-gradient(circle, rgba(var(--accent-rgb), 0.22), transparent 68%); mix-blend-mode: screen; transition: width 0.25s ease, height 0.25s ease, opacity 0.25s; }
+.cursor-glow.is-big { opacity: 1; background: radial-gradient(circle, rgba(var(--accent-rgb), 0.38), transparent 68%); }
+html[data-theme="light"] .cursor-glow { mix-blend-mode: multiply; }
+
+/* shimmer lines while an answer is being prepared */
+.shimmer-line { display: block; height: 9px; border-radius: 9px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(var(--accent-rgb), 0.28) 50%, rgba(255, 255, 255, 0.05) 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+html[data-theme="light"] .shimmer-line { background-image: linear-gradient(90deg, rgba(15, 23, 42, 0.06) 25%, rgba(var(--accent-rgb), 0.3) 50%, rgba(15, 23, 42, 0.06) 75%); }
+@media (prefers-reduced-motion: reduce) { .shimmer-line { animation: none; } }
+
+/* how far down a long chat you are, and a way back to the newest message */
+.scroll-progress { position: absolute; left: 6px; right: 6px; top: 0; z-index: 5; height: 2px; border-radius: 2px; background: rgba(255, 255, 255, 0.06); overflow: hidden; pointer-events: none; }
+.scroll-progress i { display: block; height: 100%; background: rgb(var(--accent-rgb)); transition: width 0.12s linear; }
+.jump-latest { position: absolute; right: 14px; bottom: 12px; z-index: 6; border-radius: 9999px; padding: 6px 12px; font-size: 11px; color: #fff; background: rgba(var(--accent-rgb), 0.9); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); animation: msg-in 0.25s ease both; }
+
+/* the opening when the installed app is launched */
+.splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #09090b; animation: splash-out 0.35s ease 0.95s forwards; }
+.splash-name { font-family: ui-monospace, monospace; letter-spacing: 0.4em; font-size: 20px; color: #afa9ec; }
+.splash-tag { font-size: 11px; color: #8b8fa8; }
+@keyframes splash-out { to { opacity: 0; visibility: hidden; } }
+
+/* a window on a phone is a bottom sheet: it slides up and can be pulled down to close */
+@media (max-width: 639px) {
+  [role="dialog"][aria-modal="true"] { align-items: flex-end !important; padding: 0 !important; }
+  [role="dialog"][aria-modal="true"] > div { width: 100% !important; max-width: none !important; border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; max-height: 90vh !important; padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)); animation: sheet-up 0.34s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  [role="dialog"][aria-modal="true"] > div::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 4px; margin: -8px auto 12px; background: rgba(255, 255, 255, 0.28); }
+  html[data-theme="light"] [role="dialog"][aria-modal="true"] > div::before { background: rgba(15, 23, 42, 0.25); }
+}
+@keyframes sheet-up { from { translate: 0 100%; } }
+@media (prefers-reduced-motion: reduce) { [role="dialog"][aria-modal="true"] > div { animation: none !important; } }
+
+/* the More menu's group titles */
+.more-heading { padding: 8px 12px 4px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #71717a; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.more-menu .more-heading:first-child { border-top: 0; }
+html[data-theme="light"] .more-heading { color: #52525b; border-top-color: rgba(15, 23, 42, 0.1); }
+
+/* Calm mode: the page stops moving on its own (Chikki's sway, the drifting background, the mouse glow) */
+html[data-calm="on"] *, html[data-calm="on"] *::before, html[data-calm="on"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0s !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* Readable secondary text: the small grey labels were a little too faint on the dark background (and, in the light
+   theme, just under the accessible minimum). Raised to at least 4.5:1. */
+.text-gray-600 { color: #8a8f9b; }
+.text-gray-500 { color: #8a909c; }
+.more-heading { color: #8a909c; }
+html[data-theme="light"] .text-gray-600 { color: #4b5563; }
+html[data-theme="light"] .text-gray-500 { color: #565e6b; }
+html[data-theme="light"] .more-heading { color: #4b5563; }
+html[data-theme="light"] .text-emerald-300 { color: #046c4e; }
+html[data-theme="light"] .text-emerald-400 { color: #047857; }

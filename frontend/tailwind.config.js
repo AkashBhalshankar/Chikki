@@ -7,8 +7,8 @@ export default {
         chikki: {
           bg: "#0B0B0B",
           panel: "#1c1c1c",
-          purple: "#7F77DD",
-          purpleLight: "#AFA9EC",
+          purple: "rgb(var(--chikki-purple) / <alpha-value>)",
+          purpleLight: "rgb(var(--chikki-purple-light) / <alpha-value>)",
           green: "#639922",
           hand: "#D85A30",
         },

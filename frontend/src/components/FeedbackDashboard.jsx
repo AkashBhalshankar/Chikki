@@ -1,6 +1,24 @@
 import { useEffect, useState } from "react";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const ADMIN_TOKEN_KEY = "chikki_admin_token";
+
+function readStoredToken() {
+  try {
+    return sessionStorage.getItem(ADMIN_TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function storeToken(token) {
+  try {
+    if (token) sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+    else sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+  } catch {}
+}
+
+import GapsPanel from "./GapsPanel.jsx";
 
 export default function FeedbackDashboard({ isOpen, onClose }) {
   const [analytics, setAnalytics] = useState(null);
@@ -8,15 +26,37 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [filter, setFilter] = useState("all");
+  const [adminToken, setAdminToken] = useState(readStoredToken);
+  const [tokenInput, setTokenInput] = useState("");
+  const [view, setView] = useState("usage");
+  const [contacts, setContacts] = useState([]);
+  const [usage, setUsage] = useState(null);
+  const [gapCount, setGapCount] = useState(0);
 
-  const fetchData = async () => {
+  const fetchData = async (token = adminToken) => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setLoadError("");
     try {
-      const [resAnalytics, resLogs] = await Promise.all([
-        fetch(`${BASE_URL}/feedback/analytics`, { cache: "no-store" }),
-        fetch(`${BASE_URL}/feedback/recent?limit=50`, { cache: "no-store" }),
+      const headers = { "X-Admin-Token": token };
+      const [resAnalytics, resLogs, resContacts] = await Promise.all([
+        fetch(`${BASE_URL}/feedback/analytics`, { cache: "no-store", headers }),
+        fetch(`${BASE_URL}/feedback/recent?limit=50`, { cache: "no-store", headers }),
+        fetch(`${BASE_URL}/contact/recent?limit=50`, { cache: "no-store", headers }).catch(() => null),
       ]);
+      if (resAnalytics.status === 401 || resLogs.status === 401) {
+        storeToken("");
+        setAdminToken("");
+        setLoadError("That admin token was rejected. Please enter it again.");
+        return;
+      }
+      if (resAnalytics.status === 503) {
+        setLoadError("Admin access is not configured on the backend (set ADMIN_TOKEN).");
+        return;
+      }
       if (!resAnalytics.ok || !resLogs.ok) {
         throw new Error(`Feedback service returned ${resAnalytics.status}/${resLogs.status}`);
       }
@@ -26,6 +66,14 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
       ]);
       setAnalytics(analyticsData);
       setRecentLogs(Array.isArray(logData) ? logData : logData.items || []);
+      try {
+        const resUsage = await fetch(`${BASE_URL}/analytics/summary?days=30`, { cache: "no-store", headers });
+        if (resUsage.ok) setUsage(await resUsage.json());
+      } catch {}
+      if (resContacts?.ok) {
+        const contactData = await resContacts.json();
+        setContacts(Array.isArray(contactData) ? contactData : []);
+      }
     } catch {
       setLoadError("Feedback could not be loaded. Check the backend connection and retry.");
     } finally {
@@ -41,6 +89,64 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
+  const handleTokenSubmit = (event) => {
+    event.preventDefault();
+    const token = tokenInput.trim();
+    if (!token) return;
+    storeToken(token);
+    setAdminToken(token);
+    setTokenInput("");
+    fetchData(token);
+  };
+
+  if (!adminToken) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 font-mono">
+        <form
+          onSubmit={handleTokenSubmit}
+          className="max-w-sm w-full rounded-2xl border border-gray-700 bg-[#0d0d12] p-5 space-y-4 shadow-2xl"
+        >
+          <div>
+            <h2 className="text-sm font-bold text-chikki-purpleLight tracking-wide">ADMIN ACCESS</h2>
+            <p className="mt-1 text-[11px] text-gray-400">Feedback analytics are private. Enter the admin token to continue.</p>
+          </div>
+          {loadError && (
+            <div role="alert" className="border border-rose-800/60 bg-rose-950/30 px-3 py-2 text-xs text-rose-200">
+              {loadError}
+            </div>
+          )}
+          <label className="block">
+            <span className="sr-only">Admin token</span>
+            <input
+              type="password"
+              autoComplete="off"
+              autoFocus
+              value={tokenInput}
+              onChange={(event) => setTokenInput(event.target.value)}
+              placeholder="Admin token"
+              className="w-full rounded-lg border border-gray-700 bg-zinc-900 px-3 py-2 text-xs text-white outline-none focus:border-chikki-purple"
+            />
+          </label>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-gray-700 text-gray-300"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="text-xs px-3 py-1.5 rounded-lg bg-chikki-purple/30 border border-chikki-purple text-chikki-purpleLight hover:bg-chikki-purple/40"
+            >
+              Unlock
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   const filteredLogs = recentLogs.filter((item) => {
     if (filter === "with-comments") return Boolean(item.user_comment && item.user_comment.trim());
     if (filter === "helpful") return item.value === "helpful";
@@ -55,7 +161,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
       <div className="max-w-4xl w-full max-h-[90vh] rounded-2xl flex flex-col overflow-hidden shadow-2xl border border-gray-700 bg-[#0d0d12]">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-zinc-900/80">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-800 bg-zinc-900/80">
           <div className="flex items-center gap-2.5">
             <span className="text-lg">📊</span>
             <div>
@@ -65,24 +171,75 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
               <p className="text-[10px] text-gray-400">Real-time user feedback, ratings, and written comments</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-300 hover:text-white text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-gray-700 transition-colors"
-          >
-            ✕ Close
-          </button>
+          <div className="flex items-center gap-1.5">
+            {[["usage", "📈 Usage"], ["feedback", "📊 Feedback"], ["gaps", `🕳️ Gaps (${gapCount})`], ["messages", `✉️ Messages (${contacts.length})`]].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setView(key)}
+                className={`text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${
+                  view === key
+                    ? "bg-chikki-purple/30 text-chikki-purpleLight border-chikki-purple"
+                    : "text-gray-400 border-gray-700 hover:bg-zinc-800"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+            <button
+              onClick={onClose}
+              className="text-gray-300 hover:text-white text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-gray-700 transition-colors"
+            >
+              ✕ Close
+            </button>
+          </div>
         </div>
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 chikki-scroll">
-          {loading && !analytics ? (
+          {view === "usage" ? (
+            <UsagePanel usage={usage} />
+          ) : view === "gaps" ? (
+            <GapsPanel baseUrl={BASE_URL} token={adminToken} onCount={setGapCount} />
+          ) : view === "messages" ? (
+            <div className="space-y-3">
+              {contacts.length === 0 ? (
+                <div className="py-10 text-center text-xs text-gray-500">
+                  <div className="text-2xl">✉️</div>
+                  <p className="mt-2 text-gray-400">No messages yet.</p>
+                  <p className="mt-1">When a recruiter uses Contact Akash, the message appears here and in your email.</p>
+                </div>
+              ) : (
+                contacts.map((contact) => (
+                  <div key={contact.id} className="p-4 rounded-xl border border-gray-800 bg-zinc-900/30 space-y-2 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-gray-200 font-semibold">
+                        {contact.name}
+                        {contact.company && <span className="text-gray-400 font-normal"> · {contact.company}</span>}
+                      </div>
+                      <span className="text-[10px] text-gray-400">
+                        {contact.at ? new Date(contact.at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
+                      </span>
+                    </div>
+                    <a href={`mailto:${contact.email}`} className="text-chikki-purpleLight underline underline-offset-2">
+                      {contact.email}
+                    </a>
+                    <p className="text-gray-300 whitespace-pre-wrap break-words">{contact.message}</p>
+                    {contact.topics && (
+                      <p className="text-[10px] text-gray-500">Asked Chikki about: {contact.topics}</p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          ) : loading && !analytics ? (
             <div className="text-center py-16 text-xs text-gray-400">Loading telemetry data...</div>
           ) : (
             <>
               {loadError && (
                 <div role="alert" className="flex items-center justify-between gap-3 border border-rose-800/60 bg-rose-950/30 px-3 py-2 text-xs text-rose-200">
                   <span>{loadError}</span>
-                  <button type="button" onClick={fetchData} className="shrink-0 underline underline-offset-2">
+                  <button type="button" onClick={() => fetchData()} className="shrink-0 underline underline-offset-2">
                     Retry
                   </button>
                 </div>
@@ -115,7 +272,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
                 <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   <button
                     onClick={() => setFilter("all")}
-                    className={`text-xs px-3 py-1 rounded-md transition-colors ${
+                    className={`text-xs px-3 py-1 rounded-lg transition-colors ${
                       filter === "all" ? "bg-chikki-purple/30 text-chikki-purpleLight border border-chikki-purple" : "text-gray-400 hover:bg-zinc-800"
                     }`}
                   >
@@ -123,7 +280,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
                   </button>
                   <button
                     onClick={() => setFilter("with-comments")}
-                    className={`text-xs px-3 py-1 rounded-md transition-colors ${
+                    className={`text-xs px-3 py-1 rounded-lg transition-colors ${
                       filter === "with-comments" ? "bg-indigo-600/30 text-indigo-200 border border-indigo-500 font-semibold" : "text-gray-400 hover:bg-zinc-800"
                     }`}
                   >
@@ -131,7 +288,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
                   </button>
                   <button
                     onClick={() => setFilter("needs-improvement")}
-                    className={`text-xs px-3 py-1 rounded-md transition-colors ${
+                    className={`text-xs px-3 py-1 rounded-lg transition-colors ${
                       filter === "needs-improvement" ? "bg-rose-500/20 text-rose-300 border border-rose-500/50" : "text-gray-400 hover:bg-zinc-800"
                     }`}
                   >
@@ -139,7 +296,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
                   </button>
                   <button
                     onClick={() => setFilter("helpful")}
-                    className={`text-xs px-3 py-1 rounded-md transition-colors ${
+                    className={`text-xs px-3 py-1 rounded-lg transition-colors ${
                       filter === "helpful" ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/50" : "text-gray-400 hover:bg-zinc-800"
                     }`}
                   >
@@ -148,7 +305,7 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
                 </div>
 
                 <button
-                  onClick={fetchData}
+                  onClick={() => fetchData()}
                   className="text-[11px] text-gray-400 hover:text-white px-2.5 py-1 rounded bg-zinc-800/80 hover:bg-zinc-800 transition-colors"
                 >
                   🔄 Refresh
@@ -227,6 +384,108 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
             </>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+function Bars({ items, labelKey, valueKey = "count", empty = "No data yet." }) {
+  if (!items?.length) return <p className="text-xs text-gray-500">{empty}</p>;
+  const max = Math.max(...items.map((item) => item[valueKey]), 1);
+  return (
+    <ul className="space-y-1.5">
+      {items.map((item) => (
+        <li key={item[labelKey]} className="text-[11px]">
+          <div className="flex justify-between gap-2 text-gray-300">
+            <span className="truncate">{item[labelKey]}</span>
+            <span className="text-gray-400">{item[valueKey]}</span>
+          </div>
+          <div className="mt-0.5 h-1.5 rounded bg-zinc-800">
+            <div className="h-1.5 rounded bg-chikki-purple" style={{ width: `${(item[valueKey] / max) * 100}%` }} />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function objectToItems(obj = {}) {
+  return Object.entries(obj).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+}
+
+function UsagePanel({ usage }) {
+  if (!usage) return <div className="py-16 text-center text-xs text-gray-500">
+      <div className="text-2xl">📈</div>
+      <p className="mt-2 text-gray-400">No usage data yet.</p>
+      <p className="mt-1">Questions, downloads and role-fit checks show up here as visitors arrive.</p>
+    </div>;
+  const { totals, latency_ms: latency, daily } = usage;
+  const maxDay = Math.max(...daily.map((d) => d.turns), 1);
+  const cards = [
+    ["Questions (30d)", totals.turns],
+    ["Resume downloads", totals.resume_downloads],
+    ["Messages left", totals.contact_messages],
+    ["Role-fit checks", totals.jd_matches],
+    ["Failed answers", totals.failed_turns],
+    ["Unverified claims blocked", totals.blocked_claims],
+    ["Median reply", latency.p50 != null ? `${(latency.p50 / 1000).toFixed(1)}s` : "–"],
+    ["Slow (p95)", latency.p95 != null ? `${(latency.p95 / 1000).toFixed(1)}s` : "–"],
+    ["Engaged visitors", usage.visitors ? `${usage.visitors.engaged} of ${usage.visitors.sessions}` : "–"],
+    ["Voice: first sound", usage.voice?.first_audio_p50_ms != null ? `${(usage.voice.first_audio_p50_ms / 1000).toFixed(1)}s` : "–"],
+    ["Voice: slow (p95)", usage.voice?.first_audio_p95_ms != null ? `${(usage.voice.first_audio_p95_ms / 1000).toFixed(1)}s` : "–"],
+  ];
+  const card = "p-3.5 rounded-xl border border-gray-800 bg-zinc-900/40";
+  const heading = "text-[10px] uppercase text-gray-400 font-semibold tracking-wider mb-2";
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        {cards.map(([label, value]) => (
+          <div key={label} className={card}>
+            <div className={heading}>{label}</div>
+            <div className="text-xl font-bold text-white">{value}</div>
+          </div>
+        ))}
+      </div>
+      {usage.funnel && usage.funnel.visitors > 0 && (
+        <div className={card}>
+          <div className={heading}>Visitor funnel</div>
+          <div className="space-y-2">
+            {[["Visited", usage.funnel.visitors], ["Asked a question", usage.funnel.asked], ["Downloaded the resume", usage.funnel.resume_downloads], ["Left a message", usage.funnel.messages]].map(([label, value]) => (
+              <div key={label} className="flex items-center gap-3 text-xs">
+                <span className="w-40 shrink-0 text-gray-300">{label}</span>
+                <div className="h-2 flex-1 overflow-hidden rounded bg-zinc-800">
+                  <div className="h-full rounded bg-chikki-purple/80" style={{ width: `${Math.min(100, (value / Math.max(usage.funnel.visitors, 1)) * 100)}%` }} />
+                </div>
+                <span className="w-8 text-right text-gray-200">{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className={card}>
+        <div className={heading}>Questions per day</div>
+        <div className="flex h-20 items-end gap-0.5">
+          {daily.map((d) => (
+            <div
+              key={d.date}
+              title={`${d.date}: ${d.turns}`}
+              className="flex-1 rounded-t bg-chikki-purple/70"
+              style={{ height: `${Math.max((d.turns / maxDay) * 100, d.turns ? 6 : 2)}%` }}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className={card}><div className={heading}>Top questions</div><Bars items={usage.top_questions} labelKey="question" /></div>
+        <div className={card}><div className={heading}>Top topics</div><Bars items={usage.top_topics} labelKey="topic" /></div>
+        <div className={card}>
+          <div className={heading}>Knowledge gaps (asked, nothing retrieved)</div>
+          <Bars items={usage.knowledge_gaps} labelKey="question" empty="No gaps found." />
+        </div>
+        <div className={card}><div className={heading}>Languages</div><Bars items={objectToItems(usage.languages)} labelKey="name" /></div>
+        <div className={card}><div className={heading}>Voice vs text</div><Bars items={objectToItems(usage.modes)} labelKey="name" /></div>
+        <div className={card}><div className={heading}>Model providers used</div><Bars items={objectToItems(usage.providers)} labelKey="name" /></div>
+        <div className={card}><div className={heading}>Voice problems (fallbacks used)</div><Bars items={objectToItems(usage.voice?.issues)} labelKey="name" empty="No voice problems." /></div>
+        <div className={card}><div className={heading}>Failures by cause</div><Bars items={objectToItems(usage.failures)} labelKey="name" empty="No failures." /></div>
       </div>
     </div>
   );

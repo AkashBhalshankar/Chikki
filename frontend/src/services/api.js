@@ -7,18 +7,112 @@ const WS_URL = BASE_URL.replace(/^http/, "ws");
  * Fetches spoken audio for a short fixed line (e.g. the wake greeting)
  * via the existing /tts REST endpoint.
  */
-export async function fetchGreetingAudio(text, language = "en-IN") {
+export async function fetchGreetingAudio(text, language = "en-IN", { voice_pref = null, speed = 1 } = {}) {
   const res = await fetch(`${BASE_URL}/tts`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, language }),
+    body: JSON.stringify({ text, language, voice_pref, speed }),
   });
   if (!res.ok) throw new Error("TTS request failed");
   const blob = await res.blob();
   return URL.createObjectURL(blob);
 }
 
+/**
+ * Sends a recorded utterance for accurate server-side transcription.
+ * Returns { text, confident } or null when unavailable, so callers keep the browser transcript.
+ */
+export async function transcribeAudio(blob, language = "en-IN", timeoutMs = 3500) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${BASE_URL}/stt?language=${encodeURIComponent(language)}`, {
+      method: "POST",
+      headers: { "Content-Type": blob.type || "audio/webm" },
+      body: blob,
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Wakes the server (free hosting sleeps when idle) and reports how long it took. */
+export async function wakeServer(timeoutMs = 90000) {
+  const started = performance.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${BASE_URL}/health`, { cache: "no-store", signal: controller.signal });
+    return { ok: res.ok, ms: Math.round(performance.now() - started) };
+  } catch {
+    return { ok: false, ms: Math.round(performance.now() - started) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Fire-and-forget: counts this browser session as one visit (the funnel starts here). */
+export function sendVisit(sessionId) {
+  try {
+    fetch(`${BASE_URL}/analytics/visit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // analytics must never affect the page
+  }
+}
+
+/** Fire-and-forget: how a spoken turn went (time to first sound, or which fallback was used). */
+export function sendVoiceMetric(outcome, firstAudioMs = null, language = "en-IN") {
+  try {
+    fetch(`${BASE_URL}/analytics/voice`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ outcome, first_audio_ms: firstAudioMs, language }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // metrics must never affect the conversation
+  }
+}
+
+// A small "preparing" note so the click is acknowledged straight away while the server builds the PDF.
+function showResumeNote() {
+  try {
+    const note = document.createElement("div");
+    note.setAttribute("role", "status");
+    note.textContent = "Preparing your resume…";
+    note.style.cssText = "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:80;padding:10px 16px;border-radius:999px;background:#111827;color:#fff;font:600 13px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.2)";
+    document.body.appendChild(note);
+    return () => note.remove();
+  } catch {
+    return () => {};
+  }
+}
+
+let resumeBusy = false;
+
 export async function downloadResumePdf(url, focus = "", profileLinks = {}) {
+  if (resumeBusy) return;
+  resumeBusy = true;
+  const hideNote = showResumeNote();
+  try {
+    await fetchAndSaveResume(url, focus, profileLinks);
+  } finally {
+    resumeBusy = false;
+    hideNote();
+  }
+}
+
+async function fetchAndSaveResume(url, focus, profileLinks) {
   const requestUrl = new URL(url, window.location.origin);
   const res = await fetch(requestUrl, {
     method: "POST",
@@ -74,12 +168,25 @@ export async function sendFeedback({
   } catch {}
 }
 
+export async function sendContactMessage({ name, email, company, message, topics, website }) {
+  const res = await fetch(`${BASE_URL}/contact`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, company, message, topics, website }),
+  });
+  if (res.status === 429) throw new Error("Too many messages sent. Please try again later.");
+  if (res.status === 422) throw new Error("Please check your name, a valid email, and your message.");
+  if (!res.ok) throw new Error("Could not send your message. Please try again.");
+  return res.json();
+}
+
 export function connectVoiceSocket({
   onOpen,
   onDelta,
   onText,
   onAudio,
   onAudioChunk,
+  onMood,
   onError,
   onClose,
 }) {
@@ -115,6 +222,11 @@ export function connectVoiceSocket({
         if (data.type === "token" || data.type === "delta") {
           const textToken = data.token ?? data.text ?? "";
           onDelta?.(textToken, data.trace_id, data.turn_id);
+          return;
+        }
+
+        if (data.type === "mood") {
+          onMood?.(data.mood, data.turn_id);
           return;
         }
 
@@ -166,6 +278,11 @@ export function connectVoiceSocket({
             kind: data.kind ?? data.meta?.kind ?? null,
             trace_id: data.trace_id ?? (data.meta ? data.meta.trace_id : null),
             turn_id: data.turn_id ?? (data.meta ? data.meta.turn_id : null),
+            sources: Array.isArray(data.meta?.sources) ? data.meta.sources : [],
+            actions: Array.isArray(data.meta?.actions) ? data.meta.actions : [],
+            mood: data.meta?.mood ?? null,
+            verified: Boolean(data.meta?.verified),
+            suggestions: Array.isArray(data.meta?.suggestions) ? data.meta.suggestions : [],
           });
           return;
         }
@@ -206,8 +323,8 @@ export function connectVoiceSocket({
       return true;
     },
 
-    send: (message, { voice = true, session_id = null, language = "en-IN", turn_id = null } = {}) => {
-      const payload = { message, voice, session_id, language, turn_id };
+    send: (message, { voice = true, session_id = null, language = "en-IN", turn_id = null, voice_pref = null, speed = 1 } = {}) => {
+      const payload = { message, voice, session_id, language, turn_id, voice_pref, speed };
       if (socket?.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify(payload));
         return true;
@@ -247,4 +364,44 @@ export function connectVoiceSocket({
   };
 
   return client;
+}
+export async function matchJobDescription(jobDescription) {
+  const res = await fetch(`${BASE_URL}/match`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ job_description: jobDescription }),
+  });
+  if (res.status === 429) throw new Error("You've reached the limit for now. Please try again later.");
+  if (res.status === 422) throw new Error("Please paste the full job description (at least a few sentences).");
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.detail || "Could not analyse that right now. Please try again.");
+  }
+  return res.json();
+}
+
+export async function draftPitch(jobDescription) {
+  const res = await fetch(`${BASE_URL}/match/pitch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ job_description: jobDescription }),
+  });
+  if (res.status === 429) throw new Error("You've reached the limit for now. Please try again later.");
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.detail || "Could not draft that right now. Please try again.");
+  }
+  return res.json();
+}
+
+// The newest public repositories, for the "Latest on GitHub" strip. Empty when unavailable.
+export async function fetchGithubActivity() {
+  try {
+    const res = await fetch(`${BASE_URL}/github/activity`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.repos) ? data.repos : [];
+  } catch {
+    return [];
+  }
 }

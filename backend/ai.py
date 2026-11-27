@@ -1,5 +1,9 @@
+import logging
 import os
+import queue
 import re
+import threading
+import time
 from difflib import SequenceMatcher
 from typing import Iterator, Tuple
 
@@ -8,8 +12,11 @@ from langfuse import get_client, propagate_attributes
 from openai import OpenAI
 
 from resume import build_system_prompt
+from response_format import layout_hint
 
 load_dotenv()
+
+logger = logging.getLogger("chikki.ai")
 
 # -------------------------------------------------------------------------
 # Observability: Langfuse
@@ -19,7 +26,7 @@ if os.environ.get("LANGFUSE_PUBLIC_KEY") and os.environ.get("LANGFUSE_SECRET_KEY
     try:
         langfuse = get_client()
     except Exception:
-        pass
+        logger.exception("Langfuse initialisation failed; continuing without tracing")
 
 # -------------------------------------------------------------------------
 # Multi-Provider Configuration (All Verified 2026 Endpoints)
@@ -38,7 +45,7 @@ PROVIDERS = {
     "nvidia": {
         "api_key": os.environ.get("NVIDIA_API_KEY"),
         "base_url": "https://integrate.api.nvidia.com/v1",
-        "model": os.environ.get("NVIDIA_MODEL", "meta/llama-3.2-11b-vision-instruct"),
+        "model": os.environ.get("NVIDIA_MODEL", "poolside/laguna-xs-2.1"),
     },
     "openrouter": {
         "api_key": os.environ.get("OPENROUTER_API_KEY"),
@@ -47,7 +54,12 @@ PROVIDERS = {
     },
 }
 
-ACTIVE_PROVIDER = "groq"
+PRIORITY_ORDER = ["groq", "gemini", "nvidia", "openrouter"]
+# A provider that has not started answering by then is dropped for the next one (a slow answer is a worse
+# experience than a quick fallback).
+FIRST_WORD_TIMEOUT = 8.0
+# If the first provider is silent for this long, the next one starts too and whichever speaks first is used.
+HEDGE_DELAY = 1.2
 _clients = {}
 
 
@@ -55,6 +67,62 @@ class ChikkiAIError(Exception):
     def __init__(self, message: str, kind: str = "unknown"):
         super().__init__(message)
         self.kind = kind
+
+
+class CircuitBreaker:
+    """Temporarily skips providers that recently failed.
+
+    Auth and retired-model errors will not fix themselves, so those providers
+    are skipped for longer than transient failures (timeouts, rate limits).
+    If every provider is cooling down, they are still tried in priority order
+    rather than failing without an attempt.
+    """
+
+    COOLDOWNS = {"auth": 600.0, "model_retired": 600.0}
+    DEFAULT_COOLDOWN = 30.0
+
+    def __init__(self, clock=time.monotonic):
+        self._clock = clock
+        self._open_until: dict[str, float] = {}
+        self._latency: dict[str, float] = {}  # smoothed seconds to the first word, per provider
+        self._lock = threading.Lock()
+
+    def record_latency(self, provider: str, seconds: float) -> None:
+        with self._lock:
+            previous = self._latency.get(provider)
+            self._latency[provider] = seconds if previous is None else 0.6 * previous + 0.4 * seconds
+
+    def latency(self, provider: str) -> float | None:
+        return self._latency.get(provider)
+
+    def record_failure(self, provider: str, kind: str, cooldown: float | None = None) -> None:
+        cooldown = cooldown if cooldown is not None else self.COOLDOWNS.get(kind, self.DEFAULT_COOLDOWN)
+        with self._lock:
+            self._open_until[provider] = self._clock() + cooldown
+        logger.warning("Provider %s failed (%s); skipping it for %.0fs", provider, kind, cooldown)
+
+    def record_success(self, provider: str) -> None:
+        with self._lock:
+            self._open_until.pop(provider, None)
+
+    def is_open(self, provider: str) -> bool:
+        with self._lock:
+            return self._clock() < self._open_until.get(provider, 0.0)
+
+    def order(self, providers: list[str]) -> list[str]:
+        """Healthy providers first, quickest first. One that has not been timed yet keeps its place in the
+        configured priority, so the preferred provider is tried (and measured) before the others."""
+        def speed(provider: str) -> tuple[float, int]:
+            measured = self._latency.get(provider)
+            rank = providers.index(provider)
+            return (measured if measured is not None else 0.5 + rank * 0.1, rank)
+
+        healthy = sorted((p for p in providers if not self.is_open(p)), key=speed)
+        cooling = [p for p in providers if self.is_open(p)]
+        return healthy + cooling
+
+
+circuit_breaker = CircuitBreaker()
 
 
 def _get_client(provider_key: str) -> OpenAI:
@@ -85,15 +153,198 @@ def _classify_error(e: Exception) -> str:
     return "unknown"
 
 
-def _prepare_message(message: str, language: str = "en-IN") -> str:
-    response_language = {
-        "en-IN": "English",
-        "te-IN": "Telugu",
-        "hi-IN": "Hindi",
-    }.get(language, "English")
+_RETRY_AFTER = re.compile(r"(?:try again|retry) in\s+(?:(\d+)h)?\s*(?:(\d+)m)?\s*(?:(\d+(?:\.\d+)?)s)?", re.IGNORECASE)
+MAX_RATE_LIMIT_COOLDOWN = 600.0
+
+
+def rate_limit_cooldown(error: Exception) -> float:
+    """How long to leave a rate-limited provider alone, from the provider's own 'try again in ...' hint.
+
+    A daily quota says "try again in 23h", so retrying every 30 seconds only makes every visitor wait through
+    a failed call first. The wait is capped (a provider may recover earlier) and never below the default.
+    """
+    match = _RETRY_AFTER.search(str(error))
+    if not match or not any(match.groups()):
+        return CircuitBreaker.DEFAULT_COOLDOWN
+    hours, minutes, seconds = (float(part or 0) for part in match.groups())
+    wait = hours * 3600 + minutes * 60 + seconds
+    return max(CircuitBreaker.DEFAULT_COOLDOWN, min(wait + 5, MAX_RATE_LIMIT_COOLDOWN))
+
+
+class _AllProvidersFailed(Exception):
+    def __init__(self, error: Exception | None):
+        super().__init__(str(error))
+        self.error = error
+
+
+def _hedged_stream(candidates, start, meta=None, hedge_delay=None):
+    """Streams from the first provider that produces a word.
+
+    The best provider starts alone. If it has not spoken within `hedge_delay`, the next one starts as well (or
+    straight away if it fails), and the first to produce a word wins; the other is told to stop. This removes the
+    wait for a slow or failing provider without spending a second request on every question.
+    """
+    hedge_delay = HEDGE_DELAY if hedge_delay is None else hedge_delay
+    events: queue.Queue = queue.Queue()
+    outs: dict[str, queue.Queue] = {}
+    stops: dict[str, threading.Event] = {}
+    waiting = list(candidates)
+    live: set[str] = set()
+    last_error: Exception | None = None
+
+    def run(provider: str) -> None:
+        out, stop = outs[provider], stops[provider]
+        began, got = time.monotonic(), False
+        try:
+            for pair in start(provider):
+                if stop.is_set():
+                    return
+                if not pair[0]:
+                    continue
+                out.put(("tok", pair))
+                if not got:
+                    got = True
+                    events.put(("first", provider, time.monotonic() - began))
+            if not got:
+                events.put(("empty", provider, None))
+        except Exception as error:  # noqa: BLE001 - reported to the caller through the queues
+            if got:
+                out.put(("err", error))
+            else:
+                events.put(("fail", provider, error))
+        finally:
+            out.put(None)
+
+    def launch() -> None:
+        provider = waiting.pop(0)
+        outs[provider], stops[provider] = queue.Queue(), threading.Event()
+        live.add(provider)
+        threading.Thread(target=run, args=(provider,), name=f"llm-{provider}", daemon=True).start()
+
+    if not waiting:
+        raise _AllProvidersFailed(None)
+    launch()
+    winner = None
+    while winner is None:
+        if not live and not waiting:
+            raise _AllProvidersFailed(last_error)
+        try:
+            kind, provider, payload = events.get(timeout=hedge_delay if waiting else FIRST_WORD_TIMEOUT + 4)
+        except queue.Empty:
+            if waiting:
+                launch()
+                continue
+            raise _AllProvidersFailed(last_error or TimeoutError("timed out waiting for a provider"))
+        if kind == "first":
+            winner = provider
+            circuit_breaker.record_latency(provider, payload)
+        else:
+            live.discard(provider)
+            if kind == "empty":
+                logger.warning("Provider %s returned an empty stream", provider)
+                circuit_breaker.record_failure(provider, "empty")
+            else:
+                last_error = payload
+                error_kind = _classify_error(payload)
+                circuit_breaker.record_failure(
+                    provider, error_kind, rate_limit_cooldown(payload) if error_kind == "rate_limit" else None
+                )
+            if not live and waiting:
+                launch()
+
+    for provider, stop in stops.items():
+        if provider != winner:
+            stop.set()
+    if meta is not None:
+        meta["provider"] = winner
+    try:
+        while True:
+            item = outs[winner].get()
+            if item is None:
+                break
+            if item[0] == "err":
+                raise item[1]
+            yield item[1]
+        circuit_breaker.record_success(winner)
+    finally:
+        stops[winner].set()
+
+
+def seed_providers() -> None:
+    """Checks the providers once at startup so the first visitor does not pay for a dead one."""
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        return
+    try:
+        results = probe_providers(timeout=8.0)
+    except Exception:  # noqa: BLE001
+        logger.exception("Startup provider check failed")
+        return
+    for provider, (ok, kind) in results.items():
+        if not ok:
+            circuit_breaker.record_failure(provider, kind, 300.0 if kind == "rate_limit" else None)
+
+
+DETAIL_PATTERN = re.compile(
+    r"\b(?:tell me more|more details?|in detail|in depth|elaborate|explain (?:more|further)|go deeper|"
+    r"deep dive|dig deeper|expand on)\b|विस्तार से|विस्तार में|और बताओ|और बताइए|వివరంగా|ఇంకా చెప్పు|ఇంకా చెప్పండి",
+    re.IGNORECASE,
+)
+
+
+def is_detail_request(message: str) -> bool:
+    """True when the visitor asks for a deeper, longer answer than the default."""
+    return bool(DETAIL_PATTERN.search(message))
+
+
+def detail_max_tokens(language: str, voice_mode: bool) -> int:
+    base = 340 if voice_mode else 650
+    return base * 2 if language in {"te-IN", "hi-IN"} else base
+
+
+# The script is spelled out because models otherwise answer Telugu or Hindi
+# questions in English or in romanized letters, which the matching voice cannot read.
+RESPONSE_LANGUAGES = {
+    "en-IN": "English",
+    "te-IN": "Telugu, written in Telugu script (తెలుగు లిపి) and never in English letters; your whole reply must be Telugu even though the profile is in English",
+    "hi-IN": "Hindi, written in Devanagari script (देवनागरी) and never romanized or Hinglish; your whole reply must be Hindi even though the profile is in English",
+}
+
+
+def _prepare_message(message: str, language: str = "en-IN", detail: bool = False, voice_mode: bool = True) -> str:
+    response_language = RESPONSE_LANGUAGES.get(language, "English")
+    if detail and voice_mode:
+        length_rule = (
+            "The visitor asked for more depth, so ignore any earlier length limit and answer in 4 to 5 clear, "
+            "specific sentences that sound natural aloud, using the retrieved knowledge when relevant."
+        )
+    elif detail:
+        length_rule = (
+            "The visitor asked for more depth, so ignore any earlier length limit. This reply is read on screen, "
+            "so the no-markdown audio rules do not apply: give a clear answer of up to about 150 words as short "
+            "paragraphs and up to 6 short bullet lines (each starting with \"- \"), with **bold** on key terms such "
+            "as companies and technologies. No headings, tables, code blocks or emojis."
+        )
+    elif not voice_mode:
+        length_rule = (
+            "This reply is read on screen, so the no-markdown audio rules do not apply. Lead with the direct "
+            "answer, no greeting and no restating the question. Be brief: never more than about 50 words in "
+            "total, and stop as soon as the question is answered. Put **bold** on key terms such as companies "
+            "and technologies. Never repeat yourself, never add a closing summary or offer. No headings, tables, "
+            "code blocks or emojis. " + layout_hint(message)
+        )
+    else:
+        length_rule = "Keep the spoken reply to at most 2 punchy sentences."
+    follow_up = ""
+    if not voice_mode:
+        follow_up = (
+            f"\n\nREQUIRED FINAL LINE: after your answer, on a new line, write exactly one hidden tag with 2 short "
+            f"follow-up questions the visitor might ask next (in {response_language}, only about things in the resume), "
+            f"in this exact form: [[next:First question?|Second question?]]. Every reply must end with this tag. "
+            f"Never mention the tag."
+        )
     return f"""{message}
 
-INSTRUCTION: Reply in {response_language}. Preserve technical product and programming terms in English where that is natural. Speak about Akash in the 3rd person and keep answers grounded strictly in the verified profile. Keep the spoken reply to at most 2 punchy sentences. Output complete words and sentences; never stop midway through a word."""
+INSTRUCTION: Reply in {response_language}. Preserve technical product and programming terms in English where that is natural. Speak about Akash in the 3rd person and keep answers grounded strictly in the verified profile. {length_rule} Output complete words and sentences; never stop midway through a word.{follow_up}"""
 
 
 def _is_joke_request(message: str) -> bool:
@@ -132,6 +383,7 @@ def _stream_provider(
     message: str,
     language: str = "en-IN",
     request_timeout: float = 12.0,
+    max_tokens_override: int | None = None,
 ) -> Iterator[Tuple[str, str]]:
     cfg = PROVIDERS.get(provider_name)
     if not cfg or not cfg["api_key"]:
@@ -145,6 +397,8 @@ def _stream_provider(
     is_joke = _is_joke_request(message)
     temperature = 0.85 if is_joke else 0.2
     max_tokens = 110 if is_joke else (360 if language in {"te-IN", "hi-IN"} else 180)
+    if max_tokens_override and not is_joke:
+        max_tokens = max_tokens_override
 
     messages = [{"role": "system", "content": system_prompt}]
     for turn in clean_history:
@@ -155,6 +409,7 @@ def _stream_provider(
     messages.append({"role": "user", "content": message})
 
     if langfuse:
+        yielded_any = False
         try:
             with langfuse.start_as_current_observation(
                 as_type="span",
@@ -185,6 +440,7 @@ def _stream_provider(
                             delta = chunk.choices[0].delta.content or ""
                             if delta:
                                 collected.append(delta)
+                                yielded_any = True
                                 yield delta, current_trace_id
 
                         gen.update(output="".join(collected))
@@ -193,8 +449,13 @@ def _stream_provider(
             return
         except GeneratorExit:
             return
-        except Exception:
-            pass
+        except Exception as e:
+            # Once tokens have reached the user, retrying would duplicate them.
+            if yielded_any:
+                raise
+            if _classify_error(e) in {"rate_limit", "auth", "model_retired"}:
+                raise  # the plain call would fail the same way; trying it again only doubles the wait
+            logger.warning("Traced call to %s failed; retrying without Langfuse", provider_name, exc_info=True)
 
     # Direct streaming fallback without Langfuse
     try:
@@ -221,26 +482,35 @@ def stream_chikki(
     history: list[dict],
     language: str = "en-IN",
     previous_jokes: list[str] | None = None,
+    knowledge_context: str = "",
+    meta: dict | None = None,
+    detail: bool = False,
+    voice_mode: bool = True,
 ) -> Iterator[Tuple[str, str]]:
-    """Yields (token, trace_id) pairs with priority failover across all providers."""
-    global ACTIVE_PROVIDER
+    """Yields (token, trace_id) pairs with priority failover across all providers.
 
+    knowledge_context is the formatted retrieval block appended to the system
+    prompt for non-joke turns.
+    """
     previous_jokes = previous_jokes or []
     is_joke = _is_joke_request(message)
-    request_message = message.strip() if is_joke else _prepare_message(message, language)
+    request_message = message.strip() if is_joke else _prepare_message(message, language, detail, voice_mode)
+    max_tokens_override = detail_max_tokens(language, voice_mode) if detail and not is_joke else None
     if is_joke:
-        response_language = {
-            "en-IN": "English",
-            "te-IN": "Telugu",
-            "hi-IN": "Hindi",
-        }.get(language, "English")
+        response_language = RESPONSE_LANGUAGES.get(language, "English")
         system_prompt = (
             f"Tell one original, speakable software joke in {response_language}. "
             "Use at most two short sentences. Do not explain the joke, add an intro, "
             "or mention Akash. Never target the listener. Return only the joke."
         )
     else:
-        system_prompt = build_system_prompt()
+        system_prompt = build_system_prompt() + knowledge_context
+        if not voice_mode:
+            system_prompt += (
+                "\n\nTEXT CHAT MODE: this reply is read on screen and not spoken, so the audio-formatting rules "
+                "above do not apply here. Follow the formatting in the instruction after the visitor's message "
+                "(short, **bold** key terms, optional '- ' bullets)."
+            )
     if is_joke and previous_jokes:
         joke_memory = "\n".join(f"- {joke[:180]}" for joke in previous_jokes[-5:])
         system_prompt += (
@@ -249,14 +519,25 @@ def stream_chikki(
         )
     last_error = None
 
-    priority_order = ["groq", "gemini", "nvidia", "openrouter"]
-
-    if ACTIVE_PROVIDER in priority_order:
-        candidates = [ACTIVE_PROVIDER] + [p for p in priority_order if p != ACTIVE_PROVIDER]
-    else:
-        candidates = priority_order
+    candidates = circuit_breaker.order(PRIORITY_ORDER)
 
     accepted_candidate_attempts = 0
+    if not is_joke:
+        usable = [p for p in candidates if PROVIDERS.get(p, {}).get("api_key")]
+        try:
+            yield from _hedged_stream(
+                usable,
+                lambda p: _stream_provider(
+                    p, system_prompt, history, request_message, language,
+                    max_tokens_override=max_tokens_override,
+                    request_timeout=FIRST_WORD_TIMEOUT,
+                ),
+                meta,
+            )
+            return
+        except _AllProvidersFailed as failure:
+            last_error = failure.error
+        candidates = []
     for provider in candidates:
         if not PROVIDERS.get(provider, {}).get("api_key"):
             continue
@@ -284,33 +565,25 @@ def stream_chikki(
                     if not candidate_tokens:
                         break
                     accepted_candidate_attempts += 1
+                    circuit_breaker.record_success(provider)
+                    if meta is not None:
+                        meta["provider"] = provider
                     if not _is_repeated_joke(candidate, rejected_jokes):
                         yield from candidate_tokens
-                        if ACTIVE_PROVIDER != provider:
-                            ACTIVE_PROVIDER = provider
                         return
                     rejected_jokes.append(candidate)
                 if accepted_candidate_attempts >= 2:
                     break
                 continue
 
-            iterator = _stream_provider(provider, system_prompt, history, request_message, language)
-            first_token_pair = next(iterator, ("", ""))
-
-            if first_token_pair[0]:
-                yield first_token_pair
-                for token_pair in iterator:
-                    yield token_pair
-
-                if ACTIVE_PROVIDER != provider:
-                    ACTIVE_PROVIDER = provider
-                return
+            continue
 
         except GeneratorExit:
             return
         except Exception as e:
             last_error = e
             kind = _classify_error(e)
+            circuit_breaker.record_failure(provider, kind, rate_limit_cooldown(e) if kind == "rate_limit" else None)
             continue
 
     kind = _classify_error(last_error) if last_error else "unknown"
@@ -324,6 +597,65 @@ def stream_chikki(
         "unknown": "I had trouble processing that question. Let's try again.",
     }
     raise ChikkiAIError(fallback_messages[kind], kind=kind)
+
+
+def probe_providers(timeout: float = 20.0) -> dict[str, tuple[bool, str]]:
+    """Sends a tiny request to every configured provider. Returns {provider: (ok, kind)}.
+
+    kind is "ok", or one of auth, model_retired, rate_limit, timeout, network, unknown.
+    Used by the daily health check so a retired model or exhausted quota is noticed.
+    """
+    results: dict[str, tuple[bool, str]] = {}
+    for provider, cfg in PROVIDERS.items():
+        if not cfg.get("api_key"):
+            continue
+        try:
+            _get_client(provider).chat.completions.create(
+                model=cfg["model"],
+                messages=[{"role": "user", "content": "Reply with one word."}],
+                max_tokens=5,
+                timeout=timeout,
+            )
+            results[provider] = (True, "ok")
+        except Exception as error:
+            results[provider] = (False, _classify_error(error))
+    return results
+
+
+def complete_text(
+    system_prompt: str,
+    user_message: str,
+    max_tokens: int = 700,
+    temperature: float = 0.2,
+    timeout: float = 25.0,
+) -> str:
+    """Single non-streaming completion with the same provider failover as chat."""
+    last_error = None
+    for provider in circuit_breaker.order(PRIORITY_ORDER):
+        cfg = PROVIDERS.get(provider, {})
+        if not cfg.get("api_key"):
+            continue
+        try:
+            response = _get_client(provider).chat.completions.create(
+                model=cfg["model"],
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                ],
+                temperature=temperature,
+                max_tokens=max_tokens,
+                timeout=timeout,
+            )
+            text = (response.choices[0].message.content or "").strip()
+            if text:
+                circuit_breaker.record_success(provider)
+                return text
+            circuit_breaker.record_failure(provider, "empty")
+        except Exception as error:
+            last_error = error
+            circuit_breaker.record_failure(provider, _classify_error(error))
+    kind = _classify_error(last_error) if last_error else "unknown"
+    raise ChikkiAIError("I couldn't analyse that right now. Please try again in a moment.", kind=kind)
 
 
 def ask_chikki(

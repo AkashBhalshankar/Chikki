@@ -1,0 +1,181 @@
+%-------------------------
+% Resume in LaTeX — Jake's Resume template (Overleaf), default Computer Modern font
+% Compile with pdfLaTeX (Overleaf default).
+%-------------------------
+
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage{fontawesome5}
+\input{glyphtounicode}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Margins
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Sections
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+% Ensure ATS can read the PDF
+\pdfgentounicode=1
+
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+%-------------------------------------------
+\begin{document}
+
+%----------HEADING----------
+\begin{center}
+    \textbf{\Huge \scshape Akash Bhalshankar} \\ \vspace{1pt}
+    \small Hyderabad, Telangana, India $|$ +91 9014160774 $|$
+    \href{mailto:akashbhalshankar474@gmail.com}{\underline{akashbhalshankar474@gmail.com}} $|$
+    \href{https://github.com/AkashBhalshankar}{\faGithub\ \underline{GitHub}} $|$
+    \href{https://www.linkedin.com/in/akash-bhalshanakar/}{\faLinkedin\ \underline{LinkedIn}} $|$
+    \href{https://akashbhalshankar.com}{\faRobot\ \underline{Chikki}}
+\end{center}
+
+%-----------SUMMARY-----------
+\section{Summary}
+\small{AI Engineer with about 2 years of experience building LLM agents, RAG workflows and FastAPI backends. Built enterprise multi-agent workflows with LangGraph and Azure OpenAI that cut manual review effort by up to 50\% and hallucinations by 30\%. Also build full-stack AI and real-time web apps.}
+
+%-----------EXPERIENCE-----------
+\section{Professional Experience}
+  \resumeSubHeadingListStart
+
+    \resumeSubheading
+      {UBS}{Hyderabad, India}
+      {AI Engineer}{Oct 2025 -- Oct 2026}
+      \resumeItemListStart
+        \resumeItem{\textbf{Request Management Service:} Built a multi-agent platform on LangGraph for 5--7 enterprise applications, with a reflection agent that checks each output.}
+        \resumeItem{\textbf{Automated Application Onboarding:} Wrote onboarding logic that turns agent outputs into runnable SQL, so setting up a new application takes less work.}
+        \resumeItem{\textbf{Human-in-the-Loop (HITL) Governance:} Added a Microsoft Teams approval step so reviewers see AI-generated responses before anything runs. Supported the live production deployment.}
+        \resumeItem{\textbf{Provisioning Accelerator:} Set up sign-in with Microsoft Entra ID and the Graph API, and handled file processing for the provisioning pipeline.}
+        \resumeItem{\textbf{Vibe Testing / NavLearn:} Used GitHub Copilot to turn BDD specs into runnable test scripts and built a skill-file agent on navigation and action registries. Manual test writing dropped by 30--40\%.}
+        \resumeItem{\textbf{AgriMentor:} Built an agricultural assistant on FastAPI that takes soil-test inputs as PDF, image or text and gives crop and soil recommendations.}
+      \resumeItemListEnd
+
+    \resumeSubheading
+      {MassMutual}{Hyderabad, India}
+      {QA Intern}{Mar 2025 -- Oct 2025}
+      \resumeItemListStart
+        \resumeItem{\textbf{Investment Delivery Services:} Checked ETL data between on-premises and cloud with Informatica and SQL Server, automated regression tests in Selenium, and tracked defects in Jira.}
+        \resumeItem{\textbf{Eagle Version Release:} Ran functional and regression tests against the business requirements to confirm each release was ready.}
+      \resumeItemListEnd
+
+  \resumeSubHeadingListEnd
+
+%-----------PROJECTS-----------
+\section{Projects}
+    \resumeSubHeadingListStart
+
+      \resumeProjectHeading
+          {\textbf{Chikki: Voice-First AI Career Assistant} $|$ \emph{React, FastAPI, WebSockets, Edge-TTS, Langfuse}}{\href{https://akashbhalshankar.com}{\underline{Live Demo}}}
+          \resumeItemListStart
+            \resumeItem{Built a voice and text AI portfolio assistant with React, FastAPI and WebSockets, using browser speech recognition and Edge-TTS for spoken replies.}
+            \resumeItem{Built multi-provider LLM routing with automated failover across Groq, Gemini, NVIDIA and OpenRouter, with Langfuse observability.}
+            \resumeItem{Built a Google Drive-to-ATS resume pipeline with ReportLab that exports recruiter-tailored PDFs.}
+          \resumeItemListEnd
+
+      \resumeProjectHeading
+          {\textbf{ShareInSync: Peer-to-Peer Real-Time File \& Media Sharing PWA} $|$ \emph{React, WebRTC, Cloudflare Workers}}{\href{https://shareinsync.akashbhalshankar.com}{\underline{Live App}}}
+          \resumeItemListStart
+            \resumeItem{Built a zero-server-storage PWA with React, WebRTC and WebSockets for direct browser-to-browser file transfer and media sync.}
+            \resumeItem{Ran signaling and room state on Cloudflare Workers and Durable Objects, and checked file integrity with SHA-256 in the browser.}
+          \resumeItemListEnd
+
+      \resumeProjectHeading
+          {\textbf{NaChitram: Screen, Webcam \& Whiteboard Recorder} $|$ \emph{Chrome Extension (MV3), MediaRecorder, Web Audio}}{\href{https://chromewebstore.google.com/detail/scioflow-screen-webcam-wh/nklfcnddfghefifdpgmlkccbanmmoido}{\underline{Chrome Web Store}}}
+          \resumeItemListStart
+            \resumeItem{Built a free Chrome extension for teachers and creators that records screen and webcam with a live whiteboard and a private teleprompter. Long recordings are saved to local storage in chunks, with no account or cloud upload.}
+          \resumeItemListEnd
+
+    \resumeSubHeadingListEnd
+
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Kamala Institute of Technology and Science}{Karimnagar, Telangana}
+      {Bachelor of Technology in Computer Science and Engineering (Aggregate: 75\%)}{Sep 2020 -- Jun 2024}
+    \resumeSubheading
+      {SR Junior College}{Adilabad, Telangana}
+      {Intermediate (MPC) (Aggregate: 91\%)}{Jun 2018 -- May 2020}
+  \resumeSubHeadingListEnd
+
+%-----------TECHNICAL SKILLS-----------
+\section{Technical Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{AI/LLM}{: LLM, LangChain, LangGraph, RAG, FAISS, Azure OpenAI, Azure AI Foundry, MCP server, prompt engineering} \\
+     \textbf{Programming \& Web}{: Python, Java, JavaScript, HTML/CSS (PWA), WebRTC, WebSockets} \\
+     \textbf{Frameworks \& Edge}{: FastAPI, Pydantic, React, Cloudflare Workers, Durable Objects} \\
+     \textbf{Databases}{: MySQL, SQLite, SQL} \\
+     \textbf{Cloud, Security \& Tools}{: Azure OpenAI Service, Azure Blob Storage, Azure Container Apps, Microsoft Entra ID, Microsoft Graph, SHA-256, Git, GitHub Actions, GitHub Copilot, Informatica, Selenium, Agile/Scrum}
+    }}
+ \end{itemize}
+
+%-----------CERTIFICATIONS & LEADERSHIP-----------
+\section{Certifications \& Leadership}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{Certifications}{: Microsoft Certified: Azure AI Fundamentals (AI-901) $|$ Microsoft Certified: Azure Fundamentals (AZ-900) $|$ UBS Certificate of Achievement: NextGen AI: Agents in Action (3rd Place Winner)} \\
+     \textbf{Leadership (NCC)}{: Earned National Cadet Corps `B' and `C' certificates; led and mentored a contingent of 60 cadets during an intensive NCC camp.}
+    }}
+ \end{itemize}
+
+\end{document}

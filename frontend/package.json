@@ -1,23 +1,26 @@
-  {
-    "name": "chikki-frontend",
-    "private": true,
-    "version": "0.1.0",
-    "type": "module",
-    "scripts": {
-      "dev": "vite",
-      "build": "vite build",
-      "preview": "vite preview"
-    },
-    "dependencies": {
-      "framer-motion": "^11.11.9",
-      "react": "^18.3.1",
-      "react-dom": "^18.3.1"
-    },
-    "devDependencies": {
-      "@vitejs/plugin-react": "^4.3.2",
-      "autoprefixer": "^10.4.20",
-      "postcss": "^8.4.47",
-      "tailwindcss": "^3.4.13",
-      "vite": "^5.4.8"
-    }
+{
+  "name": "chikki-frontend",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test src/speechText.test.js src/device.test.js src/adminMode.test.js src/theme.test.js src/focus.test.js src/expressions.test.js src/markdown.test.js src/projects.test.js src/extras.test.js src/answerCard.test.js src/recap.test.js",
+    "e2e": "node e2e/smoke.mjs"
+  },
+  "dependencies": {
+    "framer-motion": "^11.11.9",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.2",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "puppeteer-core": "^24.43.1",
+    "tailwindcss": "^3.4.13",
+    "vite": "^5.4.8"
   }
+}
