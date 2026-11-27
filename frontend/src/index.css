@@ -100,6 +100,16 @@ input {
   overflow: hidden;
 }
 
+/* Start and voice screens fit the window on their own: Chikki and the spacing scale with the window height,
+   lower-priority blocks drop out on short windows, and only as a last resort the middle scrolls inside. */
+.fit-viewport { height: 100vh; height: 100dvh; overflow: hidden; }
+.fit-main { min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
+.fit-inner { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%; }
+.fit-bot { width: clamp(84px, 20vh, 170px); height: auto; }
+.fit-bot-lg { width: clamp(96px, 27vh, 230px); }
+.chikki-stage.fit-stage { min-height: 0; padding: 0.25rem 0; }
+@media (max-height: 720px) { .fit-hide-short { display: none; } }
+
 /* Wider on desktop so Chikki gets a column of its own beside the chat */
 .chat-shell { max-width: 72rem; }
 @media (min-width: 1024px) {

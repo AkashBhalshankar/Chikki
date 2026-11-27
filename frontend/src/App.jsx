@@ -1325,8 +1325,8 @@ export default function App() {
   const currentPrompts = QUICK_PROMPTS[currentLang] || QUICK_PROMPTS["en-IN"];
 
   return (
-    <div className="view-fade app-viewport dot-grid px-4 py-5 sm:px-8 sm:py-6 flex flex-col justify-between font-mono">
-      <div className="app-shell flex flex-1 flex-col justify-between w-full">
+    <div className="view-fade fit-viewport dot-grid px-4 py-4 sm:px-8 sm:py-5 flex flex-col font-mono">
+      <div className="app-shell flex min-h-0 flex-1 flex-col w-full">
         {/* Header */}
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-4">
           <div>
@@ -1358,11 +1358,12 @@ export default function App() {
         </header>
 
         {/* Center Stage */}
-        <main className="flex flex-1 flex-col items-center justify-center py-6 text-center">
-          <p className="mb-3 text-[10px] uppercase tracking-[0.22em] text-gray-500">Ask about Akash</p>
+        <main className="fit-main flex-1 py-3 text-center">
+          <div className="fit-inner">
+          <p className="fit-hide-short mb-2 text-[10px] uppercase tracking-[0.22em] text-gray-500">Ask about Akash</p>
 
           <div
-            className="chikki-stage cursor-pointer"
+            className="chikki-stage fit-stage cursor-pointer"
             role="button"
             tabIndex={0}
             aria-label={chikkiState === "speaking" ? "Stop Chikki speaking" : "Interact with Chikki"}
@@ -1381,11 +1382,11 @@ export default function App() {
               }
             }}
           >
-            <ChikkiBot state={chikkiState} expression={voiceExpression} size={220} />
+            <ChikkiBot state={chikkiState} expression={voiceExpression} className="fit-bot fit-bot-lg" />
           </div>
 
           {/* Subtitles & State Readout */}
-          <div className="mt-4 flex flex-col items-center gap-1.5 max-w-lg px-4 w-full">
+          <div className="mt-3 flex flex-col items-center gap-1.5 max-w-lg px-4 w-full">
             {liveTranscript && chikkiState !== "speaking" && chikkiState !== "thinking" ? (
               <div className="flex flex-col items-center gap-1 animate-fadeIn" aria-live="polite">
                 <span className="text-[10px] uppercase tracking-wider text-chikki-purpleLight font-semibold">👂 I&apos;m hearing</span>
@@ -1478,7 +1479,7 @@ export default function App() {
           )}
 
           {/* Suggestion Rail */}
-          <div className="suggestion-rail mt-6 w-full max-w-lg">
+          <div className="suggestion-rail fit-hide-short mt-4 w-full max-w-lg">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[10px] uppercase tracking-[0.16em] text-gray-500">Try asking</span>
               <span className="text-[10px] text-gray-600">or say it aloud</span>
@@ -1576,7 +1577,7 @@ export default function App() {
           )}
 
           {/* Links */}
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs">
             <button type="button" onClick={handleDownloadResume} className="action-button primary-action">
               📄 Resume PDF
             </button>
@@ -1601,9 +1602,10 @@ export default function App() {
               ]}
             />
           </div>
+          </div>
         </main>
 
-        <AppFooter />
+        <div className="fit-hide-short"><AppFooter /></div>
       </div>
 
       <FeedbackDashboard

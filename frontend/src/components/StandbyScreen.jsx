@@ -16,8 +16,8 @@ export default function StandbyScreen({
   onToggleTheme,
 }) {
   return (
-    <div className="view-fade min-h-screen dot-grid px-5 py-6 sm:px-8">
-      <div className="app-shell flex min-h-[calc(100vh-3rem)] flex-col">
+    <div className="view-fade fit-viewport dot-grid px-5 py-4 sm:px-8">
+      <div className="app-shell flex h-full flex-col">
         <header className="flex items-center justify-between border-b border-gray-800 pb-4">
           <div>
             <h1 className="text-lg tracking-[0.18em] text-chikki-purpleLight">CHIKKI</h1>
@@ -39,13 +39,14 @@ export default function StandbyScreen({
           </div>
         </header>
 
-        <main className="flex flex-1 flex-col items-center justify-center py-5 text-center">
-          <div className="mb-4 px-2">
+        <main className="fit-main flex-1 py-3 text-center">
+          <div className="fit-inner">
+          <div className="fit-hide-short mb-3 px-2">
             <ProfileCard />
           </div>
-          <ChikkiBot state={state} size={160} />
+          <ChikkiBot state={state} className="fit-bot" />
 
-          <div className="mt-6 flex items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-gray-600">
+          <div className="mt-3 flex items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-gray-600">
             {serverState === "waking" ? (
               <span role="status"><span className="text-amber-400">●</span> Waking up Chikki…</span>
             ) : (
@@ -56,7 +57,7 @@ export default function StandbyScreen({
           </div>
 
           {sharedLabel && typeof onTypeInstead === "function" && (
-            <div className="mt-8 max-w-md rounded-xl border border-chikki-purple/50 bg-chikki-purple/10 p-4">
+            <div className="mt-4 max-w-md rounded-xl border border-chikki-purple/50 bg-chikki-purple/10 p-4">
               <p className="text-[10px] uppercase tracking-[0.18em] text-gray-400">Someone shared this with you</p>
               <p className="mt-1 text-sm text-gray-200">{sharedLabel}</p>
               <button type="button" onClick={onTypeInstead} className="action-button primary-action mt-3 px-5">
@@ -71,11 +72,11 @@ export default function StandbyScreen({
             </p>
           )}
 
-          <p className="mt-5 max-w-md px-2 text-sm leading-relaxed text-gray-300">
+          <p className="fit-hide-short mt-3 max-w-md px-2 text-sm leading-relaxed text-gray-300">
             Ask about Akash&apos;s skills, projects or fit for your role. Every answer is checked against his verified resume.
           </p>
 
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
             {onDownloadResume && (
               <button type="button" onClick={onDownloadResume} className="action-button primary-action text-xs">📄 Resume PDF</button>
             )}
@@ -84,7 +85,7 @@ export default function StandbyScreen({
             )}
           </div>
 
-          <div className="mt-5 flex max-w-xl flex-wrap items-center justify-center gap-2" aria-label="Live projects">
+          <div className="mt-3 flex max-w-xl flex-wrap items-center justify-center gap-2" aria-label="Live projects">
             {PROJECTS.filter((project) => project.url).map((project) => (
               <a
                 key={project.id}
@@ -99,21 +100,22 @@ export default function StandbyScreen({
             ))}
           </div>
 
-          <GithubStrip />
+          <div className="fit-hide-short"><GithubStrip /></div>
 
-          <p className="mt-8 text-sm text-gray-400">Say <span className="text-chikki-purpleLight">“Hey Chikki”</span> to begin.</p>
+          <p className="mt-4 text-sm text-gray-400">Say <span className="text-chikki-purpleLight">“Hey Chikki”</span> to begin.</p>
 
-          <button type="button" onClick={onEnableMic} className="action-button primary-action mt-5 px-5">
+          <button type="button" onClick={onEnableMic} className="action-button primary-action mt-3 px-5">
             Click to start
           </button>
 
           {typeof onTypeInstead === "function" && (
-            <button type="button" onClick={onTypeInstead} className="mt-4 text-xs text-gray-600 underline underline-offset-4 hover:text-chikki-purpleLight">
+            <button type="button" onClick={onTypeInstead} className="mt-3 text-xs text-gray-600 underline underline-offset-4 hover:text-chikki-purpleLight">
               Use text chat instead
             </button>
           )}
+          </div>
         </main>
-        <AppFooter />
+        <div className="fit-hide-short"><AppFooter /></div>
       </div>
     </div>
   );
