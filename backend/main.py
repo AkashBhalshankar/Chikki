@@ -29,7 +29,8 @@ from github_activity import recent_repos
 from owner_notes import add_note, delete_note, list_notes
 from knowledge import TOP_K, format_context, knowledge_base, sources_for
 from models import ContactRequest, FeedbackRequest, GapAnswerRequest, JobMatchRequest, PitchRequest, VoiceMetricRequest
-from resume import sync_resume as sync_resume_profile
+from faq_cache import faq_cache, is_faq, replay_chunks, resume_fingerprint
+from resume import get_resume_context, sync_resume as sync_resume_profile
 from resume_loader import sync_drive_resume
 from security import (
     MAX_MESSAGE_CHARS,
@@ -464,8 +465,26 @@ async def process_chikki_turn(
             visitor_code(session_id) if session_id else None,
         )
 
+    # The questions visitors ask most are answered from a stored reply, so they appear at once.
+    fingerprint = ""
+    faq_hit = None
+    raw_tokens: list[str] = []
+    if not is_joke and not detail and is_faq(user_msg):
+        try:
+            fingerprint = resume_fingerprint(get_resume_context())
+            faq_hit = faq_cache.get(user_msg, language, voice_mode, fingerprint)
+        except Exception:
+            logger.exception("Instant-answer lookup failed; answering normally")
+            fingerprint = ""
+
     def pump_tokens():
         try:
+            if faq_hit:
+                turn_meta["provider"] = "cache"
+                for piece in replay_chunks(faq_hit):
+                    event_loop.call_soon_threadsafe(token_queue.put_nowait, ("token", (piece, "")))
+                    time.sleep(0.004)
+                return
             for token_pair in stream_chikki(
                 user_msg,
                 conversation_history,
@@ -476,6 +495,7 @@ async def process_chikki_turn(
                 detail=detail,
                 voice_mode=voice_mode,
             ):
+                raw_tokens.append(token_pair[0])
                 event_loop.call_soon_threadsafe(token_queue.put_nowait, ("token", token_pair))
         except Exception as stream_error:
             event_loop.call_soon_threadsafe(token_queue.put_nowait, ("error", stream_error))
@@ -640,6 +660,8 @@ async def process_chikki_turn(
             },
             "turn_id": turn_id,
         })
+        if fingerprint and not faq_hit and not blocked_terms:
+            faq_cache.put(user_msg, language, voice_mode, fingerprint, "".join(raw_tokens))
         await log_turn(True)
     except asyncio.CancelledError:
         raise
