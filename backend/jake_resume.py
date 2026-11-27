@@ -26,7 +26,7 @@ DEFAULT_GITHUB = "https://github.com/AkashBhalshankar"
 SITE = "https://akashbhalshankar.com"
 # Listed in Akash's knowledge base but missing from the Drive resume, so it is added when the Drive text lacks it.
 NACHITRAM = {
-    "title": "NaChitram — Screen, Webcam & Whiteboard Recorder",
+    "title": "NaChitram: Screen, Webcam & Whiteboard Recorder",
     "tech": "Chrome Extension (MV3), MediaRecorder, Web Audio",
     "link": "Chrome Web Store",
     "url": "https://chromewebstore.google.com/detail/scioflow-screen-webcam-wh/nklfcnddfghefifdpgmlkccbanmmoido",
@@ -196,44 +196,48 @@ def _bold_label(item: str) -> str:
     return escape(item)
 
 
-COMPACT = (
-    ('request management service', 'Request Management Service: Engineered a LangGraph multi-agent platform for 5–7 enterprise applications with a self-validating reflection agent.'),
-    ('automated application onboarding', 'Automated Application Onboarding: Architected onboarding logic that generates executable SQL from agent outputs for newly onboarded applications.'),
-    ('human-in-the-loop', 'Human-in-the-Loop (HITL) Governance: Integrated a Microsoft Teams approval workflow routing AI responses to human reviewers before execution, supporting live production deployment.'),
-    ('provisioning accelerator', 'Provisioning Accelerator: Implemented enterprise authentication with Microsoft Entra ID and Graph API, plus automated file handling for the provisioning pipeline.'),
-    ('vibe testing', 'Vibe Testing / NavLearn: Automated BDD-to-test-script translation with GitHub Copilot and built a skill-file agent on navigation and action registries, cutting test-authoring effort by 30–40%.'),
-    ('agrimentor', 'AgriMentor: Built an AI agricultural assistant with FastAPI processing multimodal soil-test inputs (PDF, image, text) for personalized crop and soil recommendations.'),
-    ('investment delivery services', 'Investment Delivery Services: Executed ETL data validation with Informatica and SQL Server across on-premises and cloud, automated Selenium regression suites, and tracked defects in Jira.'),
-    ('eagle version release', 'Eagle Version Release: Ran functional and regression testing against business requirements to validate release readiness.'),
-    ('architected a dual-mode', 'Architected a dual-mode (voice and text) AI portfolio assistant with React, FastAPI and WebSockets, using browser speech recognition and Edge-TTS for real-time voice.'),
-    ('engineered a resilient', 'Built multi-provider LLM routing with automated failover across Groq, Gemini, NVIDIA and OpenRouter, with Langfuse observability.'),
-    ('built an automated google drive', 'Built a Google Drive-to-ATS resume pipeline with ReportLab that exports recruiter-tailored PDFs.'),
-    ('developed a zero-server', 'Built a zero-server-storage PWA with React, WebRTC and WebSockets for direct browser-to-browser file transfer and media sync.'),
-    ('deployed serverless signaling', 'Deployed serverless signaling and room state on Cloudflare Workers and Durable Objects, with client-side SHA-256 integrity checks.'),
+# Plainer wording for the same facts, applied to the Drive text before it is laid out.
+REWRITES = (
+    ('request management service', 'Request Management Service: Built a multi-agent platform on LangGraph for 5–7 enterprise applications, with a reflection agent that checks each output.'),
+    ('automated application onboarding', 'Automated Application Onboarding: Wrote onboarding logic that turns agent outputs into runnable SQL, so setting up a new application takes less work.'),
+    ('human-in-the-loop', 'Human-in-the-Loop (HITL) Governance: Added a Microsoft Teams approval step so reviewers see AI-generated responses before anything runs. Supported the live production deployment.'),
+    ('provisioning accelerator', 'Provisioning Accelerator: Set up sign-in with Microsoft Entra ID and the Graph API, and handled file processing for the provisioning pipeline.'),
+    ('vibe testing', 'Vibe Testing / NavLearn: Used GitHub Copilot to turn BDD specs into runnable test scripts and built a skill-file agent on navigation and action registries. Manual test writing dropped by 30–40%.'),
+    ('agrimentor', 'AgriMentor: Built an agricultural assistant on FastAPI that takes soil-test inputs as PDF, image or text and gives crop and soil recommendations.'),
+    ('investment delivery services', 'Investment Delivery Services: Checked ETL data between on-premises and cloud with Informatica and SQL Server, automated regression tests in Selenium, and tracked defects in Jira.'),
+    ('eagle version release', 'Eagle Version Release: Ran functional and regression tests against the business requirements to confirm each release was ready.'),
+    ('architected a dual-mode', 'Built a voice and text AI portfolio assistant with React, FastAPI and WebSockets, using browser speech recognition and Edge-TTS for spoken replies.'),
+    ('engineered a resilient', 'Added automatic failover across Groq, Gemini, NVIDIA and OpenRouter, with Langfuse for tracing.'),
+    ('built an automated google drive', 'Wrote a pipeline that pulls the resume from Google Drive and exports recruiter-tailored PDFs with ReportLab.'),
+    ('developed a zero-server', 'Built a PWA with React, WebRTC and WebSockets that sends files and syncs media directly between browsers, with no server storage.'),
+    ('deployed serverless signaling', 'Ran signaling and room state on Cloudflare Workers and Durable Objects, and checked file integrity with SHA-256 in the browser.'),
 )
-COMPACT_NACHITRAM = [
-    "Built a free Chrome extension (MV3) for teachers: screen and webcam recording with a live whiteboard and a private teleprompter, saving long recordings to local storage in chunks with no accounts or cloud upload.",
-]
+NACHITRAM_TEXT = "Built a free Chrome extension for teachers and creators that records screen and webcam with a live whiteboard and a private teleprompter. Long recordings are saved to local storage in chunks, with no account or cloud upload."
+SUMMARY_TEXT = "AI Engineer with about 2 years of experience building LLM agents, RAG workflows and FastAPI backends. Built enterprise multi-agent workflows with LangGraph and Azure OpenAI that cut manual review effort by up to 50% and hallucinations by 30%. Also build full-stack AI and real-time web apps."
 
 
-def _compact(data: dict) -> dict:
-    """A shorter copy of the same facts, used only when the full text would not fit on one page at a readable size."""
+def _rewrite(data: dict) -> dict:
+    """The same facts in plainer words. Unknown bullets are left exactly as they are in the resume."""
     from copy import deepcopy
 
-    short = deepcopy(data)
+    out = deepcopy(data)
 
-    def shorten(bullets: list[str]) -> list[str]:
-        out = []
+    def reword(bullets: list[str]) -> list[str]:
+        result = []
         for text in bullets:
             lowered = text.lower()
-            out.append(next((new for key, new in COMPACT if lowered.startswith(key)), text))
-        return out
+            result.append(next((new for key, new in REWRITES if lowered.startswith(key)), text))
+        return result
 
-    for job in short["experience"]:
-        job["bullets"] = shorten(job["bullets"])
-    for project in short["projects"]:
-        project["bullets"] = list(COMPACT_NACHITRAM) if "nachitram" in project["title"].lower() else shorten(project["bullets"])
-    return short
+    if out["summary"].lower().startswith("results-driven"):
+        out["summary"] = SUMMARY_TEXT
+    for job in out["experience"]:
+        job["bullets"] = reword(job["bullets"])
+    for project in out["projects"]:
+        project["title"] = project["title"].replace(" — ", ": ")
+        project["bullets"] = [NACHITRAM_TEXT] if "nachitram" in project["title"].lower() else reword(project["bullets"])
+    out["extra"] = [(label, value.replace(" — ", ", ")) for label, value in out["extra"]]
+    return out
 
 
 def _focus_terms(focus: str) -> set[str]:
@@ -280,12 +284,12 @@ def build_jake_pdf(text: str, focus: str = "", linkedin_url: str = "", github_ur
         data["projects"].append(dict(NACHITRAM, bullets=list(NACHITRAM["bullets"])))
     from pypdf import PdfReader
 
-    # Full text on one page while the type stays readable; then the shorter wording; then two pages.
-    for candidate in (data, _compact(data)):
-        for scale in (1.0, 0.98, 0.96, 0.94, 0.92):
-            result = _render(candidate, focus, linkedin_url, github_url, scale)
-            if len(PdfReader(BytesIO(result)).pages) == 1:
-                return result
+    data = _rewrite(data)
+    # One page while the type stays readable, otherwise two pages at Jake's own size.
+    for scale in (1.0, 0.98, 0.96, 0.94, 0.92):
+        result = _render(data, focus, linkedin_url, github_url, scale)
+        if len(PdfReader(BytesIO(result)).pages) == 1:
+            return result
     return _render(data, focus, linkedin_url, github_url, 1.08)
 
 
@@ -367,7 +371,7 @@ def _render(data: dict, focus: str, linkedin_url: str, github_url: str, scale: f
             continue
         story.extend(section(name))
         if name == "summary":
-            story.append(Paragraph(_with_tilde(escape(content)), body))
+            story.append(Paragraph(escape(content), body))
         elif name in ("experience", "education"):
             for job in content:
                 block = [
