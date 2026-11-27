@@ -44,7 +44,9 @@ LAYOUTS = {
     ),
     "experience": (
         "Layout: one bullet per company, project or role (up to 6 bullets, never drop one the visitor asked for), each as \"- **Name** (role or type): one concrete "
-        "result or technology\". Lead with the most relevant. A short lead-in line is optional. No closing line."
+        "result or technology\". For projects, list the ones that have a public live link in the notes first and "
+        "make each of those names a markdown link like [Name](https://...), then the work projects at UBS or other "
+        "employers. Otherwise lead with the most relevant. A short lead-in line is optional. No closing line."
     ),
     "verdict": (
         "Layout: the first line is the verdict (yes, no, or not in the resume) in a few words. Then a blank "

@@ -7,6 +7,7 @@ export function ProjectCard({ project, compact = false }) {
       <div className="flex flex-wrap items-baseline gap-x-2">
         <h3 className="text-sm font-semibold text-gray-100">{project.name}</h3>
         <span className="text-[11px] text-chikki-purpleLight">{project.kind}</span>
+        {project.url && <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-px text-[10px] text-emerald-300">Live</span>}
       </div>
       {!compact && <p className="mt-1.5 text-xs leading-relaxed text-gray-300">{project.summary}</p>}
       <div className="mt-2 flex flex-wrap gap-1">
@@ -20,6 +21,11 @@ export function ProjectCard({ project, compact = false }) {
             <li key={line}>• {line}</li>
           ))}
         </ul>
+      )}
+      {project.url && (
+        <a href={project.url} target="_blank" rel="noopener noreferrer" className="action-button mt-2.5 inline-flex !min-h-0 px-3 py-1 text-[11px]">
+          {project.urlLabel || "Open"} ↗
+        </a>
       )}
     </div>
   );

@@ -2,7 +2,15 @@ import { parseBlocks, parseInline } from "../markdown.js";
 
 function Inline({ text }) {
   return parseInline(text).map((part, index) => {
-    if (part.type === "bold") return <strong key={index} className="font-semibold">{part.value}</strong>;
+    // Bold text may itself hold a link, as in **[Name](https://...)**, so it is read again.
+    if (part.type === "bold") return <strong key={index} className="font-semibold"><Inline text={part.value} /></strong>;
+    if (part.type === "link") {
+      return (
+        <a key={index} href={part.href} target="_blank" rel="noopener noreferrer" className="text-chikki-purpleLight underline underline-offset-2 hover:opacity-80">
+          {part.value}
+        </a>
+      );
+    }
     if (part.type === "code") return <code key={index} className="rounded bg-white/10 px-1 py-0.5 text-[0.85em]">{part.value}</code>;
     return <span key={index}>{part.value}</span>;
   });

@@ -40,3 +40,19 @@ test("a markdown table becomes a table block with header and rows", () => {
 test("copying a table drops the separator row", () => {
   assert.equal(plainText("| A | B |\n|---|---|\n| 1 | 2 |").includes("---"), false);
 });
+
+test("links become safe link parts, with trailing punctuation left out", () => {
+  assert.deepEqual(parseInline("See [the site](https://akashbhalshankar.com) now."), [
+    { type: "text", value: "See " },
+    { type: "link", value: "the site", href: "https://akashbhalshankar.com" },
+    { type: "text", value: " now." },
+  ]);
+  assert.deepEqual(parseInline("Visit https://example.com/app."), [
+    { type: "text", value: "Visit " },
+    { type: "link", value: "https://example.com/app", href: "https://example.com/app" },
+    { type: "text", value: "." },
+  ]);
+  // only http(s) links are ever made clickable
+  assert.deepEqual(parseInline("[x](javascript:alert(1))"), [{ type: "text", value: "[x](javascript:alert(1))" }]);
+  assert.equal(plainText("[the site](https://a.com)"), "the site (https://a.com)");
+});

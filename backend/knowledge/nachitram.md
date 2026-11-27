@@ -1,6 +1,8 @@
 # NaChitram: screen, webcam and whiteboard recorder (Chrome extension)
 
 ## What NaChitram is
+NaChitram is available in the Chrome Web Store: https://chromewebstore.google.com/detail/scioflow-screen-webcam-wh/nklfcnddfghefifdpgmlkccbanmmoido
+
 NaChitram is a free Chrome extension (listed as "NaChitram - Screen, Webcam & Whiteboard Recorder") that Akash built for teachers, tutors and creators. It records the screen and webcam together, lets the presenter draw on the page while talking, and offers a private teleprompter that never appears in the recorded video. It is in the Productivity category.
 
 ## Privacy by design

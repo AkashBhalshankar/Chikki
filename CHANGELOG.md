@@ -1,5 +1,9 @@
 # Changelog
 
+## Project links and order
+- Chikki, ShareInSync and NaChitram have live links and come first (in answers, cards and the Projects window); the work projects at UBS follow. Cards carry a Live badge and an open button.
+- Answers can include clickable links (only http and https are ever made clickable).
+
 ## NaChitram
 - Chikki now knows the NaChitram Chrome extension (what it does, how it is built, its privacy design) from `backend/knowledge/nachitram.md`, lists it with the other projects (`projects.md`), and shows it as a project card.
 - Project questions are told to cover every project in the resume and the notes, and may use up to 6 bullets.

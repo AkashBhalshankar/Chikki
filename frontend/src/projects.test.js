@@ -27,3 +27,12 @@ test("the interview asks each question, then the verdict, then finishes", () => 
   assert.equal(nextStep(role, role.questions.length + 1).kind, "done");
   assert.equal(roleById("nope"), null);
 });
+
+test("projects with a live link come first, and cards for an answer put them first too", () => {
+  const live = PROJECTS.filter((p) => p.url).map((p) => p.id);
+  assert.deepEqual(PROJECTS.slice(0, live.length).map((p) => p.id), live);
+  assert.deepEqual(live, ["chikki", "shareinsync", "nachitram"]);
+  for (const project of PROJECTS.filter((p) => p.url)) assert.ok(project.url.startsWith("https://"), project.id);
+  const names = (text) => projectsMentioned(text).map((p) => p.id);
+  assert.deepEqual(names("The Request Management Service at UBS and also ShareInSync"), ["shareinsync", "request-management"]);
+});

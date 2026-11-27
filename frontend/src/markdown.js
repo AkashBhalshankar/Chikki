@@ -68,13 +68,25 @@ export function parseBlocks(text = "") {
 // streaming) stays as plain text instead of flashing as broken formatting.
 export function parseInline(text = "") {
   const parts = [];
-  const pattern = /\*\*([^*]+?)\*\*|`([^`]+?)`/g;
+  // bold | code | [label](https://link) | a bare https:// link
+  const pattern = /\*\*([^*]+?)\*\*|`([^`]+?)`|\[([^\]]+?)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)<>\]]+)/g;
   let last = 0;
   let match;
   while ((match = pattern.exec(text)) !== null) {
+    let end = match.index + match[0].length;
+    let part;
+    if (match[1] !== undefined) part = { type: "bold", value: match[1] };
+    else if (match[2] !== undefined) part = { type: "code", value: match[2] };
+    else if (match[4] !== undefined) part = { type: "link", value: match[3], href: match[4] };
+    else {
+      // A sentence-ending full stop or comma is not part of the address.
+      const url = match[5].replace(/[.,;:!?]+$/, "");
+      end -= match[5].length - url.length;
+      part = { type: "link", value: url, href: url };
+    }
     if (match.index > last) parts.push({ type: "text", value: text.slice(last, match.index) });
-    parts.push(match[1] !== undefined ? { type: "bold", value: match[1] } : { type: "code", value: match[2] });
-    last = match.index + match[0].length;
+    parts.push(part);
+    last = end;
   }
   if (last < text.length) parts.push({ type: "text", value: text.slice(last) });
   return parts;
@@ -83,6 +95,7 @@ export function parseInline(text = "") {
 // The same reply without formatting marks, for "Copy answer".
 export function plainText(text = "") {
   return text
+    .replace(/\[([^\]]+?)\]\((https?:\/\/[^\s)]+)\)/g, "$1 ($2)")
     .replace(/^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/gm, "")
     .replace(/^\s*\|(.*)\|\s*$/gm, (_, row) => row.split("|").map((cell) => cell.trim()).join("  |  "))
     .replace(/\*\*([^*]+?)\*\*/g, "$1")
