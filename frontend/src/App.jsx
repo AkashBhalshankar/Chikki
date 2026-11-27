@@ -30,8 +30,6 @@ import { playChime } from "./sounds.js";
 import { buzz } from "./haptics.js";
 import { glowFor, reactionForTranscript } from "./expressions.js";
 import RecapModal from "./components/RecapModal.jsx";
-import SavedModal from "./components/SavedModal.jsx";
-import { loadSaved, persistSaved, savedId, toggleSaved } from "./saved.js";
 import InterviewModal from "./components/InterviewModal.jsx";
 import { nextStep, roleById } from "./interview.js";
 import { expressionForTurn, expressionForUserInput } from "./expressions.js";
@@ -503,24 +501,6 @@ export default function App() {
   const [showRecap, setShowRecap] = useState(false);
   const openRecap = useCallback(() => setShowRecap(true), []);
   const closeRecap = useCallback(() => setShowRecap(false), []);
-  const [showSaved, setShowSaved] = useState(false);
-  const openSaved = useCallback(() => setShowSaved(true), []);
-  const closeSaved = useCallback(() => setShowSaved(false), []);
-  const [saved, setSaved] = useState(loadSaved);
-  const toggleSave = useCallback((question, answer) => {
-    setSaved((current) => {
-      const next = toggleSaved(current, { id: savedId(question, answer), question, answer });
-      persistSaved(next);
-      return next;
-    });
-  }, []);
-  const removeSaved = useCallback((item) => {
-    setSaved((current) => {
-      const next = current.filter((entry) => entry.id !== item.id);
-      persistSaved(next);
-      return next;
-    });
-  }, []);
   const [showInterview, setShowInterview] = useState(false);
   const openInterview = useCallback(() => setShowInterview(true), []);
   const closeInterview = useCallback(() => setShowInterview(false), []);
@@ -1382,9 +1362,6 @@ export default function App() {
           onOpenBooking={CONTACT_ACTIONS.booking ? () => window.open(CONTACT_ACTIONS.booking, "_blank", "noopener") : null}
           language={currentLang}
           onLanguageChange={setCurrentLang}
-          saved={saved}
-          onToggleSave={toggleSave}
-          onOpenSaved={openSaved}
           onOpenRecap={openRecap}
           chikkiState={idleLook || (chatThinking ? "thinking" : messages.some((m) => m.role === "assistant" && m.final) ? voiceExpression : "idle")}
           chikkiExpression={voiceExpression}
@@ -1407,7 +1384,6 @@ export default function App() {
         <ShortcutsModal isOpen={showShortcuts} onClose={closeShortcuts} />
         <InterviewModal isOpen={showInterview} onClose={closeInterview} onStart={startInterview} />
         <RecapModal isOpen={showRecap} onClose={closeRecap} messages={messages} />
-        <SavedModal isOpen={showSaved} onClose={closeSaved} items={saved} onRemove={removeSaved} />
       </>
     );
   }
@@ -1688,7 +1664,6 @@ export default function App() {
                 { key: "settings", label: "⚙️ Settings", onClick: openSettings },
                 { key: "shortcuts", label: "⌨️ Keyboard shortcuts", onClick: openShortcuts },
                 { key: "interview", label: "🎤 Interview mode", onClick: openInterview },
-                { key: "saved", label: `⭐ Saved answers${saved.length ? ` (${saved.length})` : ""}`, onClick: openSaved },
                 messages.some((m) => m.role === "user") && { key: "recap", label: "📝 Summarise our chat", onClick: openRecap },
                 { key: "how", label: "🧠 How Chikki works", onClick: openHow },
                 canCall && CONTACT_ACTIONS.phone && { key: "call", label: "📞 Call Akash", href: telHref(CONTACT_ACTIONS.phone) },
@@ -1721,7 +1696,6 @@ export default function App() {
       <SettingsModal isOpen={showSettings} onClose={closeSettings} onChange={setPrefs} />
       <InterviewModal isOpen={showInterview} onClose={closeInterview} onStart={startInterview} />
       <RecapModal isOpen={showRecap} onClose={closeRecap} messages={messages} />
-      <SavedModal isOpen={showSaved} onClose={closeSaved} items={saved} onRemove={removeSaved} />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildRecap, recapMailto } from "./recap.js";
-import { loadSaved, persistSaved, toggleSaved, savedId } from "./saved.js";
 import { reactionForTranscript, glowFor } from "./expressions.js";
 
 const chat = [
@@ -27,21 +26,6 @@ test("the recap keeps only the latest turns and the mail link is encoded and bou
   const link = recapMailto("a & b ".repeat(600));
   assert.ok(link.startsWith("mailto:?subject="));
   assert.ok(link.length < 6000);
-});
-
-test("saved answers toggle on and off, survive reloads and tolerate a broken store", () => {
-  const memory = new Map();
-  const storage = { getItem: (k) => memory.get(k) ?? null, setItem: (k, v) => memory.set(k, v) };
-  const item = { id: savedId("q", "a"), question: "q", answer: "a" };
-  let list = toggleSaved([], item);
-  assert.equal(list.length, 1);
-  persistSaved(list, storage);
-  assert.equal(loadSaved(storage).length, 1);
-  assert.equal(toggleSaved(list, item).length, 0);
-  assert.notEqual(savedId("q", "a"), savedId("q", "b"));
-  assert.deepEqual(loadSaved({ getItem() { throw new Error("blocked"); } }), []);
-  memory.set("chikki_saved", "not json");
-  assert.deepEqual(loadSaved(storage), []);
 });
 
 test("Chikki nods along, reacts to surprise words, and the backdrop glow follows the mood", () => {

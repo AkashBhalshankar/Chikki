@@ -14,7 +14,7 @@
 - The page glow follows Chikki's mood.
 - Loading skeleton before the app starts, and a progress bar while the server wakes.
 - Buttons press in, chips slide in, status text cross-fades; softer chimes.
-- 'Summarise our chat' (copy or email) and starred 'Saved answers' (kept in the browser).
+- 'Summarise our chat' (copy or email).
 - Project cards show a screenshot for the live projects.
 
 ## Speed and tone
