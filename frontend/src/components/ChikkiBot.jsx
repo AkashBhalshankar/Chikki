@@ -3,7 +3,7 @@ import { AnimatePresence, motion, useTransform } from "framer-motion";
 import { mouthLevel } from "../voiceLevel.js";
 import { seasonFor } from "../seasonal.js";
 import { readSettings } from "../settings.js";
-import { onGaze } from "../gaze.js";
+import { getGaze, onGaze } from "../gaze.js";
 import { pokeReaction } from "../play.js";
 import { buzz } from "../haptics.js";
 
@@ -185,6 +185,41 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
       }),
     [],
   );
+  // eyes follow the mouse (or a finger) anywhere on the page, unless the sparkle or the typing already has his attention
+  useEffect(() => {
+    if (calm) return undefined;
+    let frame = 0;
+    let rest = 0;
+    let last = null;
+    const look = () => {
+      frame = 0;
+      const box = svgRef.current?.getBoundingClientRect();
+      if (!last || !box || !box.width || getGaze()) return;
+      const dx = (last.x - (box.left + box.width / 2)) / Math.max(box.width * 1.5, 160);
+      const dy = (last.y - (box.top + box.height * 0.3)) / Math.max(box.height * 1.5, 160);
+      // quantised so the face is not redrawn for tiny movements
+      const x = Math.round(Math.max(-1, Math.min(1, dx)) * 12) / 4;
+      const y = Math.round(Math.max(-1, Math.min(1, dy)) * 8) / 4;
+      setEyeOffset((current) => (current.x === x && current.y === y ? current : { x, y }));
+    };
+    const move = (event) => {
+      last = { x: event.clientX, y: event.clientY };
+      if (!frame) frame = requestAnimationFrame(look);
+      window.clearTimeout(rest);
+      // after a few quiet seconds the eyes drift back to the middle
+      rest = window.setTimeout(() => {
+        if (!getGaze()) setEyeOffset({ x: 0, y: 0 });
+      }, 4000);
+    };
+    window.addEventListener("pointermove", move, { passive: true });
+    window.addEventListener("pointerdown", move, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerdown", move);
+      window.clearTimeout(rest);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [calm]);
   const poke = (part) => {
     if (["speaking", "thinking"].includes(stateRef.current)) return;
     const now = Date.now();
