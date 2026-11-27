@@ -422,7 +422,16 @@ def build_resume_pdf(
     github_url: str = "",
 ) -> bytes:
     if not resume_path.exists():
-        return _build_ats_pdf_from_text(_resume_source_text(), focus, linkedin_url, github_url)
+        source = _resume_source_text()
+        try:
+            from jake_resume import build_jake_pdf
+
+            jake = build_jake_pdf(source, focus, linkedin_url, github_url)
+            if jake:
+                return jake
+        except Exception as error:  # the older layout still produces a resume
+            print(f"[resume] Jake layout failed, using the older layout: {error}")
+        return _build_ats_pdf_from_text(source, focus, linkedin_url, github_url)
 
     profile = load_resume(resume_path)
     profile = tailor_resume(profile, focus)
