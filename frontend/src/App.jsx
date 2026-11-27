@@ -24,6 +24,7 @@ import { attachLevelMeter } from "./voiceLevel.js";
 import { ThinkingWord } from "./components/ThinkingIndicator.jsx";
 import ProjectsModal from "./components/ProjectsModal.jsx";
 import SettingsModal from "./components/SettingsModal.jsx";
+import ShortcutsModal from "./components/ShortcutsModal.jsx";
 import { readSettings } from "./settings.js";
 import { playChime } from "./sounds.js";
 import InterviewModal from "./components/InterviewModal.jsx";
@@ -416,6 +417,20 @@ export default function App() {
   const openHow = useCallback(() => setShowHow(true), []);
   const closeHow = useCallback(() => setShowHow(false), []);
   const [prefs, setPrefs] = useState(readSettings);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const closeShortcuts = useCallback(() => setShowShortcuts(false), []);
+  const openShortcuts = useCallback(() => setShowShortcuts(true), []);
+  useEffect(() => {
+    const onKey = (event) => {
+      const tag = event.target?.tagName;
+      if (event.key === "?" && !event.ctrlKey && !event.metaKey && tag !== "INPUT" && tag !== "TEXTAREA") {
+        event.preventDefault();
+        setShowShortcuts((open) => !open);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const [showSettings, setShowSettings] = useState(false);
   const openSettings = useCallback(() => setShowSettings(true), []);
   const closeSettings = useCallback(() => setShowSettings(false), []);
@@ -1057,11 +1072,21 @@ export default function App() {
         }
       },
 
-      onDelta: (_text, tid, turnId) => {
+      onDelta: (text, tid, turnId) => {
         if (turnId !== activeTurnIdRef.current) return;
         if (tid) {
           setCurrentTraceId(tid);
         }
+        // In text chat the reply is shown as it is written. Voice mode reveals it in step with the audio instead.
+        if (inputModeRef.current === "voice" || !text) return;
+        setMessages((prev) => {
+          const copy = [...prev];
+          const index = copy.findIndex((message) => message.role === "assistant" && message.turn_id === turnId);
+          if (index >= 0 && !copy[index].final) {
+            copy[index] = { ...copy[index], content: `${copy[index].content || ""}${text}`, isStreaming: true };
+          }
+          return copy;
+        });
       },
 
       onAudioChunk: (data, mime, _tone, tid) => {
@@ -1147,6 +1172,8 @@ export default function App() {
             content: hasPacedAudio ? copy[turnIndex].content : reply,
             history_content: reply,
             final: true,
+            isStreaming: false,
+            verified: Boolean(meta?.verified),
             isError: meta?.isError,
             kind: meta?.kind,
             sources: meta?.sources || [],
@@ -1202,16 +1229,27 @@ export default function App() {
   // Standby Screen Barrier (Click to Enable Microphone)
   if (!active) {
     return (
-      <StandbyScreen
-        state={chikkiState}
-        onEnableMic={handleEnableMic}
-        onActivate={handleWake}
-        onTypeInstead={handleSwitchToChat}
-        sharedLabel={sharedLink?.label}
-        serverState={serverState}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-      />
+      <>
+        <StandbyScreen
+          state={chikkiState}
+          onEnableMic={handleEnableMic}
+          onActivate={handleWake}
+          onTypeInstead={handleSwitchToChat}
+          onDownloadResume={handleDownloadResume}
+          onOpenContact={openContact}
+          sharedLabel={sharedLink?.label}
+          serverState={serverState}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
+        <ContactModal
+          isOpen={showContact}
+          onClose={closeContact}
+          onSent={handleContactSent}
+          topics=""
+          bookingUrl={CONTACT_ACTIONS.booking}
+        />
+      </>
     );
   }
 
@@ -1235,6 +1273,7 @@ export default function App() {
           onOpenHow={openHow}
           onOpenProjects={openProjects}
           onOpenSettings={openSettings}
+          onOpenShortcuts={openShortcuts}
           onOpenInterview={openInterview}
           interview={interview}
           onInterviewNext={interviewNext}
@@ -1262,6 +1301,8 @@ export default function App() {
         <HowItWorksModal isOpen={showHow} onClose={closeHow} githubUrl={CONTACT_ACTIONS.github} />
         <ProjectsModal isOpen={showProjects} onClose={closeProjects} githubUrl={CONTACT_ACTIONS.github} />
         <SettingsModal isOpen={showSettings} onClose={closeSettings} onChange={setPrefs} />
+      <ShortcutsModal isOpen={showShortcuts} onClose={closeShortcuts} />
+        <ShortcutsModal isOpen={showShortcuts} onClose={closeShortcuts} />
         <InterviewModal isOpen={showInterview} onClose={closeInterview} onStart={startInterview} />
       </>
     );
@@ -1274,7 +1315,7 @@ export default function App() {
   const currentPrompts = QUICK_PROMPTS[currentLang] || QUICK_PROMPTS["en-IN"];
 
   return (
-    <div className="app-viewport dot-grid px-4 py-5 sm:px-8 sm:py-6 flex flex-col justify-between font-mono">
+    <div className="view-fade app-viewport dot-grid px-4 py-5 sm:px-8 sm:py-6 flex flex-col justify-between font-mono">
       <div className="app-shell flex flex-1 flex-col justify-between w-full">
         {/* Header */}
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-4">
@@ -1539,7 +1580,8 @@ export default function App() {
               direction="up"
               items={[
                 { key: "projects", label: "🗂️ Projects", onClick: openProjects },
-                { key: "settings", label: "⚙️ Voice settings", onClick: openSettings },
+                { key: "settings", label: "⚙️ Settings", onClick: openSettings },
+                { key: "shortcuts", label: "⌨️ Keyboard shortcuts", onClick: openShortcuts },
                 { key: "interview", label: "🎤 Interview mode", onClick: openInterview },
                 { key: "how", label: "🧠 How Chikki works", onClick: openHow },
                 canCall && CONTACT_ACTIONS.phone && { key: "call", label: "📞 Call Akash", href: telHref(CONTACT_ACTIONS.phone) },

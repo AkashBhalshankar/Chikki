@@ -239,6 +239,7 @@ export function connectVoiceSocket({
             sources: Array.isArray(data.meta?.sources) ? data.meta.sources : [],
             actions: Array.isArray(data.meta?.actions) ? data.meta.actions : [],
             mood: data.meta?.mood ?? null,
+            verified: Boolean(data.meta?.verified),
             suggestions: Array.isArray(data.meta?.suggestions) ? data.meta.suggestions : [],
           });
           return;

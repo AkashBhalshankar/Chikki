@@ -2,7 +2,13 @@
 
 const KEY = "chikki_settings";
 
-export const DEFAULTS = { voice: "neerja", speed: 1, pause: "normal", sounds: true, transcript: false };
+export const DEFAULTS = { voice: "neerja", speed: 1, pause: "normal", sounds: true, transcript: false, accent: "violet" };
+
+export const ACCENTS = [
+  { id: "violet", label: "Violet" },
+  { id: "teal", label: "Teal" },
+  { id: "amber", label: "Amber" },
+];
 
 export const VOICES = [
   { id: "neerja", label: "Neerja (Indian English)" },
@@ -30,6 +36,7 @@ export function normalizeSettings(raw) {
     speed: SPEEDS.some((s) => s.value === value.speed) ? value.speed : DEFAULTS.speed,
     pause: PAUSES[value.pause] ? value.pause : DEFAULTS.pause,
     sounds: typeof value.sounds === "boolean" ? value.sounds : DEFAULTS.sounds,
+    accent: ACCENTS.some((a) => a.id === value.accent) ? value.accent : DEFAULTS.accent,
     transcript: typeof value.transcript === "boolean" ? value.transcript : DEFAULTS.transcript,
   };
 }
@@ -48,4 +55,13 @@ export function saveSettings(settings) {
     localStorage.setItem(KEY, JSON.stringify(clean));
   } catch (_) {}
   return clean;
+}
+
+// Applies the chosen accent colour to the whole page ("violet" is the default look).
+export function applyAccent(accent) {
+  try {
+    const root = document.documentElement;
+    if (accent && accent !== "violet") root.dataset.accent = accent;
+    else delete root.dataset.accent;
+  } catch (_) {}
 }

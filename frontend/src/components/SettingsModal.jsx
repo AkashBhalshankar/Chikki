@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PAUSES, SPEEDS, VOICES, readSettings, saveSettings } from "../settings.js";
+import { ACCENTS, PAUSES, SPEEDS, VOICES, applyAccent, readSettings, saveSettings } from "../settings.js";
 
 function Choice({ label, options, value, onChange }) {
   return (
@@ -42,6 +42,7 @@ export default function SettingsModal({ isOpen, onClose, onChange }) {
 
   const update = (patch) => {
     const saved = saveSettings({ ...settings, ...patch });
+    applyAccent(saved.accent);
     setSettings(saved);
     onChange?.(saved);
   };
@@ -51,11 +52,12 @@ export default function SettingsModal({ isOpen, onClose, onChange }) {
       <div className="max-w-md w-full max-h-[92vh] overflow-y-auto rounded-2xl border border-gray-700 bg-[#0d0d12] p-5 shadow-2xl chikki-scroll space-y-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 id="settings-title" className="text-sm font-bold text-chikki-purpleLight tracking-wide">VOICE SETTINGS</h2>
+            <h2 id="settings-title" className="text-sm font-bold text-chikki-purpleLight tracking-wide">SETTINGS</h2>
             <p className="mt-1 text-[11px] text-gray-400">Saved on this device only.</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="text-gray-300 hover:text-white text-xs px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-gray-700">✕</button>
         </div>
+        <Choice label="Accent colour" options={ACCENTS} value={settings.accent} onChange={(accent) => update({ accent })} />
         <Choice label="Voice (English)" options={VOICES} value={settings.voice} onChange={(voice) => update({ voice })} />
         <Choice label="Speaking speed" options={SPEEDS} value={settings.speed} onChange={(speed) => update({ speed })} />
         <Choice label="Wait after I stop talking" options={Object.values(PAUSES)} value={settings.pause} onChange={(pause) => update({ pause })} />

@@ -1,5 +1,12 @@
 # Changelog
 
+## UI enhancements
+- Text chat replies appear as they are written, and the working animation hands over to the text.
+- Start screen: a one-line pitch, Resume and Contact buttons and the three live projects.
+- Phones: Resume, Contact, Role fit and More sit in a bar at the bottom, and only two suggestion chips show.
+- Answers carry a "Checked against the resume" badge; the small actions (copy, more detail, helpful, not helpful) share one row, shown on hover for older answers.
+- Smooth fade between views, keyboard shortcuts (`/`, `?`, `Esc`), friendlier empty states, and an accent colour choice (violet, teal, amber) in Settings.
+
 ## Project links and order
 - Chikki, ShareInSync and NaChitram have live links and come first (in answers, cards and the Projects window); the work projects at UBS follow. Cards carry a Live badge and an open button.
 - Answers can include clickable links (only http and https are ever made clickable).

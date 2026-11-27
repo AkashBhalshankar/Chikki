@@ -204,7 +204,11 @@ export default function FeedbackDashboard({ isOpen, onClose }) {
           ) : view === "messages" ? (
             <div className="space-y-3">
               {contacts.length === 0 ? (
-                <div className="text-center py-10 text-xs text-gray-500">No messages yet.</div>
+                <div className="py-10 text-center text-xs text-gray-500">
+                  <div className="text-2xl">✉️</div>
+                  <p className="mt-2 text-gray-400">No messages yet.</p>
+                  <p className="mt-1">When a recruiter uses Contact Akash, the message appears here and in your email.</p>
+                </div>
               ) : (
                 contacts.map((contact) => (
                   <div key={contact.id} className="p-4 rounded-xl border border-gray-800 bg-zinc-900/30 space-y-2 text-xs">
@@ -409,7 +413,11 @@ function objectToItems(obj = {}) {
 }
 
 function UsagePanel({ usage }) {
-  if (!usage) return <div className="text-center py-16 text-xs text-gray-400">No usage data yet.</div>;
+  if (!usage) return <div className="py-16 text-center text-xs text-gray-500">
+      <div className="text-2xl">📈</div>
+      <p className="mt-2 text-gray-400">No usage data yet.</p>
+      <p className="mt-1">Questions, downloads and role-fit checks show up here as visitors arrive.</p>
+    </div>;
   const { totals, latency_ms: latency, daily } = usage;
   const maxDay = Math.max(...daily.map((d) => d.turns), 1);
   const cards = [

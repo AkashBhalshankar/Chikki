@@ -57,6 +57,7 @@ export default function ChatPanel({
   onOpenHow,
   onOpenProjects,
   onOpenSettings,
+  onOpenShortcuts,
   onOpenInterview,
   interview = null,
   onInterviewNext,
@@ -130,6 +131,18 @@ export default function ChatPanel({
     });
   }, [messages, thinking]);
 
+  useEffect(() => {
+    const onKey = (event) => {
+      const tag = event.target?.tagName;
+      if (event.key === "/" && !event.ctrlKey && !event.metaKey && tag !== "INPUT" && tag !== "TEXTAREA") {
+        event.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const trimmed = value.trim();
@@ -158,8 +171,54 @@ export default function ChatPanel({
     }
   };
 
+  const renderActions = (direction) => (
+    <>
+            {actions.resume && (
+              <button
+                type="button"
+                onClick={onDownloadResume}
+                className="action-button primary-action font-medium"
+              >
+                📄 Resume PDF
+              </button>
+            )}
+            {onOpenContact && (
+              <button type="button" onClick={onOpenContact} className="action-button primary-action">
+                ✉️ Contact Akash
+              </button>
+            )}
+            {onOpenMatch && (
+              <button type="button" onClick={onOpenMatch} className="action-button">
+                🎯 Check role fit
+              </button>
+            )}
+            <MoreMenu
+              direction={direction}
+              items={[
+                onOpenProjects && { key: "projects", label: "🗂️ Projects", onClick: onOpenProjects },
+                onOpenSettings && { key: "settings", label: "⚙️ Settings", onClick: onOpenSettings },
+                onOpenShortcuts && { key: "shortcuts", label: "⌨️ Keyboard shortcuts", onClick: onOpenShortcuts },
+                onOpenInterview && { key: "interview", label: "🎤 Interview mode", onClick: onOpenInterview },
+                onOpenHow && { key: "how", label: "🧠 How Chikki works", onClick: onOpenHow },
+                onShare && { key: "share", label: linkCopied ? "✓ Link copied" : "🔗 Copy link", onClick: handleShareClick, keepOpen: true },
+                canCall && actions.phone && { key: "call", label: "📞 Call Akash", href: telHref(actions.phone) },
+                actions.linkedin && { key: "linkedin", label: "💼 LinkedIn", href: actions.linkedin },
+                actions.github && { key: "github", label: "💻 GitHub", href: actions.github },
+                onToggleTheme && { key: "theme", label: theme === "light" ? "🌙 Dark theme" : "☀️ Light theme", onClick: onToggleTheme },
+                onClear && messages.length > 0 && {
+                  key: "clear",
+                  label: confirmClear ? "⚠️ Click again to confirm" : "🗑️ Clear chat",
+                  onClick: handleClearClick,
+                  keepOpen: !confirmClear,
+                  danger: true,
+                },
+              ]}
+            />
+    </>
+  );
+
   return (
-    <div className="chat-viewport dot-grid px-3 py-4 sm:px-8 sm:py-6 flex flex-col font-mono">
+    <div className="view-fade chat-viewport dot-grid px-3 py-4 sm:px-8 sm:py-6 flex flex-col font-mono">
       <div className="app-shell flex min-h-0 flex-1 flex-col max-w-4xl mx-auto w-full">
         
         {/* Header */}
@@ -199,48 +258,9 @@ export default function ChatPanel({
         </header>
 
         {/* Quick Action Links */}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="mt-3 hidden flex-wrap items-center justify-between gap-2 sm:flex">
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            {actions.resume && (
-              <button
-                type="button"
-                onClick={onDownloadResume}
-                className="action-button primary-action font-medium"
-              >
-                📄 Resume PDF
-              </button>
-            )}
-            {onOpenContact && (
-              <button type="button" onClick={onOpenContact} className="action-button primary-action">
-                ✉️ Contact Akash
-              </button>
-            )}
-            {onOpenMatch && (
-              <button type="button" onClick={onOpenMatch} className="action-button">
-                🎯 Check role fit
-              </button>
-            )}
-            <MoreMenu
-              direction="down"
-              items={[
-                onOpenProjects && { key: "projects", label: "🗂️ Projects", onClick: onOpenProjects },
-                onOpenSettings && { key: "settings", label: "⚙️ Voice settings", onClick: onOpenSettings },
-                onOpenInterview && { key: "interview", label: "🎤 Interview mode", onClick: onOpenInterview },
-                onOpenHow && { key: "how", label: "🧠 How Chikki works", onClick: onOpenHow },
-                onShare && { key: "share", label: linkCopied ? "✓ Link copied" : "🔗 Copy link", onClick: handleShareClick, keepOpen: true },
-                canCall && actions.phone && { key: "call", label: "📞 Call Akash", href: telHref(actions.phone) },
-                actions.linkedin && { key: "linkedin", label: "💼 LinkedIn", href: actions.linkedin },
-                actions.github && { key: "github", label: "💻 GitHub", href: actions.github },
-                onToggleTheme && { key: "theme", label: theme === "light" ? "🌙 Dark theme" : "☀️ Light theme", onClick: onToggleTheme },
-                onClear && messages.length > 0 && {
-                  key: "clear",
-                  label: confirmClear ? "⚠️ Click again to confirm" : "🗑️ Clear chat",
-                  onClick: handleClearClick,
-                  keepOpen: !confirmClear,
-                  danger: true,
-                },
-              ]}
-            />
+            {renderActions("down")}
           </div>
           <span className="hidden md:inline-block text-[10px] text-gray-500">
             Press <kbd className="px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-400">Enter</kbd> to send
@@ -282,7 +302,7 @@ export default function ChatPanel({
             m.role === "assistant" && !m.isError && !m.content?.trim() ? null : (
             <div
               key={i}
-              className={`flex flex-col ${
+              className={`group flex flex-col ${
                 m.role === "user" ? "items-end" : "items-start"
               }`}
             >
@@ -308,23 +328,38 @@ export default function ChatPanel({
               </div>
 
               {m.role === "assistant" && m.final && !m.isError && m.content?.trim() && (
-                <button
-                  type="button"
-                  onClick={() => handleCopyAnswer(i, plainText(m.history_content || m.content))}
-                  className="mt-1 ml-1 text-[11px] text-gray-500 transition-colors hover:text-chikki-purpleLight"
-                >
-                  {copiedIndex === i ? "✓ Copied" : "📋 Copy answer"}
-                </button>
-              )}
-
-              {m.role === "assistant" && i === latestAssistantIndex && m.final && !m.isError && m.content?.trim() && !thinking && !/in detail/i.test(messages[i - 1]?.content || "") && (
-                <button
-                  type="button"
-                  onClick={() => onSend("Tell me more about that in detail.")}
-                  className="mt-1 ml-1 text-[11px] text-gray-500 transition-colors hover:text-chikki-purpleLight"
-                >
-                  ➕ Show more detail
-                </button>
+                <div className={`msg-actions mt-1 ml-1 flex flex-wrap items-center gap-1 text-[11px] text-gray-500 ${i === latestAssistantIndex ? "" : "msg-actions-quiet"}`}>
+                  <button type="button" onClick={() => handleCopyAnswer(i, plainText(m.history_content || m.content))} className="msg-action">
+                    {copiedIndex === i ? "✓ Copied" : "📋 Copy"}
+                  </button>
+                  {i === latestAssistantIndex && !thinking && !/in detail/i.test(messages[i - 1]?.content || "") && (
+                    <button type="button" onClick={() => onSend("Tell me more about that in detail.")} className="msg-action">
+                      ➕ More detail
+                    </button>
+                  )}
+                  {i === latestAssistantIndex && onFeedback && (
+                    <>
+                      <button
+                        type="button"
+                        aria-label="Helpful"
+                        title="Helpful"
+                        onClick={() => handleVoteClick(i, "helpful")}
+                        className={`msg-action ${feedbackVote === "helpful" ? "!border-emerald-500/40 !bg-emerald-500/20 !text-emerald-400" : ""}`}
+                      >
+                        👍
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Needs improvement"
+                        title="Needs improvement"
+                        onClick={() => handleVoteClick(i, "needs-improvement")}
+                        className={`msg-action ${feedbackVote === "needs-improvement" ? "!border-rose-500/40 !bg-rose-500/20 !text-rose-400" : ""}`}
+                      >
+                        👎
+                      </button>
+                    </>
+                  )}
+                </div>
               )}
 
               {m.role === "assistant" && i === latestAssistantIndex && m.final && !m.isError && m.actions?.length > 0 && (
@@ -350,9 +385,14 @@ export default function ChatPanel({
                 </div>
               )}
 
-              {m.role === "assistant" && m.final && !m.isError && m.sources?.length > 0 && (
+              {m.role === "assistant" && m.final && !m.isError && (m.verified || m.sources?.length > 0) && (
                 <div className="mt-1.5 ml-1 flex max-w-[88%] flex-wrap items-center gap-1 text-[10px] text-gray-500">
-                  <span className="uppercase tracking-wider">Sources:</span>
+                  {m.verified && (
+                    <span title="Every name, number and claim in this answer was checked against Akash's resume" className="mr-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-emerald-300">
+                      ✓ Checked against the resume
+                    </span>
+                  )}
+                  {m.sources?.length > 0 && <span className="uppercase tracking-wider">Sources:</span>}
                   {m.sources.map((source) => {
                     const label = source.section && source.section !== source.title
                       ? `${source.title} · ${source.section}`
@@ -382,33 +422,6 @@ export default function ChatPanel({
               {/* Feedback Action */}
               {m.role === "assistant" && i === latestAssistantIndex && m.final && !m.isError && onFeedback && (
                 <div className="mt-2 flex flex-col items-start gap-1.5 ml-1">
-                  <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                    <span className="text-[10px]">Feedback:</span>
-                    <button
-                      type="button"
-                      onClick={() => handleVoteClick(i, "helpful")}
-                      className={`px-2 py-0.5 rounded flex items-center gap-1 transition-colors ${
-                        feedbackVote === "helpful"
-                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                          : "hover:text-chikki-green"
-                      }`}
-                    >
-                      👍 Like
-                    </button>
-                    <span>·</span>
-                    <button
-                      type="button"
-                      onClick={() => handleVoteClick(i, "needs-improvement")}
-                      className={`px-2 py-0.5 rounded flex items-center gap-1 transition-colors ${
-                        feedbackVote === "needs-improvement"
-                          ? "bg-rose-500/20 text-rose-400 border border-rose-500/40"
-                          : "hover:text-red-400"
-                      }`}
-                    >
-                      👎 Dislike
-                    </button>
-                  </div>
-
                   {activeFeedbackMsgId === i && (
                     <div className="mt-1 flex flex-col gap-1.5 p-2.5 rounded-lg border border-gray-800 bg-zinc-900/90 w-full max-w-sm">
                       {feedbackSubmitted ? (
@@ -449,7 +462,7 @@ export default function ChatPanel({
             )
           ))}
 
-          {thinking && <ThinkingIndicator />}
+          {thinking && !(messages[messages.length - 1]?.role === "assistant" && messages[messages.length - 1]?.content?.trim() && !messages[messages.length - 1]?.final) && <ThinkingIndicator />}
         </div>
 
         {interview && (() => {
@@ -474,13 +487,13 @@ export default function ChatPanel({
 
         {/* Quick Suggestion Chips */}
         <div className={`mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2 ${messages.length === 0 ? "hidden" : ""}`}>
-          {[...suggestions, ...currentPrompts].slice(0, 4).map((prompt) => (
+          {[...suggestions, ...currentPrompts].slice(0, 4).map((prompt, index) => (
             <button
               key={prompt}
               type="button"
               onClick={() => onSend(prompt)}
               disabled={thinking}
-              className="prompt-button truncate disabled:opacity-40"
+              className={`prompt-button truncate disabled:opacity-40 ${index >= 2 ? "chip-extra" : ""}`}
             >
               <span className="text-chikki-purpleLight mr-2">›</span> {prompt}
             </button>
@@ -508,7 +521,14 @@ export default function ChatPanel({
           </button>
         </form>
 
-        <AppFooter />
+        {/* On phones the main actions sit at the bottom, within thumb reach */}
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 border-t border-gray-800 pt-2 sm:hidden">
+          {renderActions("up")}
+        </div>
+
+        <div className="hidden sm:block">
+          <AppFooter />
+        </div>
       </div>
     </div>
   );

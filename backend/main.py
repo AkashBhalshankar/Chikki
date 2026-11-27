@@ -623,6 +623,7 @@ async def process_chikki_turn(
                 "actions": filter_actions(tag_filter.actions, user_msg),
                 "mood": mood_sent or tag_filter.mood,
                 "suggestions": tag_filter.suggestions,
+                "verified": guard is not None,
             },
             "turn_id": turn_id,
         })

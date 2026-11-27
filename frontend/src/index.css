@@ -2,11 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Accent colour: the default is violet; Voice settings can switch to teal or amber. */
+:root {
+  --accent-rgb: 99, 102, 241;
+  --accent-rgb-dark: 79, 70, 229;
+  --accent-500: #6366f1;
+  --accent-600: #4f46e5;
+  --accent-700: #4338ca;
+  --accent-800: #3730a3;
+  --accent-900: #312e81;
+  --chikki-purple: 127 119 221;
+  --chikki-purple-light: 175 169 236;
+}
+html[data-accent="teal"] {
+  --accent-rgb: 20, 184, 166;
+  --accent-rgb-dark: 13, 148, 136;
+  --accent-500: #14b8a6;
+  --accent-600: #0d9488;
+  --accent-700: #0f766e;
+  --accent-800: #115e59;
+  --accent-900: #134e4a;
+  --chikki-purple: 74 163 162;
+  --chikki-purple-light: 143 225 216;
+}
+html[data-accent="amber"] {
+  --accent-rgb: 245, 158, 11;
+  --accent-rgb-dark: 217, 119, 6;
+  --accent-500: #f59e0b;
+  --accent-600: #d97706;
+  --accent-700: #b45309;
+  --accent-800: #92400e;
+  --accent-900: #78350f;
+  --chikki-purple: 216 165 47;
+  --chikki-purple-light: 244 215 122;
+}
+
 :root {
   --bg-base: #09090b;
   --panel-base: rgba(18, 18, 22, 0.75);
-  --accent-purple: #6366f1;
-  --accent-glow: rgba(99, 102, 241, 0.25);
+  --accent-purple: var(--accent-500);
+  --accent-glow: rgba(var(--accent-rgb), 0.25);
   --border-subtle: rgba(255, 255, 255, 0.08);
 }
 
@@ -84,7 +119,7 @@ input {
 }
 
 .surface-line {
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
   background: rgba(15, 15, 18, 0.8);
   backdrop-filter: blur(12px);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
@@ -104,7 +139,7 @@ input {
   margin: 0 auto;
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.12) 0%, rgba(9, 9, 11, 0.6) 70%);
+  background: radial-gradient(circle at 50% 50%, rgba(var(--accent-rgb), 0.12) 0%, rgba(9, 9, 11, 0.6) 70%);
   transition: all 400ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -117,8 +152,8 @@ input {
 }
 
 .chikki-stage.is-speaking {
-  border-color: rgba(99, 102, 241, 0.4);
-  box-shadow: 0 0 50px -10px rgba(99, 102, 241, 0.3);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: 0 0 50px -10px rgba(var(--accent-rgb), 0.3);
 }
 
 .chikki-stage.is-listening {
@@ -147,22 +182,22 @@ input {
 }
 
 .action-button:hover {
-  border-color: rgba(99, 102, 241, 0.5);
+  border-color: rgba(var(--accent-rgb), 0.5);
   color: #ffffff;
-  background: rgba(99, 102, 241, 0.12);
+  background: rgba(var(--accent-rgb), 0.12);
   transform: translateY(-1px);
 }
 
 .primary-action {
-  border-color: rgba(99, 102, 241, 0.4);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(79, 70, 229, 0.15) 100%);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.25) 0%, rgba(var(--accent-rgb-dark), 0.15) 100%);
   color: #e0e7ff;
 }
 
 .primary-action:hover {
-  border-color: rgba(99, 102, 241, 0.8);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.35) 0%, rgba(79, 70, 229, 0.25) 100%);
-  box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.4);
+  border-color: rgba(var(--accent-rgb), 0.8);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.35) 0%, rgba(var(--accent-rgb-dark), 0.25) 100%);
+  box-shadow: 0 0 20px -5px rgba(var(--accent-rgb), 0.4);
 }
 
 .prompt-button {
@@ -182,9 +217,9 @@ input {
 }
 
 .prompt-button:hover {
-  border-color: rgba(99, 102, 241, 0.45);
+  border-color: rgba(var(--accent-rgb), 0.45);
   color: #ffffff;
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
   transform: translateY(-1px);
 }
 
@@ -241,7 +276,7 @@ input {
 }
 
 .chikki-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.5);
+  background: rgba(var(--accent-rgb), 0.5);
 }
 
 /* =========================================
@@ -285,11 +320,11 @@ input {
 
 /* Chikki's replies get a subtle accent edge */
 .answer-card {
-  border-left: 2px solid rgba(99, 102, 241, 0.7);
+  border-left: 2px solid rgba(var(--accent-rgb), 0.7);
 }
 
 html[data-theme="light"] .answer-card {
-  border-left-color: rgba(79, 70, 229, 0.7);
+  border-left-color: rgba(var(--accent-rgb-dark), 0.7);
 }
 
 /* =========================================
@@ -297,7 +332,7 @@ html[data-theme="light"] .answer-card {
 ========================================= */
 
 .profile-avatar {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(79, 70, 229, 0.2));
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.35), rgba(var(--accent-rgb-dark), 0.2));
 }
 
 /* =========================================
@@ -342,7 +377,7 @@ html[data-theme="light"] .dot-grid {
 }
 
 html[data-theme="light"] .surface-line {
-  border-color: rgba(99, 102, 241, 0.28);
+  border-color: rgba(var(--accent-rgb), 0.28);
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
 }
@@ -353,7 +388,7 @@ html[data-theme="light"] .glass-panel {
 
 html[data-theme="light"] .chikki-stage {
   border-color: rgba(15, 23, 42, 0.12);
-  background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.13) 0%, rgba(255, 255, 255, 0.75) 70%);
+  background: radial-gradient(circle at 50% 50%, rgba(var(--accent-rgb), 0.13) 0%, rgba(255, 255, 255, 0.75) 70%);
 }
 
 html[data-theme="light"] .action-button {
@@ -363,18 +398,18 @@ html[data-theme="light"] .action-button {
 
 html[data-theme="light"] .action-button:hover {
   color: #111827;
-  background: rgba(99, 102, 241, 0.12);
+  background: rgba(var(--accent-rgb), 0.12);
 }
 
 html[data-theme="light"] .primary-action {
-  border-color: rgba(99, 102, 241, 0.5);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(79, 70, 229, 0.1));
-  color: #3730a3;
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.2), rgba(var(--accent-rgb-dark), 0.1));
+  color: var(--accent-800);
 }
 
 html[data-theme="light"] .primary-action:hover {
-  color: #312e81;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(79, 70, 229, 0.18));
+  color: var(--accent-900);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.3), rgba(var(--accent-rgb-dark), 0.18));
 }
 
 html[data-theme="light"] .prompt-button {
@@ -384,14 +419,14 @@ html[data-theme="light"] .prompt-button {
 
 html[data-theme="light"] .prompt-button:hover {
   color: #111827;
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 
 html[data-theme="light"] .chikki-scroll { scrollbar-color: rgba(15, 23, 42, 0.25) transparent; }
 html[data-theme="light"] .chikki-scroll::-webkit-scrollbar-thumb { background: rgba(15, 23, 42, 0.22); }
 
 html[data-theme="light"] .profile-avatar {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(79, 70, 229, 0.12));
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.2), rgba(var(--accent-rgb-dark), 0.12));
 }
 
 /* text colours */
@@ -403,15 +438,15 @@ html[data-theme="light"] .text-gray-300 { color: #374151; }
 html[data-theme="light"] .text-gray-400 { color: #4b5563; }
 html[data-theme="light"] .text-gray-500 { color: #6b7280; }
 html[data-theme="light"] .text-gray-600 { color: #71717a; }
-html[data-theme="light"] .text-chikki-purpleLight { color: #4f46e5; }
+html[data-theme="light"] .text-chikki-purpleLight { color: var(--accent-600); }
 html[data-theme="light"] .text-emerald-300 { color: #047857; }
 html[data-theme="light"] .text-emerald-400 { color: #059669; }
 html[data-theme="light"] .text-rose-200,
 html[data-theme="light"] .text-rose-300 { color: #be123c; }
 html[data-theme="light"] .text-rose-400 { color: #e11d48; }
 html[data-theme="light"] .text-indigo-100,
-html[data-theme="light"] .text-indigo-200 { color: #3730a3; }
-html[data-theme="light"] .text-indigo-300 { color: #4f46e5; }
+html[data-theme="light"] .text-indigo-200 { color: var(--accent-800); }
+html[data-theme="light"] .text-indigo-300 { color: var(--accent-600); }
 html[data-theme="light"] .text-amber-200 { color: #92400e; }
 html[data-theme="light"] .text-amber-300 { color: #b45309; }
 html[data-theme="light"] .text-red-200,
@@ -442,7 +477,7 @@ html[data-theme="light"] [class*="bg-red-950"],
 html[data-theme="light"] [class*="bg-rose-500/20"] { background-color: rgba(244, 63, 94, 0.1); }
 html[data-theme="light"] [class*="bg-indigo-950"],
 html[data-theme="light"] [class*="bg-indigo-900"],
-html[data-theme="light"] [class*="bg-indigo-600/30"] { background-color: rgba(99, 102, 241, 0.1); }
+html[data-theme="light"] [class*="bg-indigo-600/30"] { background-color: rgba(var(--accent-rgb), 0.1); }
 html[data-theme="light"] [class*="bg-emerald-950"],
 html[data-theme="light"] [class*="bg-emerald-500/20"] { background-color: rgba(16, 185, 129, 0.12); }
 
@@ -461,7 +496,7 @@ html[data-theme="light"] {
 }
 
 html[data-theme="light"] body {
-  background-image: radial-gradient(1100px 520px at 50% -8%, rgba(99, 102, 241, 0.14), transparent 70%);
+  background-image: radial-gradient(1100px 520px at 50% -8%, rgba(var(--accent-rgb), 0.14), transparent 70%);
   background-repeat: no-repeat;
 }
 
@@ -478,7 +513,7 @@ html[data-theme="light"] .surface-line {
 
 html[data-theme="light"] .chikki-stage {
   border: 1px solid #dde1ee;
-  background: radial-gradient(circle at 50% 45%, rgba(99, 102, 241, 0.16) 0%, #ffffff 68%);
+  background: radial-gradient(circle at 50% 45%, rgba(var(--accent-rgb), 0.16) 0%, #ffffff 68%);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 12px 32px rgba(15, 23, 42, 0.06);
 }
 
@@ -499,17 +534,17 @@ html[data-theme="light"] .action-button:hover {
 
 /* main buttons: solid indigo so the key actions stand out */
 html[data-theme="light"] .primary-action {
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
-  border-color: #4338ca;
+  background: linear-gradient(135deg, var(--accent-600), var(--accent-500));
+  border-color: var(--accent-700);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.28);
+  box-shadow: 0 4px 12px rgba(var(--accent-rgb-dark), 0.28);
 }
 
 html[data-theme="light"] .primary-action:hover {
-  background: linear-gradient(135deg, #4338ca, #4f46e5);
-  border-color: #3730a3;
+  background: linear-gradient(135deg, var(--accent-700), var(--accent-600));
+  border-color: var(--accent-800);
   color: #ffffff;
-  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.34);
+  box-shadow: 0 6px 16px rgba(var(--accent-rgb-dark), 0.34);
 }
 
 html[data-theme="light"] .prompt-button {
@@ -527,16 +562,16 @@ html[data-theme="light"] .prompt-button:hover {
 
 /* conversation */
 html[data-theme="light"] .user-bubble {
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
-  border-color: #4338ca;
+  background: linear-gradient(135deg, var(--accent-600), var(--accent-500));
+  border-color: var(--accent-700);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.22);
+  box-shadow: 0 4px 12px rgba(var(--accent-rgb-dark), 0.22);
 }
 
 html[data-theme="light"] .answer-card {
   background: #ffffff;
   border-color: #dde1ee;
-  border-left-color: #6366f1;
+  border-left-color: var(--accent-500);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 18px rgba(15, 23, 42, 0.05);
 }
 
@@ -544,7 +579,7 @@ html[data-theme="light"] .answer-card {
 html[data-theme="light"] .text-gray-400 { color: #475569; }
 html[data-theme="light"] .text-gray-500 { color: #5b6577; }
 html[data-theme="light"] .text-gray-600 { color: #64748b; }
-html[data-theme="light"] .text-chikki-purpleLight { color: #4338ca; }
+html[data-theme="light"] .text-chikki-purpleLight { color: var(--accent-700); }
 
 /* source chips and tinted pills */
 html[data-theme="light"] [class*="bg-emerald-500/10"] { background-color: rgba(16, 185, 129, 0.14); }
@@ -568,8 +603,8 @@ html[data-theme="light"] .profile-card {
 
 html[data-theme="light"] input:focus,
 html[data-theme="light"] textarea:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  border-color: var(--accent-500);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18);
 }
 
 
@@ -635,3 +670,31 @@ summary:focus-visible {
   outline: 2px solid #818cf8;
   outline-offset: 2px;
 }
+
+/* Small actions under an answer: always visible on the newest, revealed on hover for older ones.
+   On touch screens there is no hover, so they stay visible. */
+.msg-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  color: inherit;
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s;
+}
+.msg-action:hover { color: #a5b4fc; background: rgba(129, 140, 248, 0.1); }
+@media (hover: hover) {
+  .msg-actions-quiet { opacity: 0; transition: opacity 0.15s; }
+  .group:hover .msg-actions-quiet,
+  .msg-actions-quiet:focus-within { opacity: 1; }
+}
+html[data-theme="light"] .msg-action:hover { color: var(--accent-700); background: rgba(var(--accent-rgb-dark), 0.08); }
+
+/* Views fade in when Chikki switches between voice, text and the start screen */
+.view-fade { animation: viewFade 0.28s ease both; }
+@keyframes viewFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .view-fade { animation: none; } }
+
+/* On phones only the first two suggestion chips show, to leave room for the conversation */
+@media (max-width: 639px) { .chip-extra { display: none; } }
