@@ -7,6 +7,7 @@ import RichText from "./RichText.jsx";
 import { ProjectCard } from "./ProjectsModal.jsx";
 import { projectsMentioned } from "../projects.js";
 import { nextStep } from "../interview.js";
+import ChikkiBot from "./ChikkiBot.jsx";
 import ThinkingIndicator from "./ThinkingIndicator.jsx";
 import { plainText } from "../markdown.js";
 import { shareAnswerCard } from "../answerCard.js";
@@ -69,6 +70,8 @@ export default function ChatPanel({
   onToggleTheme,
   language = "en-IN",
   onLanguageChange,
+  chikkiState = "idle",
+  chikkiExpression = "confident",
 }) {
   const [value, setValue] = useState("");
   const scrollRef = useRef(null);
@@ -235,7 +238,7 @@ export default function ChatPanel({
 
   return (
     <div className="view-fade chat-viewport dot-grid px-3 py-4 sm:px-8 sm:py-6 flex flex-col font-mono">
-      <div className="app-shell flex min-h-0 flex-1 flex-col max-w-4xl mx-auto w-full">
+      <div className="app-shell chat-shell flex min-h-0 flex-1 flex-col mx-auto w-full">
         
         {/* Header */}
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-4">
@@ -273,8 +276,22 @@ export default function ChatPanel({
           </div>
         </header>
 
+        <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:gap-6">
+        {/* Chikki stays in place while only the messages scroll */}
+        <aside className="chat-chikki flex shrink-0 items-center gap-3 lg:w-[270px] lg:flex-col lg:justify-center lg:gap-3" aria-label="Chikki">
+          <ChikkiBot state={chikkiState} expression={chikkiExpression} className="h-auto w-14 shrink-0 sm:w-16 lg:w-56" />
+          <div className="min-w-0 lg:text-center">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-chikki-purpleLight">
+              {thinking ? "Thinking…" : messages.length ? "Ask me more" : "Hi, I'm Chikki"}
+            </div>
+            <p className="mt-0.5 text-[11px] leading-snug text-gray-500 lg:max-w-[220px]">
+              Answers come from Akash&apos;s verified resume.
+            </p>
+          </div>
+        </aside>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Quick Action Links */}
-        <div className="mt-3 hidden flex-wrap items-center justify-between gap-2 sm:flex">
+        <div className="hidden flex-wrap items-center justify-between gap-2 sm:flex">
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {renderActions("down")}
           </div>
@@ -294,9 +311,8 @@ export default function ChatPanel({
           {messages.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center p-4 text-center">
               <h2 className="text-lg font-semibold text-gray-100">Hi, I&apos;m Chikki 👋</h2>
-              <p className="mt-2 max-w-md text-sm leading-relaxed text-gray-400">
-                Ask me anything about Akash&apos;s experience, projects and skills. My answers come from his
-                verified resume, and I&apos;ll say so when something isn&apos;t in it.
+              <p className="mt-1.5 max-w-md text-xs leading-relaxed text-gray-400">
+                Ask about Akash&apos;s experience, projects and skills.
               </p>
               <div className="mt-5 grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2">
                 {currentPrompts.map((prompt) => (
@@ -569,6 +585,8 @@ export default function ChatPanel({
 
         <div className="hidden sm:block">
           <AppFooter />
+        </div>
+        </div>
         </div>
       </div>
     </div>

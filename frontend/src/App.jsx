@@ -1294,6 +1294,8 @@ export default function App() {
           onOpenBooking={CONTACT_ACTIONS.booking ? () => window.open(CONTACT_ACTIONS.booking, "_blank", "noopener") : null}
           language={currentLang}
           onLanguageChange={setCurrentLang}
+          chikkiState={chatThinking ? "thinking" : messages.some((m) => m.role === "assistant" && m.final) ? voiceExpression : "idle"}
+          chikkiExpression={voiceExpression}
         />
         <FeedbackDashboard
           isOpen={showDashboard}
@@ -1310,7 +1312,6 @@ export default function App() {
         <HowItWorksModal isOpen={showHow} onClose={closeHow} githubUrl={CONTACT_ACTIONS.github} />
         <ProjectsModal isOpen={showProjects} onClose={closeProjects} githubUrl={CONTACT_ACTIONS.github} />
         <SettingsModal isOpen={showSettings} onClose={closeSettings} onChange={setPrefs} />
-      <ShortcutsModal isOpen={showShortcuts} onClose={closeShortcuts} />
         <ShortcutsModal isOpen={showShortcuts} onClose={closeShortcuts} />
         <InterviewModal isOpen={showInterview} onClose={closeInterview} onStart={startInterview} />
       </>
