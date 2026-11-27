@@ -187,6 +187,46 @@ def _bold_label(item: str) -> str:
     return escape(item)
 
 
+COMPACT = (
+    ('request management service', 'Request Management Service: Engineered a LangGraph multi-agent platform for 5–7 enterprise applications with a self-validating reflection agent.'),
+    ('automated application onboarding', 'Automated Application Onboarding: Architected onboarding logic that generates executable SQL from agent outputs for newly onboarded applications.'),
+    ('human-in-the-loop', 'Human-in-the-Loop (HITL) Governance: Integrated a Microsoft Teams approval workflow routing AI responses to human reviewers before execution, supporting live production deployment.'),
+    ('provisioning accelerator', 'Provisioning Accelerator: Implemented enterprise authentication with Microsoft Entra ID and Graph API, plus automated file handling for the provisioning pipeline.'),
+    ('vibe testing', 'Vibe Testing / NavLearn: Automated BDD-to-test-script translation with GitHub Copilot and built a skill-file agent on navigation and action registries, cutting test-authoring effort by 30–40%.'),
+    ('agrimentor', 'AgriMentor: Built an AI agricultural assistant with FastAPI processing multimodal soil-test inputs (PDF, image, text) for personalized crop and soil recommendations.'),
+    ('investment delivery services', 'Investment Delivery Services: Executed ETL data validation with Informatica and SQL Server across on-premises and cloud, automated Selenium regression suites, and tracked defects in Jira.'),
+    ('eagle version release', 'Eagle Version Release: Ran functional and regression testing against business requirements to validate release readiness.'),
+    ('architected a dual-mode', 'Architected a dual-mode (voice and text) AI portfolio assistant with React, FastAPI and WebSockets, using browser speech recognition and Edge-TTS for real-time voice.'),
+    ('engineered a resilient', 'Built multi-provider LLM routing with automated failover across Groq, Gemini, NVIDIA and OpenRouter, with Langfuse observability.'),
+    ('built an automated google drive', 'Built a Google Drive-to-ATS resume pipeline with ReportLab that exports recruiter-tailored PDFs.'),
+    ('developed a zero-server', 'Built a zero-server-storage PWA with React, WebRTC and WebSockets for direct browser-to-browser file transfer and media sync.'),
+    ('deployed serverless signaling', 'Deployed serverless signaling and room state on Cloudflare Workers and Durable Objects, with client-side SHA-256 integrity checks.'),
+)
+COMPACT_NACHITRAM = [
+    "Built a free Chrome extension (MV3) for teachers: screen and webcam recording with a live whiteboard and a private teleprompter, saving long recordings to local storage in chunks with no accounts or cloud upload.",
+]
+
+
+def _compact(data: dict) -> dict:
+    """A shorter copy of the same facts, used only when the full text would not fit on one page at a readable size."""
+    from copy import deepcopy
+
+    short = deepcopy(data)
+
+    def shorten(bullets: list[str]) -> list[str]:
+        out = []
+        for text in bullets:
+            lowered = text.lower()
+            out.append(next((new for key, new in COMPACT if lowered.startswith(key)), text))
+        return out
+
+    for job in short["experience"]:
+        job["bullets"] = shorten(job["bullets"])
+    for project in short["projects"]:
+        project["bullets"] = list(COMPACT_NACHITRAM) if "nachitram" in project["title"].lower() else shorten(project["bullets"])
+    return short
+
+
 def _focus_terms(focus: str) -> set[str]:
     skip = {"about", "akash", "and", "for", "from", "how", "his", "the", "what", "with"}
     return {t for t in re.findall(r"[\w+#.-]+", focus.lower()) if len(t) > 2 and t not in skip}
@@ -227,13 +267,16 @@ def build_jake_pdf(text: str, focus: str = "", linkedin_url: str = "", github_ur
     data = parse_resume_text(text)
     if not data:
         return None
+    if not any("nachitram" in p["title"].lower() for p in data["projects"]):
+        data["projects"].append(dict(NACHITRAM, bullets=list(NACHITRAM["bullets"])))
     from pypdf import PdfReader
 
-    # One page while the type stays readable (about 9.4pt or more); otherwise two pages at Jake's own size.
-    for scale in (1.0, 0.98, 0.96, 0.94):
-        result = _render(data, focus, linkedin_url, github_url, scale)
-        if len(PdfReader(BytesIO(result)).pages) == 1:
-            return result
+    # Full text on one page while the type stays readable; then the shorter wording; then two pages.
+    for candidate in (data, _compact(data)):
+        for scale in (1.0, 0.98, 0.96, 0.94, 0.92):
+            result = _render(candidate, focus, linkedin_url, github_url, scale)
+            if len(PdfReader(BytesIO(result)).pages) == 1:
+                return result
     return _render(data, focus, linkedin_url, github_url, 1.08)
 
 
@@ -244,19 +287,17 @@ def _render(data: dict, focus: str, linkedin_url: str, github_url: str, scale: f
                 kw[key] = kw[key] * scale
         return ParagraphStyle(name, parent=parent, **kw)
 
-    if not any("nachitram" in p["title"].lower() for p in data["projects"]):
-        data["projects"].append(dict(NACHITRAM, bullets=list(NACHITRAM["bullets"])))
     terms = _focus_terms(focus)
     for job in data["experience"]:
         job["bullets"].sort(key=lambda b: _score(b, terms), reverse=True)
     data["experience"].sort(key=lambda j: _score(" ".join(j["bullets"]), terms), reverse=True) if terms else None
     data["projects"].sort(key=lambda p: _score(p["title"] + p["tech"] + " ".join(p["bullets"]), terms), reverse=True)
 
-    body = PS("body", fontName=REGULAR, fontSize=10, leading=11.2, textColor=colors.black)
+    body = PS("body", fontName=REGULAR, fontSize=10, leading=10.9, textColor=colors.black)
     bullet = PS("bullet", parent=body, leftIndent=0.3 * inch, firstLineIndent=-0.12 * inch, spaceAfter=1)
     name_style = PS("name", parent=body, fontName=BOLD, fontSize=24, leading=26, alignment=TA_CENTER)
     contact = PS("contact", parent=body, alignment=TA_CENTER, fontSize=10, leading=12)
-    head = PS("head", parent=body, fontSize=12, leading=14, spaceBefore=4)
+    head = PS("head", parent=body, fontSize=12, leading=14, spaceBefore=3)
     left_bold = PS("lb", parent=body, fontName=BOLD, fontSize=11, leading=13)
     left_small = PS("ls", parent=body, fontName=ITALIC, fontSize=9.5, leading=11)
     right = PS("r", parent=body, alignment=TA_RIGHT, fontSize=11, leading=13)
@@ -279,7 +320,7 @@ def _render(data: dict, focus: str, linkedin_url: str, github_url: str, scale: f
     def section(name: str) -> list:
         return [
             Paragraph(_small_caps(TITLES[name], 12 * scale), head),
-            HRFlowable(width="100%", thickness=0.5, color=colors.black, spaceBefore=1, spaceAfter=4),
+            HRFlowable(width="100%", thickness=0.5, color=colors.black, spaceBefore=0, spaceAfter=2.5),
         ]
 
     def bullets(items: list[str]) -> list:
