@@ -33,7 +33,6 @@ import useDialogFocus from "./hooks/useDialogFocus.js";
 import JourneyModal from "./components/JourneyModal.jsx";
 import PlayOrb from "./components/PlayOrb.jsx";
 import EasterEgg from "./components/EasterEgg.jsx";
-import MicOrb from "./components/MicOrb.jsx";
 import StatusPill from "./components/StatusPill.jsx";
 import { flushSync } from "react-dom";
 import { konamiStep } from "./play.js";
@@ -1585,7 +1584,7 @@ export default function App() {
 
           {(chikkiState === "listening" || (liveTranscript && chikkiState !== "speaking" && chikkiState !== "thinking")) && (
             <div className="mt-3">
-              <MicOrb hearing={Boolean(liveTranscript)} />
+              <ListeningWave hearing={Boolean(liveTranscript)} />
             </div>
           )}
 
