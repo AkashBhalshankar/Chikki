@@ -80,8 +80,8 @@ class CircuitBreaker:
         self._open_until: dict[str, float] = {}
         self._lock = threading.Lock()
 
-    def record_failure(self, provider: str, kind: str) -> None:
-        cooldown = self.COOLDOWNS.get(kind, self.DEFAULT_COOLDOWN)
+    def record_failure(self, provider: str, kind: str, cooldown: float | None = None) -> None:
+        cooldown = cooldown if cooldown is not None else self.COOLDOWNS.get(kind, self.DEFAULT_COOLDOWN)
         with self._lock:
             self._open_until[provider] = self._clock() + cooldown
         logger.warning("Provider %s failed (%s); skipping it for %.0fs", provider, kind, cooldown)
@@ -129,6 +129,24 @@ def _classify_error(e: Exception) -> str:
     if "connection" in text or "network" in text:
         return "network"
     return "unknown"
+
+
+_RETRY_AFTER = re.compile(r"(?:try again|retry) in\s+(?:(\d+)h)?\s*(?:(\d+)m)?\s*(?:(\d+(?:\.\d+)?)s)?", re.IGNORECASE)
+MAX_RATE_LIMIT_COOLDOWN = 600.0
+
+
+def rate_limit_cooldown(error: Exception) -> float:
+    """How long to leave a rate-limited provider alone, from the provider's own 'try again in ...' hint.
+
+    A daily quota says "try again in 23h", so retrying every 30 seconds only makes every visitor wait through
+    a failed call first. The wait is capped (a provider may recover earlier) and never below the default.
+    """
+    match = _RETRY_AFTER.search(str(error))
+    if not match or not any(match.groups()):
+        return CircuitBreaker.DEFAULT_COOLDOWN
+    hours, minutes, seconds = (float(part or 0) for part in match.groups())
+    wait = hours * 3600 + minutes * 60 + seconds
+    return max(CircuitBreaker.DEFAULT_COOLDOWN, min(wait + 5, MAX_RATE_LIMIT_COOLDOWN))
 
 
 DETAIL_PATTERN = re.compile(
@@ -296,10 +314,12 @@ def _stream_provider(
             return
         except GeneratorExit:
             return
-        except Exception:
+        except Exception as e:
             # Once tokens have reached the user, retrying would duplicate them.
             if yielded_any:
                 raise
+            if _classify_error(e) in {"rate_limit", "auth", "model_retired"}:
+                raise  # the plain call would fail the same way; trying it again only doubles the wait
             logger.warning("Traced call to %s failed; retrying without Langfuse", provider_name, exc_info=True)
 
     # Direct streaming fallback without Langfuse
@@ -427,7 +447,8 @@ def stream_chikki(
             return
         except Exception as e:
             last_error = e
-            circuit_breaker.record_failure(provider, _classify_error(e))
+            kind = _classify_error(e)
+            circuit_breaker.record_failure(provider, kind, rate_limit_cooldown(e) if kind == "rate_limit" else None)
             continue
 
     kind = _classify_error(last_error) if last_error else "unknown"
