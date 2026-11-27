@@ -110,6 +110,7 @@ await step("Contact Akash opens from the start screen and a message can be sent"
 await step("text chat: welcome panel, projects, settings, accent colour and shortcuts", async () => {
   const page = await openPage();
   await clickButton(page, "Use text chat instead");
+  await sleep(700); // the screens glide into each other for a moment, during which clicks are not delivered
   await page.waitForSelector("input[type=text]");
   check((await text(page)).includes("hi, i'm chikki"), "the welcome panel is missing");
   await clickButton(page, "More");
@@ -137,6 +138,7 @@ await step("text chat: welcome panel, projects, settings, accent colour and shor
 await step("interview mode starts and shows its progress bar", async () => {
   const page = await openPage();
   await clickButton(page, "Use text chat instead");
+  await sleep(700); // the screens glide into each other for a moment, during which clicks are not delivered
   await page.waitForSelector("input[type=text]");
   await clickButton(page, "More");
   await clickButton(page, "Interview mode");
@@ -166,6 +168,7 @@ await step("voice screen starts and its menus open (Settings, Projects, Intervie
 await step("phone layout puts the main actions in a bottom bar", async () => {
   const page = await openPage({ width: 390, height: 844, mobile: true });
   await clickButton(page, "Use text chat instead");
+  await sleep(700); // the screens glide into each other for a moment, during which clicks are not delivered
   await page.waitForSelector("input[type=text]");
   const bar = await page.evaluate(() =>
     [...document.querySelectorAll("div")].some((d) => d.className.includes("sm:hidden") && getComputedStyle(d).display !== "none" && d.innerText.includes("Resume PDF")),

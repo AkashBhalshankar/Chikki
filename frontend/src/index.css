@@ -901,7 +901,9 @@ html[data-theme="light"] .journey-item { border-color: #dde1ee; background: #fff
 
 /* Chikki glides between screens where the browser supports view transitions (only the main Chikki has the name) */
 .fit-botbox .chikki-svg, .chikki-stage.fit-stage .chikki-svg, .chat-chikki .chikki-svg { view-transition-name: chikki; }
-::view-transition-group(chikki) { animation-duration: 0.5s; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+/* clicks must never be swallowed while the glide plays */
+::view-transition { pointer-events: none; }
+::view-transition-group(chikki) { animation-duration: 0.3s; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
 /* he steps back a little when a window is open */
 body:has([role="dialog"][aria-modal="true"]) .chikki-svg { scale: 0.9; opacity: 0.7; }
 
