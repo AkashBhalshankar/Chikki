@@ -478,21 +478,6 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
               animate={{ scale: [1.58, 0.58], opacity: [0, 0.9] }} style={{ transformOrigin: "90px 100px" }} transition={{ duration: 1.3, repeat: Infinity, delay: 0.45 }} />
           </Pop>
 
-          {/* three small lights on the chest: they chase each other while he thinks and pulse while he talks */}
-          {[82, 90, 98].map((x, i) => (
-            <motion.circle
-              key={x}
-              cx={x}
-              cy="84"
-              r="1.9"
-              fill={cfg.stroke}
-              animate={
-                safeState === "thinking" ? { opacity: [0.15, 1, 0.15] } : isSpeaking ? { opacity: [0.35, 1, 0.35] } : { opacity: 0.4 }
-              }
-              transition={{ duration: safeState === "thinking" ? 0.9 : 0.7, repeat: Infinity, delay: i * 0.2 }}
-            />
-          ))}
-
           <motion.circle cx="90" cy="100" r="10" strokeWidth="1.5" initial={false}
             animate={{ fill: cfg.coreFill, stroke: cfg.stroke, opacity: cfg.dim ? [0.3, 0.6, 0.3] : cfg.ringsIn ? [0.5, 1, 0.5] : 1 }}
             transition={{ fill: COLOR, stroke: COLOR, opacity: { duration: cfg.dim ? 3 : 1, repeat: cfg.dim || cfg.ringsIn ? Infinity : 0 } }} />
