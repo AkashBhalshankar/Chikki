@@ -15,6 +15,8 @@ import Reveal from "./Reveal.jsx";
 import { timeMarker } from "../chatTime.js";
 import usePullToRefresh from "../hooks/usePullToRefresh.js";
 import { buzz } from "../haptics.js";
+import SkillMap from "./SkillMap.jsx";
+import { wantsSkillMap } from "../play.js";
 import { ProfileLine } from "./ProfileBadge.jsx";
 
 const QUICK_PROMPTS = {
@@ -75,12 +77,17 @@ export default function ChatPanel({
   language = "en-IN",
   onLanguageChange,
   onOpenRecap,
+  playing = false,
+  onTogglePlay,
+  onOpenJourney,
   chikkiState = "idle",
   chikkiExpression = "confident",
 }) {
   const [value, setValue] = useState("");
   const scrollRef = useRef(null);
   const [scrolled, setScrolled] = useState(false);
+  const [burst, setBurst] = useState(null);
+  const lastScroll = useRef({ top: 0, at: 0, reacted: 0 });
   const isTouch = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
   const { pull, ready: pullReady } = usePullToRefresh(scrollRef, {
     enabled: isTouch && !thinking,
@@ -232,6 +239,8 @@ export default function ChatPanel({
                 onOpenSettings && { key: "settings", label: "⚙️ Settings", onClick: onOpenSettings },
                 onOpenShortcuts && { key: "shortcuts", label: "⌨️ Keyboard shortcuts", onClick: onOpenShortcuts },
                 onOpenInterview && { key: "interview", label: "🎤 Interview mode", onClick: onOpenInterview },
+                onOpenJourney && { key: "journey", label: "🧭 Work journey", onClick: onOpenJourney },
+                onTogglePlay && { key: "play", label: playing ? "✨ Put the sparkle away" : "✨ Play with Chikki", onClick: onTogglePlay },
                 onOpenRecap && messages.length > 0 && { key: "recap", label: "📝 Summarise our chat", onClick: onOpenRecap },
                 onOpenHow && { key: "how", label: "🧠 How Chikki works", onClick: onOpenHow },
                 onShare && { key: "share", label: linkCopied ? "✓ Link copied" : "🔗 Copy link", onClick: handleShareClick, keepOpen: true },
@@ -326,7 +335,19 @@ export default function ChatPanel({
         {/* Chat Body */}
         <div
           ref={scrollRef}
-          onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 48)}
+          onScroll={(event) => {
+            const top = event.currentTarget.scrollTop;
+            setScrolled(top > 48);
+            // a very fast scroll makes Chikki dizzy for a moment (at most every few seconds)
+            const now = performance.now();
+            const last = lastScroll.current;
+            const speed = Math.abs(top - last.top) / Math.max(1, now - last.at);
+            lastScroll.current = { top, at: now, reacted: last.reacted };
+            if (speed > 3 && now - last.reacted > 4000) {
+              lastScroll.current.reacted = now;
+              window.dispatchEvent(new CustomEvent("chikki:react", { detail: { name: "confused", ms: 1400 } }));
+            }
+          }}
           className="chat-scroll-container surface-line chikki-scroll mt-3 w-full overflow-y-auto rounded-lg p-3 sm:p-4 space-y-4"
           role="log"
           aria-live="polite"
@@ -420,6 +441,27 @@ export default function ChatPanel({
                       ➕ More detail
                     </button>
                   )}
+                  {i === latestAssistantIndex && (
+                    <span className="relative inline-flex items-center gap-1">
+                      {[["❤️", "love", "Love it"], ["😮", "surprised", "Wow"], ["😂", "laughing", "Funny"]].map(([emoji, name, label]) => (
+                        <button
+                          key={name}
+                          type="button"
+                          className="msg-action"
+                          aria-label={label}
+                          title={label}
+                          onClick={() => {
+                            buzz(8);
+                            window.dispatchEvent(new CustomEvent("chikki:react", { detail: { name, ms: 2200 } }));
+                            setBurst({ emoji, id: Date.now() });
+                          }}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                      {burst && <span key={burst.id} className="emoji-float" aria-hidden="true" onAnimationEnd={() => setBurst(null)}>{burst.emoji}</span>}
+                    </span>
+                  )}
                   {i === latestAssistantIndex && onFeedback && (
                     <>
                       <button
@@ -466,6 +508,10 @@ export default function ChatPanel({
                     <ProjectCard key={project.id} project={project} compact />
                   ))}
                 </div>
+              )}
+
+              {m.role === "assistant" && i === latestAssistantIndex && m.final && !m.isError && !thinking && wantsSkillMap(messages[i - 1]?.content) && (
+                <SkillMap onAsk={onSend} disabled={thinking} />
               )}
 
               {m.role === "assistant" && m.final && !m.isError && (m.verified || m.sources?.length > 0) && (
@@ -592,7 +638,7 @@ export default function ChatPanel({
         })()}
 
         {/* Quick Suggestion Chips */}
-        <div className={`mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2 ${messages.length === 0 ? "hidden" : ""}`}>
+        <div className={`suggest-row mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2 ${messages.length === 0 ? "hidden" : ""}`}>
           {[...suggestions, ...currentPrompts].slice(0, 4).map((prompt, index) => (
             <button
               key={prompt}

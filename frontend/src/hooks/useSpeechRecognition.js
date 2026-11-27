@@ -3,6 +3,7 @@ import { correctTranscript, isLowConfidence } from "../speechText.js";
 import { transcribeAudio } from "../services/api.js";
 import { logVoice } from "../voiceLog.js";
 import { PAUSES, readSettings, settleDelay } from "../settings.js";
+import { inputLevel } from "../voiceLevel.js";
 
 const SERVER_STT = import.meta.env.VITE_SERVER_STT !== "false";
 const MIN_AUDIO_BYTES = 1500;
@@ -382,6 +383,32 @@ export function useSpeechRecognition({
       stopRecognition();
     };
   }, [mode, lang, startListening, stopRecognition, startRecorder, stopRecorder, releaseMic]);
+
+  // The live volume the listening orb shows. It reads the same level meter, a frame at a time.
+  useEffect(() => {
+    if (mode !== "command") return undefined;
+    let frame = 0;
+    let smoothed = 0;
+    const buffer = new Uint8Array(256);
+    const tick = () => {
+      const analyser = recorderRef.current.analyser;
+      if (!analyser || isSpeakingRef.current) {
+        inputLevel.set(-1);
+      } else {
+        analyser.getByteTimeDomainData(buffer);
+        let sum = 0;
+        for (let i = 0; i < buffer.length; i += 1) sum += ((buffer[i] - 128) / 128) ** 2;
+        smoothed += (Math.min(1, Math.sqrt(sum / buffer.length) * 6) - smoothed) * 0.4;
+        inputLevel.set(smoothed);
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => {
+      cancelAnimationFrame(frame);
+      inputLevel.set(-1);
+    };
+  }, [mode]);
 
   // Safety net: on some devices a second microphone stream starves the browser recogniser, so the
   // page sits on "listening" while the visitor talks. If the level meter hears speech for a few

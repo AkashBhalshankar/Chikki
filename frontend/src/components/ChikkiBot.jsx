@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useTransform } from "framer-motion";
 import { mouthLevel } from "../voiceLevel.js";
 import { seasonFor } from "../seasonal.js";
 import { readSettings } from "../settings.js";
+import { onGaze } from "../gaze.js";
+import { pokeReaction } from "../play.js";
+import { buzz } from "../haptics.js";
 
 // Central style config per state - drives colors, eye shape, mouth path, and pose.
 const STATES = {
@@ -126,6 +129,59 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
     return () => window.removeEventListener("chikki:settings", refresh);
   }, []);
   const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
+  const svgRef = useRef(null);
+  const [override, setOverride] = useState(null);
+  const [longHover, setLongHover] = useState(false);
+  const overrideTimer = useRef(null);
+  const hoverTimer = useRef(null);
+  const pokes = useRef([]);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  // a short-lived face from outside: a poke, an emoji reaction, a fast scroll, the theme switch
+  const flash = (name, ms) => {
+    if (!STATES[name]) return;
+    window.clearTimeout(overrideTimer.current);
+    setOverride(name);
+    overrideTimer.current = window.setTimeout(() => setOverride(null), ms);
+  };
+  const flashRef = useRef(flash);
+  flashRef.current = flash;
+  useEffect(() => {
+    const react = (event) => {
+      if (["speaking", "thinking"].includes(stateRef.current)) return;
+      flashRef.current(event.detail?.name, event.detail?.ms || 1800);
+    };
+    window.addEventListener("chikki:react", react);
+    return () => {
+      window.removeEventListener("chikki:react", react);
+      window.clearTimeout(overrideTimer.current);
+      window.clearTimeout(hoverTimer.current);
+    };
+  }, []);
+  // eyes follow the draggable sparkle when it is out
+  useEffect(
+    () =>
+      onGaze((point) => {
+        const box = svgRef.current?.getBoundingClientRect();
+        if (!point || !box || !box.width) {
+          setEyeOffset({ x: 0, y: 0 });
+          return;
+        }
+        const dx = (point.x - (box.left + box.width / 2)) / Math.max(box.width, 120);
+        const dy = (point.y - (box.top + box.height * 0.3)) / Math.max(box.height, 120);
+        setEyeOffset({ x: Math.max(-1, Math.min(1, dx)) * 3, y: Math.max(-1, Math.min(1, dy)) * 2 });
+      }),
+    [],
+  );
+  const poke = (part) => {
+    if (["speaking", "thinking"].includes(stateRef.current)) return;
+    const now = Date.now();
+    pokes.current = [...pokes.current.filter((at) => now - at < 3000), now];
+    const reaction = pokeReaction(part, pokes.current.length);
+    if (pokes.current.length >= 5) pokes.current = [];
+    buzz(8);
+    flashRef.current(reaction.name, reaction.ms);
+  };
   const [liveMouth, setLiveMouth] = useState(mouthLevel.get() >= 0);
   useEffect(() => mouthLevel.on("change", (v) => setLiveMouth((was) => (v >= 0) !== was ? v >= 0 : was)), []);
   // the glow behind Chikki swells with the voice while speaking
@@ -142,11 +198,11 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
     ...(isSpeaking ? { ringsOutHead: true, talking: true } : {}),
     ...(isHovered
       ? {
-          ...STATES.laughing,
-          wave: true,
+          ...(longHover ? STATES.wink : { ...STATES.laughing, wave: true }),
           ...(isSpeaking ? { ringsOutHead: true, talking: true } : {}),
         }
       : {}),
+    ...(override && !isSpeaking ? STATES[override] : {}),
   };
   const fluid = Boolean(className);
 
@@ -162,14 +218,21 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
 
   return (
     <motion.svg
+      ref={svgRef}
       width={fluid ? undefined : size || 180}
       height={fluid ? undefined : (size || 180) * (faceOnly ? 0.68 : 1.17)}
       viewBox={faceOnly ? "38 6 104 71" : "0 0 180 210"}
       className={["chikki-svg", className].filter(Boolean).join(" ")}
       onClick={onClick}
-      onHoverStart={() => setIsHovered(true)}
+      onHoverStart={() => {
+        setIsHovered(true);
+        window.clearTimeout(hoverTimer.current);
+        hoverTimer.current = window.setTimeout(() => setLongHover(true), 2600);
+      }}
       onHoverEnd={() => {
         setIsHovered(false);
+        setLongHover(false);
+        window.clearTimeout(hoverTimer.current);
         setEyeOffset({ x: 0, y: 0 });
       }}
       onPointerMove={(event) => {
@@ -405,6 +468,14 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
           <rect x="73" y="130" width="14" height="30" rx="6" fill="#2A2A2A" />
           <rect x="93" y="130" width="14" height="30" rx="6" fill="#2A2A2A" />
         </>
+      )}
+      {!faceOnly && (
+        <g fill="transparent" style={{ cursor: "pointer" }} aria-hidden="true">
+          <rect x="65" y="30" width="50" height="42" rx="12" onClick={() => poke("head")} />
+          <rect x="67" y="75" width="46" height="55" rx="10" onClick={() => poke("belly")} />
+          <circle cx="53" cy="80" r="14" onClick={() => poke("hand")} />
+          <circle cx="127" cy="80" r="14" onClick={() => poke("hand")} />
+        </g>
       )}
     </motion.svg>
   );

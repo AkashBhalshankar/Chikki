@@ -30,6 +30,11 @@ import { playChime } from "./sounds.js";
 import { buzz } from "./haptics.js";
 import ConnectionBanner from "./components/ConnectionBanner.jsx";
 import useDialogFocus from "./hooks/useDialogFocus.js";
+import JourneyModal from "./components/JourneyModal.jsx";
+import PlayOrb from "./components/PlayOrb.jsx";
+import EasterEgg from "./components/EasterEgg.jsx";
+import MicOrb from "./components/MicOrb.jsx";
+import { konamiStep } from "./play.js";
 import { glowFor, reactionForTranscript } from "./expressions.js";
 import RecapModal from "./components/RecapModal.jsx";
 import InterviewModal from "./components/InterviewModal.jsx";
@@ -350,7 +355,10 @@ export default function App() {
       }
     } catch (_) {}
   });
-  const toggleTheme = useCallback(() => setTheme((current) => applyTheme(nextTheme(current))), []);
+  const toggleTheme = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("chikki:react", { detail: { name: "surprised", ms: 1100 } }));
+    setTheme((current) => applyTheme(nextTheme(current)));
+  }, []);
 
   // Chikki waves hello when the page first opens, then settles.
   useEffect(() => {
@@ -520,6 +528,38 @@ export default function App() {
     return () => {
       window.removeEventListener("offline", goOffline);
       window.removeEventListener("online", goOnline);
+    };
+  }, []);
+  const [showJourney, setShowJourney] = useState(false);
+  const openJourney = useCallback(() => setShowJourney(true), []);
+  const closeJourney = useCallback(() => setShowJourney(false), []);
+  const [showOrb, setShowOrb] = useState(false);
+  const toggleOrb = useCallback(() => setShowOrb((value) => !value), []);
+  const [eggToken, setEggToken] = useState(0);
+  // the hidden surprise: the Konami code, or three quick clicks on the CHIKKI title
+  useEffect(() => {
+    let progress = 0;
+    let clicks = [];
+    const onKey = (event) => {
+      if (event.target instanceof HTMLElement && ["INPUT", "TEXTAREA"].includes(event.target.tagName)) return;
+      const step = konamiStep(progress, event.key);
+      progress = step.progress;
+      if (step.done) setEggToken(Date.now());
+    };
+    const onClick = (event) => {
+      if (!(event.target instanceof Element) || !event.target.closest("h1")) return;
+      const now = Date.now();
+      clicks = [...clicks.filter((at) => now - at < 700), now];
+      if (clicks.length >= 3) {
+        clicks = [];
+        setEggToken(now);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("click", onClick);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("click", onClick);
     };
   }, []);
   const [showRecap, setShowRecap] = useState(false);
@@ -1381,6 +1421,9 @@ export default function App() {
           onOpenSettings={openSettings}
           onOpenShortcuts={openShortcuts}
           onOpenInterview={openInterview}
+          onOpenJourney={openJourney}
+          onTogglePlay={toggleOrb}
+          playing={showOrb}
           interview={interview}
           onInterviewNext={interviewNext}
           onInterviewEnd={interviewEnd}
@@ -1413,6 +1456,9 @@ export default function App() {
         <ShortcutsModal isOpen={showShortcuts} onClose={closeShortcuts} />
         <InterviewModal isOpen={showInterview} onClose={closeInterview} onStart={startInterview} />
         <RecapModal isOpen={showRecap} onClose={closeRecap} messages={messages} />
+        <JourneyModal isOpen={showJourney} onClose={closeJourney} onAsk={handleChatSend} />
+        {showOrb && <PlayOrb onClose={() => setShowOrb(false)} />}
+        <EasterEgg token={eggToken} />
       </>
     );
   }
@@ -1525,7 +1571,7 @@ export default function App() {
 
           {(chikkiState === "listening" || (liveTranscript && chikkiState !== "speaking" && chikkiState !== "thinking")) && (
             <div className="mt-3">
-              <ListeningWave hearing={Boolean(liveTranscript)} />
+              <MicOrb hearing={Boolean(liveTranscript)} />
             </div>
           )}
 
@@ -1584,7 +1630,7 @@ export default function App() {
               <span className="text-[10px] uppercase tracking-[0.16em] text-gray-500">Try asking</span>
               <span className="text-[10px] text-gray-600">or say it aloud</span>
             </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="suggest-row grid grid-cols-1 gap-2 sm:grid-cols-2">
               {[...followUpSuggestions, ...currentPrompts].slice(0, 4).map((prompt, index) => (
                 <button
                   key={prompt}
@@ -1694,6 +1740,8 @@ export default function App() {
                 { key: "settings", label: "⚙️ Settings", onClick: openSettings },
                 { key: "shortcuts", label: "⌨️ Keyboard shortcuts", onClick: openShortcuts },
                 { key: "interview", label: "🎤 Interview mode", onClick: openInterview },
+                { key: "journey", label: "🧭 Work journey", onClick: openJourney },
+                { key: "play", label: showOrb ? "✨ Put the sparkle away" : "✨ Play with Chikki", onClick: toggleOrb },
                 messages.some((m) => m.role === "user") && { key: "recap", label: "📝 Summarise our chat", onClick: openRecap },
                 { key: "how", label: "🧠 How Chikki works", onClick: openHow },
                 canCall && CONTACT_ACTIONS.phone && { key: "call", label: "📞 Call Akash", href: telHref(CONTACT_ACTIONS.phone) },
@@ -1726,6 +1774,9 @@ export default function App() {
       <SettingsModal isOpen={showSettings} onClose={closeSettings} onChange={setPrefs} />
       <InterviewModal isOpen={showInterview} onClose={closeInterview} onStart={startInterview} />
       <RecapModal isOpen={showRecap} onClose={closeRecap} messages={messages} />
+      <JourneyModal isOpen={showJourney} onClose={closeJourney} onAsk={handleResult} />
+      {showOrb && <PlayOrb onClose={() => setShowOrb(false)} />}
+      <EasterEgg token={eggToken} />
     </div>
   );
 }

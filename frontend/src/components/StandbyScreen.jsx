@@ -2,6 +2,7 @@ import ChikkiBot from "./ChikkiBot.jsx";
 import AppFooter from "./AppFooter.jsx";
 import { ProfileCard } from "./ProfileBadge.jsx";
 import GithubStrip from "./GithubStrip.jsx";
+import WakeGame from "./WakeGame.jsx";
 import { PROJECTS } from "../projects.js";
 
 export default function StandbyScreen({
@@ -65,6 +66,8 @@ export default function StandbyScreen({
               </button>
             </div>
           )}
+
+          {serverState === "waking" && <WakeGame />}
 
           {serverState === "waking" && (
             <p className="mt-3 max-w-sm text-xs text-amber-300/90">

@@ -70,3 +70,39 @@ test("time markers show for a new day or a long pause, not between quick message
   assert.match(formatMarker(noon - 24 * 3600000, noon, "en-US"), /^Yesterday /);
   assert.equal(timeMarker(noon, undefined, noon), null);
 });
+
+import { konamiStep, wantsSkillMap, skillQuestion, journey, pokeReaction, SKILL_GROUPS } from "./play.js";
+
+test("the secret code needs the exact keys in order and restarts on a slip", () => {
+  const keys = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
+  let state = { progress: 0, done: false };
+  keys.forEach((key, index) => {
+    state = konamiStep(state.progress, key);
+    assert.equal(state.done, index === keys.length - 1);
+  });
+  assert.equal(konamiStep(5, "x").progress, 0);
+  assert.equal(konamiStep(3, "ArrowUp").progress, 1);
+  assert.equal(konamiStep(8, "B").done, false, "a was expected, not b");
+});
+
+test("the skill map shows for skills questions only, and tapping a skill asks where it was used", () => {
+  assert.equal(wantsSkillMap("What are his main skills?"), true);
+  assert.equal(wantsSkillMap("Explain Akash's technical skills simply."), true);
+  assert.equal(wantsSkillMap("How can I contact him?"), false);
+  assert.equal(skillQuestion("FastAPI"), "Where did Akash use FastAPI?");
+  assert.ok(SKILL_GROUPS.every((group) => group.skills.length > 0));
+});
+
+test("the journey puts live products first and work projects after, without inventing dates", () => {
+  const groups = journey();
+  assert.equal(groups[0].title, "Live products you can try");
+  assert.ok(groups[0].items.every((item) => item.url));
+  assert.ok(groups.slice(1).every((group) => group.items.every((item) => !item.url)));
+});
+
+test("pokes react by body part and a flurry makes Chikki dizzy", () => {
+  assert.equal(pokeReaction("head", 1).name, "joyful");
+  assert.equal(pokeReaction("belly", 1).name, "laughing");
+  assert.equal(pokeReaction("hand", 1).name, "greet");
+  assert.equal(pokeReaction("head", 5).name, "confused");
+});

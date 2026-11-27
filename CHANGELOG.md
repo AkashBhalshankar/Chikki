@@ -1,5 +1,16 @@
 # Changelog
 
+## Playful and interactive
+
+- Poke Chikki: head, belly and hands react differently; five quick pokes make him dizzy; a long hover earns a wink.
+- A draggable sparkle (More > Play with Chikki) that his eyes follow; arrow keys move it too.
+- Catch-the-sparkles game while the server wakes up.
+- Listening orb that grows with your voice volume.
+- Skill map under skills answers; Work journey window; follow-up chips swipe as one row on phones.
+- Emoji reactions (heart, wow, laugh) make Chikki respond; fast scrolling and the theme switch also make him react.
+- Peek inside ShareInSync from its project card.
+- Hidden surprise: Konami code or triple-click the title.
+
 ## Accessibility, abuse protection, friendlier errors
 
 - Daily ceiling per visitor (RATE_LIMIT_CHAT_PER_DAY, default 150) on top of the per-minute limit, with a kind message and the Contact option.

@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { PROJECTS } from "../projects.js";
 
 export function ProjectCard({ project, compact = false }) {
+  const [peeking, setPeeking] = useState(false);
   return (
     <div className="project-card rounded-xl border border-gray-800 bg-zinc-900/40 p-3.5">
       {project.image && (
@@ -30,10 +31,27 @@ export function ProjectCard({ project, compact = false }) {
           ))}
         </ul>
       )}
+      {project.peek && peeking && (
+        <iframe
+          src={project.url}
+          title={`Live preview of ${project.name}`}
+          loading="lazy"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          referrerPolicy="no-referrer"
+          className="mt-2.5 h-64 w-full rounded-lg border border-gray-800 bg-black"
+        />
+      )}
       {project.url && (
-        <a href={project.url} target="_blank" rel="noopener noreferrer" className="action-button mt-2.5 inline-flex !min-h-0 px-3 py-1 text-[11px]">
-          {project.urlLabel || "Open"} ↗
-        </a>
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          {project.peek && (
+            <button type="button" onClick={() => setPeeking((value) => !value)} className="action-button !min-h-0 px-3 py-1 text-[11px]" aria-expanded={peeking}>
+              {peeking ? "Hide preview" : "👀 Peek inside"}
+            </button>
+          )}
+          <a href={project.url} target="_blank" rel="noopener noreferrer" className="action-button !min-h-0 inline-flex px-3 py-1 text-[11px]">
+            {project.urlLabel || "Open"} ↗
+          </a>
+        </div>
       )}
     </div>
   );

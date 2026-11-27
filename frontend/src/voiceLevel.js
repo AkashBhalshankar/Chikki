@@ -8,6 +8,9 @@ import { motionValue } from "framer-motion";
 // -1 means "no live measurement"; 0 to 1 is the current loudness.
 export const mouthLevel = motionValue(-1);
 
+// How loud the visitor is right now (0 to 1), or -1 when there is no live measurement.
+export const inputLevel = motionValue(-1);
+
 let context = null;
 
 function getContext() {

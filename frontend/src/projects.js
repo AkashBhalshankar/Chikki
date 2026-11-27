@@ -24,6 +24,7 @@ export const PROJECTS = [
     highlights: ["Zero server storage", "SHA-256 verification of transfers"],
     url: "https://shareinsync.akashbhalshankar.com",
     image: "/projects/shareinsync.jpg",
+    peek: true,
     urlLabel: "Open the live app",
     match: ["shareinsync"],
   },
