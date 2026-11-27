@@ -334,7 +334,7 @@ export default function ChatPanel({
             m.role === "assistant" && !m.isError && !m.content?.trim() ? null : (
             <div
               key={i}
-              className={`group flex flex-col ${
+              className={`msg-enter group flex flex-col ${
                 m.role === "user" ? "items-end" : "items-start"
               }`}
             >

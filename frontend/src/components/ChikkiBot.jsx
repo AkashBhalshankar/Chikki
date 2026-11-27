@@ -85,6 +85,9 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
   const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
   const [liveMouth, setLiveMouth] = useState(mouthLevel.get() >= 0);
   useEffect(() => mouthLevel.on("change", (v) => setLiveMouth((was) => (v >= 0) !== was ? v >= 0 : was)), []);
+  // the glow behind Chikki swells with the voice while speaking
+  const auraScale = useTransform(mouthLevel, (v) => 1 + Math.max(0, v) * 0.2);
+  const auraOpacity = useTransform(mouthLevel, (v) => (v < 0 ? 1 : 0.65 + v * 0.35));
   const talkPath = useTransform(mouthLevel, (v) => `M 80 59 Q 90 ${60 + Math.max(0, v) * 15} 100 59 Z`);
 
   const safeState = typeof state === "string" && STATES[state] ? state : "idle";
@@ -119,7 +122,7 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
       width={fluid ? undefined : size || 180}
       height={fluid ? undefined : (size || 180) * (faceOnly ? 0.68 : 1.17)}
       viewBox={faceOnly ? "38 6 104 71" : "0 0 180 210"}
-      className={className}
+      className={["chikki-svg", className].filter(Boolean).join(" ")}
       onClick={onClick}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => {
@@ -139,6 +142,31 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
       }}
       transition={{ duration: cfg.jump ? 0.5 : 2.2, repeat: Infinity, ease: "easeInOut" }}
     >
+      <defs>
+        <linearGradient id="chikkiHead" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" className="bot-g1" />
+          <stop offset="1" className="bot-g2" />
+        </linearGradient>
+        <linearGradient id="chikkiBody" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" className="bot-g3" />
+          <stop offset="1" className="bot-g4" />
+        </linearGradient>
+        <radialGradient id="chikkiAura">
+          <stop offset="0" style={{ stopColor: cfg.stroke, stopOpacity: 0.38, transition: "stop-color 0.4s" }} />
+          <stop offset="1" style={{ stopColor: cfg.stroke, stopOpacity: 0, transition: "stop-color 0.4s" }} />
+        </radialGradient>
+      </defs>
+
+      {!faceOnly && (
+        <motion.g
+          animate={{ opacity: isSpeaking ? 1 : [0.55, 0.95, 0.55] }}
+          transition={{ duration: safeState === "thinking" ? 1.2 : 3.4, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <motion.circle cx="90" cy="98" r="76" fill="url(#chikkiAura)"
+            style={{ scale: auraScale, opacity: auraOpacity, transformOrigin: "90px 98px" }} />
+        </motion.g>
+      )}
+
       {/* speaking rings from behind the head */}
       <Pop show={cfg.ringsOutHead} id="rings">
         <motion.circle cx="90" cy="50" r="16" fill="none" stroke="#7F77DD" strokeWidth="2"
@@ -148,9 +176,14 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
       </Pop>
 
       <motion.g animate={cfg.headDip ? { y: [0, 5, 0, 5, 0] } : { y: 0 }} transition={cfg.headDip ? { duration: 1.1, repeat: Infinity } : SPRING}>
-        <motion.rect x="65" y="30" width="50" height="42" rx="8" fill="#3A3A3A" strokeWidth="2"
+        <motion.rect x="65" y="30" width="50" height="42" rx="12" fill="url(#chikkiHead)" strokeWidth="2"
           initial={false} animate={{ rotate: cfg.headTilt || 0, stroke: cfg.stroke }}
           transition={{ rotate: SPRING, stroke: COLOR }} style={{ transformOrigin: "90px 50px" }} />
+        {/* a dark screen set into the head, with a soft gloss, so the face reads like a display */}
+        <motion.g initial={false} animate={{ rotate: cfg.headTilt || 0 }} transition={{ rotate: SPRING }} style={{ transformOrigin: "90px 50px" }}>
+          <rect x="69" y="34" width="42" height="34" rx="9" fill="#12121a" opacity="0.74" />
+          <path d="M 70 44 Q 70 35 80 35 L 98 35 Q 82 38 70 52 Z" fill="#fff" opacity="0.06" />
+        </motion.g>
 
         {festive === "santa" && (
           <g>
@@ -297,7 +330,8 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
 
       {!faceOnly && (
         <>
-          <rect x="67" y="75" width="46" height="55" rx="6" fill="#2A2A2A" stroke="#444" strokeWidth="1" />
+          <ellipse cx="90" cy="164" rx="30" ry="4.5" fill="#000" opacity="0.32" />
+          <rect x="67" y="75" width="46" height="55" rx="10" fill="url(#chikkiBody)" stroke="#444" strokeWidth="1" />
 
           <Pop show={cfg.ringsIn} id="ringsIn">
             <motion.circle cx="90" cy="100" r="24" fill="none" stroke="#7F77DD" strokeWidth="2"
@@ -317,18 +351,18 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
           <motion.g style={{ transformOrigin: "53px 80px" }} initial={false}
             animate={cfg.wave ? { rotate: [0, -25, 0, -25, 0], y: 0 } : cfg.jump || cfg.armsUp ? { y: -16, rotate: 0 } : cfg.stretch ? { y: [-8, 0], rotate: [-10, 0] } : { y: 0, rotate: 0 }}
             transition={cfg.wave ? { duration: 0.6, repeat: 3 } : cfg.stretch ? { duration: 0.9, repeat: Infinity } : SPRING}>
-            <rect x="45" y="85" width="16" height="26" rx="4" fill="#2A2A2A" />
+            <rect x="45" y="85" width="16" height="26" rx="7" fill="#2A2A2A" />
             <motion.circle cx="53" cy="80" r="14" initial={false} animate={{ fill: armColor }} transition={COLOR} />
           </motion.g>
 
           <motion.g style={{ transformOrigin: "127px 80px" }} initial={false}
             animate={cfg.jump || cfg.armUp || cfg.armsUp ? { y: -16 } : { y: 0 }} transition={SPRING}>
-            <rect x="119" y="85" width="16" height="26" rx="4" fill="#2A2A2A" />
+            <rect x="119" y="85" width="16" height="26" rx="7" fill="#2A2A2A" />
             <motion.circle cx="127" cy="80" r="14" initial={false} animate={{ fill: armColor }} transition={COLOR} />
           </motion.g>
 
-          <rect x="73" y="130" width="14" height="30" rx="4" fill="#2A2A2A" />
-          <rect x="93" y="130" width="14" height="30" rx="4" fill="#2A2A2A" />
+          <rect x="73" y="130" width="14" height="30" rx="6" fill="#2A2A2A" />
+          <rect x="93" y="130" width="14" height="30" rx="6" fill="#2A2A2A" />
         </>
       )}
     </motion.svg>

@@ -252,10 +252,36 @@ input {
    Accents & Grid
 ========================================= */
 
+/* Soft glass backdrop: faint dot grid over two glows in the accent colour */
 .dot-grid {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    radial-gradient(60rem 32rem at 12% -8%, rgba(var(--accent-rgb), 0.16), transparent 62%),
+    radial-gradient(48rem 30rem at 100% 108%, rgba(var(--accent-rgb), 0.11), transparent 60%);
+  background-size: 24px 24px, auto, auto;
+  background-attachment: fixed;
 }
+
+/* Chikki's body: gradients so he looks solid, with a soft glow in the accent colour */
+.chikki-svg { filter: drop-shadow(0 8px 16px rgba(var(--accent-rgb), 0.25)); overflow: visible; }
+.bot-g1 { stop-color: #50505f; }
+.bot-g2 { stop-color: #2c2c38; }
+.bot-g3 { stop-color: #3a3a46; }
+.bot-g4 { stop-color: #202029; }
+html[data-theme="light"] .bot-g1 { stop-color: #6b749c; }
+html[data-theme="light"] .bot-g2 { stop-color: #465073; }
+html[data-theme="light"] .bot-g3 { stop-color: #59628a; }
+html[data-theme="light"] .bot-g4 { stop-color: #394263; }
+
+/* messages ease in */
+.msg-enter { animation: msg-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+.chat-scroll-container .answer-card { box-shadow: 0 6px 22px -14px rgba(var(--accent-rgb), 0.55); backdrop-filter: blur(6px); }
+.chat-scroll-container .user-bubble { box-shadow: 0 6px 20px -12px rgba(var(--accent-rgb), 0.6); }
+@media (prefers-reduced-motion: reduce) { .msg-enter { animation: none; } }
 
 .badge-live {
   position: relative;
@@ -398,7 +424,10 @@ html[data-theme="light"] {
 html[data-theme="light"] body { color: #1f2937; }
 
 html[data-theme="light"] .dot-grid {
-  background-image: radial-gradient(rgba(15, 23, 42, 0.09) 1px, transparent 1px);
+  background-image:
+    radial-gradient(rgba(15, 23, 42, 0.07) 1px, transparent 1px),
+    radial-gradient(60rem 32rem at 12% -8%, rgba(var(--accent-rgb), 0.12), transparent 62%),
+    radial-gradient(48rem 30rem at 100% 108%, rgba(var(--accent-rgb), 0.08), transparent 60%);
 }
 
 html[data-theme="light"] .surface-line {
@@ -526,7 +555,10 @@ html[data-theme="light"] body {
 }
 
 html[data-theme="light"] .dot-grid {
-  background-image: radial-gradient(rgba(15, 23, 42, 0.07) 1px, transparent 1px);
+  background-image:
+    radial-gradient(rgba(15, 23, 42, 0.07) 1px, transparent 1px),
+    radial-gradient(60rem 32rem at 12% -8%, rgba(var(--accent-rgb), 0.12), transparent 62%),
+    radial-gradient(48rem 30rem at 100% 108%, rgba(var(--accent-rgb), 0.08), transparent 60%);
 }
 
 /* cards: white, crisp edge, soft shadow */
@@ -661,7 +693,6 @@ html[data-theme="light"] textarea:focus {
 }
 
 /* A lighter slate-indigo robot in the light theme (dark eyes' contrast is kept) */
-html[data-theme="light"] .chikki-stage svg rect[fill="#3A3A3A"] { fill: #4a5273; }
 html[data-theme="light"] .chikki-stage svg rect[fill="#2A2A2A"] { fill: #3f4766; }
 html[data-theme="light"] .chikki-stage svg rect[stroke="#444"] { stroke: #7c86ad; }
 
