@@ -48,7 +48,7 @@ export default function StandbyScreen({
 
           <div className="mt-3 flex items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-gray-600">
             {serverState === "waking" ? (
-              <span role="status"><span className="text-amber-400">●</span> Waking up Chikki…</span>
+              <span role="status" className="flex flex-col items-center gap-2"><span><span className="text-amber-400">●</span> Waking up Chikki…</span><span className="boot-bar" aria-hidden="true"><i /></span></span>
             ) : (
               <span><span className="text-chikki-green">●</span> Online</span>
             )}

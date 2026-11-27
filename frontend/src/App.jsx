@@ -27,6 +27,10 @@ import SettingsModal from "./components/SettingsModal.jsx";
 import ShortcutsModal from "./components/ShortcutsModal.jsx";
 import { readSettings } from "./settings.js";
 import { playChime } from "./sounds.js";
+import { glowFor, reactionForTranscript } from "./expressions.js";
+import RecapModal from "./components/RecapModal.jsx";
+import SavedModal from "./components/SavedModal.jsx";
+import { loadSaved, persistSaved, savedId, toggleSaved } from "./saved.js";
 import InterviewModal from "./components/InterviewModal.jsx";
 import { nextStep, roleById } from "./interview.js";
 import { expressionForTurn, expressionForUserInput } from "./expressions.js";
@@ -437,6 +441,47 @@ export default function App() {
   const [showProjects, setShowProjects] = useState(false);
   const openProjects = useCallback(() => setShowProjects(true), []);
   const closeProjects = useCallback(() => setShowProjects(false), []);
+  // Chikki looks around after a quiet spell and dozes off after a longer one; he wakes when you speak.
+  const [idleLook, setIdleLook] = useState(null);
+  useEffect(() => {
+    setIdleLook(null);
+    if (inputMode !== "voice" || chikkiState !== "listening" || liveTranscript) return undefined;
+    const timers = [
+      window.setTimeout(() => setIdleLook("curious"), 25000),
+      window.setTimeout(() => setIdleLook(null), 29000),
+      window.setTimeout(() => setIdleLook("sleepy"), 60000),
+    ];
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [chikkiState, liveTranscript, inputMode, messages.length]);
+  // the face shown on the voice screen: a nod or surprise while the visitor is still speaking
+  const faceState = idleLook || (chikkiState === "listening" && liveTranscript ? reactionForTranscript(liveTranscript) || chikkiState : chikkiState);
+  const glowState = inputMode === "chat" ? (chatThinking ? "thinking" : voiceExpression) : faceState;
+  useEffect(() => {
+    const rgb = glowFor(glowState);
+    if (rgb) document.documentElement.style.setProperty("--mood-rgb", rgb);
+    else document.documentElement.style.removeProperty("--mood-rgb");
+  }, [glowState]);
+  const [showRecap, setShowRecap] = useState(false);
+  const openRecap = useCallback(() => setShowRecap(true), []);
+  const closeRecap = useCallback(() => setShowRecap(false), []);
+  const [showSaved, setShowSaved] = useState(false);
+  const openSaved = useCallback(() => setShowSaved(true), []);
+  const closeSaved = useCallback(() => setShowSaved(false), []);
+  const [saved, setSaved] = useState(loadSaved);
+  const toggleSave = useCallback((question, answer) => {
+    setSaved((current) => {
+      const next = toggleSaved(current, { id: savedId(question, answer), question, answer });
+      persistSaved(next);
+      return next;
+    });
+  }, []);
+  const removeSaved = useCallback((item) => {
+    setSaved((current) => {
+      const next = current.filter((entry) => entry.id !== item.id);
+      persistSaved(next);
+      return next;
+    });
+  }, []);
   const [showInterview, setShowInterview] = useState(false);
   const openInterview = useCallback(() => setShowInterview(true), []);
   const closeInterview = useCallback(() => setShowInterview(false), []);
@@ -1294,6 +1339,10 @@ export default function App() {
           onOpenBooking={CONTACT_ACTIONS.booking ? () => window.open(CONTACT_ACTIONS.booking, "_blank", "noopener") : null}
           language={currentLang}
           onLanguageChange={setCurrentLang}
+          saved={saved}
+          onToggleSave={toggleSave}
+          onOpenSaved={openSaved}
+          onOpenRecap={openRecap}
           chikkiState={chatThinking ? "thinking" : messages.some((m) => m.role === "assistant" && m.final) ? voiceExpression : "idle"}
           chikkiExpression={voiceExpression}
         />
@@ -1314,6 +1363,8 @@ export default function App() {
         <SettingsModal isOpen={showSettings} onClose={closeSettings} onChange={setPrefs} />
         <ShortcutsModal isOpen={showShortcuts} onClose={closeShortcuts} />
         <InterviewModal isOpen={showInterview} onClose={closeInterview} onStart={startInterview} />
+        <RecapModal isOpen={showRecap} onClose={closeRecap} messages={messages} />
+        <SavedModal isOpen={showSaved} onClose={closeSaved} items={saved} onRemove={removeSaved} />
       </>
     );
   }
@@ -1382,7 +1433,7 @@ export default function App() {
               }
             }}
           >
-            <ChikkiBot state={chikkiState} expression={voiceExpression} className="fit-svg" />
+            <ChikkiBot state={faceState} expression={voiceExpression} className="fit-svg" />
           </div>
 
           {/* Subtitles & State Readout */}
@@ -1409,7 +1460,7 @@ export default function App() {
                 </p>
               </div>
             ) : (
-              <p className="min-h-[1.5rem] text-sm text-gray-300">
+              <p key={chikkiState} className="fade-swap min-h-[1.5rem] text-sm text-gray-300">
                 {chikkiState === "thinking"
                   ? <ThinkingWord />
                   : chikkiState === "error"
@@ -1429,7 +1480,7 @@ export default function App() {
             </div>
           )}
 
-          <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-chikki-purpleLight font-semibold">
+          <p key={`label-${chikkiState}`} className="fade-swap mt-2 text-[10px] uppercase tracking-[0.18em] text-chikki-purpleLight font-semibold">
             {chikkiState === "thinking"
               ? <ThinkingWord />
               : chikkiState === "speaking"
@@ -1594,6 +1645,8 @@ export default function App() {
                 { key: "settings", label: "⚙️ Settings", onClick: openSettings },
                 { key: "shortcuts", label: "⌨️ Keyboard shortcuts", onClick: openShortcuts },
                 { key: "interview", label: "🎤 Interview mode", onClick: openInterview },
+                { key: "saved", label: `⭐ Saved answers${saved.length ? ` (${saved.length})` : ""}`, onClick: openSaved },
+                messages.some((m) => m.role === "user") && { key: "recap", label: "📝 Summarise our chat", onClick: openRecap },
                 { key: "how", label: "🧠 How Chikki works", onClick: openHow },
                 canCall && CONTACT_ACTIONS.phone && { key: "call", label: "📞 Call Akash", href: telHref(CONTACT_ACTIONS.phone) },
                 CONTACT_ACTIONS.linkedin && { key: "linkedin", label: "💼 LinkedIn", href: CONTACT_ACTIONS.linkedin },
@@ -1624,6 +1677,8 @@ export default function App() {
       <ProjectsModal isOpen={showProjects} onClose={closeProjects} githubUrl={CONTACT_ACTIONS.github} />
       <SettingsModal isOpen={showSettings} onClose={closeSettings} onChange={setPrefs} />
       <InterviewModal isOpen={showInterview} onClose={closeInterview} onStart={startInterview} />
+      <RecapModal isOpen={showRecap} onClose={closeRecap} messages={messages} />
+      <SavedModal isOpen={showSaved} onClose={closeSaved} items={saved} onRemove={removeSaved} />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import ChikkiBot from "./ChikkiBot.jsx";
 import ThinkingIndicator from "./ThinkingIndicator.jsx";
 import { plainText } from "../markdown.js";
 import { shareAnswerCard } from "../answerCard.js";
+import { savedId } from "../saved.js";
 import { ProfileLine } from "./ProfileBadge.jsx";
 
 const QUICK_PROMPTS = {
@@ -70,6 +71,10 @@ export default function ChatPanel({
   onToggleTheme,
   language = "en-IN",
   onLanguageChange,
+  saved = [],
+  onToggleSave,
+  onOpenSaved,
+  onOpenRecap,
   chikkiState = "idle",
   chikkiExpression = "confident",
 }) {
@@ -218,6 +223,8 @@ export default function ChatPanel({
                 onOpenSettings && { key: "settings", label: "⚙️ Settings", onClick: onOpenSettings },
                 onOpenShortcuts && { key: "shortcuts", label: "⌨️ Keyboard shortcuts", onClick: onOpenShortcuts },
                 onOpenInterview && { key: "interview", label: "🎤 Interview mode", onClick: onOpenInterview },
+                onOpenSaved && { key: "saved", label: `⭐ Saved answers${saved.length ? ` (${saved.length})` : ""}`, onClick: onOpenSaved },
+                onOpenRecap && messages.length > 0 && { key: "recap", label: "📝 Summarise our chat", onClick: onOpenRecap },
                 onOpenHow && { key: "how", label: "🧠 How Chikki works", onClick: onOpenHow },
                 onShare && { key: "share", label: linkCopied ? "✓ Link copied" : "🔗 Copy link", onClick: handleShareClick, keepOpen: true },
                 canCall && actions.phone && { key: "call", label: "📞 Call Akash", href: telHref(actions.phone) },
@@ -364,6 +371,16 @@ export default function ChatPanel({
                   <button type="button" onClick={() => handleCopyAnswer(i, plainText(m.history_content || m.content))} className="msg-action">
                     {copiedIndex === i ? "✓ Copied" : "📋 Copy"}
                   </button>
+                  {onToggleSave && (() => {
+                    const question = messages[i - 1]?.content || "";
+                    const answer = m.history_content || m.content;
+                    const isSaved = saved.some((entry) => entry.id === savedId(question, answer));
+                    return (
+                      <button type="button" onClick={() => onToggleSave(question, answer)} className="msg-action" aria-pressed={isSaved} title="Keep this answer in your saved list">
+                        {isSaved ? "★ Saved" : "☆ Save"}
+                      </button>
+                    );
+                  })()}
                   <button type="button" onClick={() => handleShareCard(i)} className="msg-action" title="Make a picture of this answer to share">
                     {cardState.index === i && cardState.label ? cardState.label : "🖼️ Share"}
                   </button>

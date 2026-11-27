@@ -54,3 +54,31 @@ export function expressionForUserInput(input = "") {
 export function expressionForTurn(mood, reply = "") {
   return expressionForMood(mood) || expressionForReply(reply);
 }
+
+// ---- live reactions and backdrop glow ----------------------------------------------------------
+
+const SURPRISE_WORDS = /^(?:wow|whoa|really|seriously|no way|oh my|oh wow)\b/i;
+
+// While the visitor is still talking: a nod as they speak, a surprised look at "wow" and the like.
+export function reactionForTranscript(text = "") {
+  const heard = String(text).trim();
+  if (!heard) return null;
+  const words = heard.split(/\s+/).length;
+  if (words <= 6 && SURPRISE_WORDS.test(heard)) return "surprised";
+  return words >= 3 ? "nod" : null;
+}
+
+const GLOWS = { warm: "255,150,70", green: "110,200,90", pink: "240,120,160", cool: "90,140,230", teal: "74,163,162" };
+const GLOW_OF = {
+  excited: "warm", joyful: "warm", laughing: "warm", playful: "warm", determined: "warm", celebrate: "warm", surprised: "warm",
+  happy: "green", proud: "green", encouraging: "green", relieved: "green", nod: "green", wake: "green", ready: "green",
+  love: "pink", grateful: "pink", shy: "pink",
+  thinking: "cool", sad: "cool", focused: "cool", concerned: "cool", apologetic: "cool", sleepy: "cool", confused: "cool", skeptical: "cool",
+  curious: "teal",
+};
+
+// The "r,g,b" of the soft glow for a face, or null to keep the accent colour.
+export function glowFor(state) {
+  const key = GLOW_OF[state];
+  return key ? GLOWS[key] : null;
+}

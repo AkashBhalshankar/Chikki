@@ -1,5 +1,14 @@
 # Changelog
 
+## Alive and useful
+
+- Chikki looks around after 25s of quiet and dozes off after 60s; nods while you speak and looks surprised at 'wow'.
+- The page glow follows Chikki's mood.
+- Loading skeleton before the app starts, and a progress bar while the server wakes.
+- Buttons press in, chips slide in, status text cross-fades; softer chimes.
+- 'Summarise our chat' (copy or email) and starred 'Saved answers' (kept in the browser).
+- Project cards show a screenshot for the live projects.
+
 ## Speed and tone
 
 - Provider race: the best provider starts alone; if silent for 1.2s the next one starts too and whichever speaks first wins.

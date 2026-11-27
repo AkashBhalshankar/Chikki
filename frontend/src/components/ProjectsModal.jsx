@@ -4,6 +4,14 @@ import { PROJECTS } from "../projects.js";
 export function ProjectCard({ project, compact = false }) {
   return (
     <div className="project-card rounded-xl border border-gray-800 bg-zinc-900/40 p-3.5">
+      {project.image && (
+        <img
+          src={project.image}
+          alt={`Screenshot of ${project.name}`}
+          loading="lazy"
+          className={`mb-2.5 w-full rounded-lg border border-gray-800 object-cover object-top ${compact ? "h-24" : "h-32"}`}
+        />
+      )}
       <div className="flex flex-wrap items-baseline gap-x-2">
         <h3 className="text-sm font-semibold text-gray-100">{project.name}</h3>
         <span className="text-[11px] text-chikki-purpleLight">{project.kind}</span>
