@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ACCENTS, PAUSES, SPEEDS, VOICES, applyAccent, readSettings, saveSettings } from "../settings.js";
+import { ACCENTS, OUTFITS, PAUSES, SKINS, SPEEDS, TEXT_SIZES, VOICES, applyLook, readSettings, saveSettings } from "../settings.js";
 
 function Choice({ label, options, value, onChange }) {
   return (
@@ -42,7 +42,7 @@ export default function SettingsModal({ isOpen, onClose, onChange }) {
 
   const update = (patch) => {
     const saved = saveSettings({ ...settings, ...patch });
-    applyAccent(saved.accent);
+    applyLook(saved);
     setSettings(saved);
     onChange?.(saved);
   };
@@ -58,6 +58,15 @@ export default function SettingsModal({ isOpen, onClose, onChange }) {
           <button type="button" onClick={onClose} aria-label="Close" className="text-gray-300 hover:text-white text-xs px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-gray-700">✕</button>
         </div>
         <Choice label="Accent colour" options={ACCENTS} value={settings.accent} onChange={(accent) => update({ accent })} />
+        <Choice label="Background theme (dark mode)" options={SKINS} value={settings.skin} onChange={(skin) => update({ skin })} />
+        <Choice label="Chikki's outfit" options={OUTFITS} value={settings.outfit} onChange={(outfit) => update({ outfit })} />
+        <Choice label="Text size" options={TEXT_SIZES} value={settings.textSize} onChange={(textSize) => update({ textSize })} />
+        <Choice
+          label="Easy-to-read font"
+          options={[{ id: "off", label: "Standard" }, { id: "on", label: "Easy to read" }]}
+          value={settings.readable ? "on" : "off"}
+          onChange={(value) => update({ readable: value === "on" })}
+        />
         <Choice label="Voice (English)" options={VOICES} value={settings.voice} onChange={(voice) => update({ voice })} />
         <Choice label="Speaking speed" options={SPEEDS} value={settings.speed} onChange={(speed) => update({ speed })} />
         <Choice label="Wait after I stop talking" options={Object.values(PAUSES)} value={settings.pause} onChange={(pause) => update({ pause })} />
@@ -72,6 +81,12 @@ export default function SettingsModal({ isOpen, onClose, onChange }) {
           options={[{ id: "on", label: "On" }, { id: "off", label: "Off" }]}
           value={settings.transcript ? "on" : "off"}
           onChange={(value) => update({ transcript: value === "on" })}
+        />
+        <Choice
+          label="Vibration on phones"
+          options={[{ id: "on", label: "On" }, { id: "off", label: "Off" }]}
+          value={settings.haptics ? "on" : "off"}
+          onChange={(value) => update({ haptics: value === "on" })}
         />
         <p className="text-[10px] text-gray-500">Hindi and Telugu always use their own voice. Changes apply to the next answer.</p>
       </div>

@@ -27,6 +27,7 @@ import SettingsModal from "./components/SettingsModal.jsx";
 import ShortcutsModal from "./components/ShortcutsModal.jsx";
 import { readSettings } from "./settings.js";
 import { playChime } from "./sounds.js";
+import { buzz } from "./haptics.js";
 import { glowFor, reactionForTranscript } from "./expressions.js";
 import RecapModal from "./components/RecapModal.jsx";
 import SavedModal from "./components/SavedModal.jsx";
@@ -441,18 +442,56 @@ export default function App() {
   const [showProjects, setShowProjects] = useState(false);
   const openProjects = useCallback(() => setShowProjects(true), []);
   const closeProjects = useCallback(() => setShowProjects(false), []);
-  // Chikki looks around after a quiet spell and dozes off after a longer one; he wakes when you speak.
+  // Chikki looks around after a quiet spell and dozes off after a longer one; he wakes when you speak, tap or type.
   const [idleLook, setIdleLook] = useState(null);
   useEffect(() => {
     setIdleLook(null);
-    if (inputMode !== "voice" || chikkiState !== "listening" || liveTranscript) return undefined;
-    const timers = [
-      window.setTimeout(() => setIdleLook("curious"), 25000),
-      window.setTimeout(() => setIdleLook(null), 29000),
-      window.setTimeout(() => setIdleLook("sleepy"), 60000),
-    ];
-    return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [chikkiState, liveTranscript, inputMode, messages.length]);
+    const quiet = inputMode === "voice" ? chikkiState === "listening" && !liveTranscript : inputMode === "chat" && !chatThinking;
+    if (!quiet) return undefined;
+    let timers = [];
+    const arm = () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      timers = [
+        window.setTimeout(() => setIdleLook("curious"), 25000),
+        window.setTimeout(() => setIdleLook(null), 29000),
+        window.setTimeout(() => setIdleLook("sleepy"), 60000),
+      ];
+    };
+    const touch = () => {
+      setIdleLook(null);
+      arm();
+    };
+    arm();
+    window.addEventListener("pointerdown", touch);
+    window.addEventListener("keydown", touch);
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      window.removeEventListener("pointerdown", touch);
+      window.removeEventListener("keydown", touch);
+    };
+  }, [chikkiState, liveTranscript, inputMode, chatThinking, messages.length]);
+  // on a phone, a swipe in from the right edge opens the More menu
+  useEffect(() => {
+    let startX = null;
+    let startY = 0;
+    const down = (event) => {
+      const touch = event.touches[0];
+      startX = touch.clientX > window.innerWidth - 28 ? touch.clientX : null;
+      startY = touch.clientY;
+    };
+    const up = (event) => {
+      if (startX === null) return;
+      const touch = event.changedTouches[0];
+      if (startX - touch.clientX > 70 && Math.abs(touch.clientY - startY) < 60) window.dispatchEvent(new Event("chikki:open-menu"));
+      startX = null;
+    };
+    window.addEventListener("touchstart", down, { passive: true });
+    window.addEventListener("touchend", up, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", down);
+      window.removeEventListener("touchend", up);
+    };
+  }, []);
   // the face shown on the voice screen: a nod or surprise while the visitor is still speaking
   const faceState = idleLook || (chikkiState === "listening" && liveTranscript ? reactionForTranscript(liveTranscript) || chikkiState : chikkiState);
   const glowState = inputMode === "chat" ? (chatThinking ? "thinking" : voiceExpression) : faceState;
@@ -782,8 +821,8 @@ export default function App() {
     setVoiceFeedbackSaved(false);
     lastPromptRef.current = transcript;
 
-    const userMessage = { role: "user", content: transcript, turn_id: turnId };
-    const assistantMessage = { role: "assistant", content: "", turn_id: turnId, final: false };
+    const userMessage = { role: "user", content: transcript, turn_id: turnId, at: Date.now() };
+    const assistantMessage = { role: "assistant", content: "", turn_id: turnId, final: false, at: Date.now() };
     messagesRef.current = [...messagesRef.current, userMessage, assistantMessage];
     setMessages(messagesRef.current);
     resumeFocusRef.current = messagesRef.current
@@ -827,8 +866,8 @@ export default function App() {
     socketRef.current?.interrupt();
 
     lastPromptRef.current = text;
-    const userMessage = { role: "user", content: text, turn_id: turnId };
-    const assistantMessage = { role: "assistant", content: "", turn_id: turnId, final: false };
+    const userMessage = { role: "user", content: text, turn_id: turnId, at: Date.now() };
+    const assistantMessage = { role: "assistant", content: "", turn_id: turnId, final: false, at: Date.now() };
     messagesRef.current = [...messagesRef.current, userMessage, assistantMessage];
     setMessages(messagesRef.current);
     resumeFocusRef.current = messagesRef.current
@@ -836,6 +875,7 @@ export default function App() {
       .map((message) => message.content)
       .join(" ");
     setChatThinking(true);
+    buzz(10);
     setFollowUpSuggestions([]);
     const language = currentLangRef.current;
 
@@ -1242,7 +1282,10 @@ export default function App() {
           return copy;
         });
 
-        if (inputModeRef.current !== "voice" && !meta?.isError) playChime("done");
+        if (inputModeRef.current !== "voice" && !meta?.isError) {
+          playChime("done");
+          buzz([12, 40, 12]);
+        }
         setFollowUpSuggestions(meta?.suggestions?.length ? meta.suggestions : suggestionsForReply(reply));
       },
 
@@ -1343,7 +1386,7 @@ export default function App() {
           onToggleSave={toggleSave}
           onOpenSaved={openSaved}
           onOpenRecap={openRecap}
-          chikkiState={chatThinking ? "thinking" : messages.some((m) => m.role === "assistant" && m.final) ? voiceExpression : "idle"}
+          chikkiState={idleLook || (chatThinking ? "thinking" : messages.some((m) => m.role === "assistant" && m.final) ? voiceExpression : "idle")}
           chikkiExpression={voiceExpression}
         />
         <FeedbackDashboard

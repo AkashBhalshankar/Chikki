@@ -102,3 +102,41 @@ export function plainText(text = "") {
     .replace(/`([^`]+?)`/g, "$1")
     .replace(/^\s*[-*\u2022]\s+/gm, "• ");
 }
+
+// ---- chips, highlighted numbers and the typing reveal --------------------------------------------
+
+// A bullet list of short names (3 or more, each a few words, no sentence punctuation) is shown as chips.
+export function chipItems(items) {
+  if (!Array.isArray(items) || items.length < 3 || items.length > 14) return false;
+  return items.every((item) => {
+    const plain = item.replace(/\*\*|`/g, "").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").trim();
+    return plain.length > 0 && plain.length <= 34 && plain.split(/\s+/).length <= 5 && !/[.:;!?]/.test(plain);
+  });
+}
+
+const STAT = /\b\d{1,3}(?:[.,]\d+)?\s?[-–]\s?\d{1,3}(?:[.,]\d+)?\s?%|\b\d{1,3}(?:[.,]\d+)?\+?\s?%|\b\d+(?:\.\d+)?\+?\s?(?:years?|yrs?|months?)\b|\b\d{1,3}\s?[-–]\s?\d{1,3}\s?(?:applications?|apps?|systems?)\b/gi;
+
+// Splits plain text into pieces, marking figures such as "3+ years", "30-40%" or "5-7 applications".
+export function splitStats(text = "") {
+  const pieces = [];
+  let last = 0;
+  for (const match of text.matchAll(STAT)) {
+    if (match.index > last) pieces.push({ value: text.slice(last, match.index), stat: false });
+    pieces.push({ value: match[0], stat: true });
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) pieces.push({ value: text.slice(last), stat: false });
+  return pieces.length ? pieces : [{ value: text, stat: false }];
+}
+
+// The first `count` characters of a reply for the typing effect: it stops at a word boundary and closes any
+// bold or code mark left open, so half-typed text never shows stray ** or backticks.
+export function revealSlice(text = "", count = 0) {
+  if (count >= text.length) return text;
+  let cut = Math.max(0, count);
+  while (cut > 0 && cut < text.length && !/\s/.test(text[cut]) && !/\s/.test(text[cut - 1])) cut -= 1;
+  let shown = text.slice(0, cut).replace(/\s+$/, "");
+  if ((shown.match(/\*\*/g) || []).length % 2 === 1) shown += "**";
+  if ((shown.match(/`/g) || []).length % 2 === 1) shown += "`";
+  return shown;
+}

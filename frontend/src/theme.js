@@ -25,6 +25,9 @@ export function applyTheme(theme, root = globalThis.document?.documentElement, s
     else root.removeAttribute("data-theme");
   }
   try {
+    globalThis.document?.querySelector('meta[name="theme-color"]')?.setAttribute("content", value === "light" ? "#f4f5fb" : "#09090b");
+  } catch (_) {}
+  try {
     storage?.setItem(KEY, value);
   } catch (_) {}
   return value;

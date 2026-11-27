@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import AppFooter from "./AppFooter.jsx";
 import LanguageSelector from "./LanguageSelector.jsx";
 import { isMobileDevice, telHref } from "../device.js";
@@ -12,6 +12,10 @@ import ThinkingIndicator from "./ThinkingIndicator.jsx";
 import { plainText } from "../markdown.js";
 import { shareAnswerCard } from "../answerCard.js";
 import { savedId } from "../saved.js";
+import Reveal from "./Reveal.jsx";
+import { timeMarker } from "../chatTime.js";
+import usePullToRefresh from "../hooks/usePullToRefresh.js";
+import { buzz } from "../haptics.js";
 import { ProfileLine } from "./ProfileBadge.jsx";
 
 const QUICK_PROMPTS = {
@@ -80,6 +84,15 @@ export default function ChatPanel({
 }) {
   const [value, setValue] = useState("");
   const scrollRef = useRef(null);
+  const [scrolled, setScrolled] = useState(false);
+  const isTouch = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+  const { pull, ready: pullReady } = usePullToRefresh(scrollRef, {
+    enabled: isTouch && !thinking,
+    onRefresh: () => {
+      buzz(15);
+      window.location.reload();
+    },
+  });
   const inputRef = useRef(null);
 
   const [activeFeedbackMsgId, setActiveFeedbackMsgId] = useState(null);
@@ -285,9 +298,9 @@ export default function ChatPanel({
 
         <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:gap-6">
         {/* Chikki stays in place while only the messages scroll */}
-        <aside className="chat-chikki flex shrink-0 items-center gap-3 lg:w-[270px] lg:flex-col lg:justify-center lg:gap-3" aria-label="Chikki">
+        <aside className={`chat-chikki ${scrolled ? "is-mini" : ""} flex shrink-0 items-center gap-3 lg:w-[270px] lg:flex-col lg:justify-center lg:gap-3`} aria-label="Chikki">
           <ChikkiBot state={chikkiState} expression={chikkiExpression} className="h-auto w-14 shrink-0 sm:w-16 lg:w-56" />
-          <div className="min-w-0 lg:text-center">
+          <div className="chat-chikki-text min-w-0 lg:text-center">
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-chikki-purpleLight">
               {thinking ? "Thinking…" : messages.length ? "Ask me more" : "Hi, I'm Chikki"}
             </div>
@@ -297,6 +310,11 @@ export default function ChatPanel({
           </div>
         </aside>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {pull > 0 && (
+          <div className="flex items-center justify-center overflow-hidden text-[11px] text-gray-400 transition-[height]" style={{ height: pull * 0.6 }} aria-hidden="true">
+            {pullReady ? "Release to refresh" : "↓ Pull to refresh"}
+          </div>
+        )}
         {/* Quick Action Links */}
         <div className="hidden flex-wrap items-center justify-between gap-2 sm:flex">
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -310,6 +328,7 @@ export default function ChatPanel({
         {/* Chat Body */}
         <div
           ref={scrollRef}
+          onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 48)}
           className="chat-scroll-container surface-line chikki-scroll mt-3 w-full overflow-y-auto rounded-lg p-3 sm:p-4 space-y-4"
           role="log"
           aria-live="polite"
@@ -339,8 +358,12 @@ export default function ChatPanel({
 
           {messages.map((m, i) => (
             m.role === "assistant" && !m.isError && !m.content?.trim() ? null : (
+            <Fragment key={i}>
+            {(() => {
+              const marker = timeMarker(messages.slice(0, i).reverse().find((x) => Number.isFinite(x.at))?.at, m.at);
+              return marker ? <div className="time-marker" role="separator">{marker}</div> : null;
+            })()}
             <div
-              key={i}
               className={`msg-enter group flex flex-col ${
                 m.role === "user" ? "items-end" : "items-start"
               }`}
@@ -359,9 +382,14 @@ export default function ChatPanel({
                 }`}
               >
                 <div className="break-words">
-                  {m.role === "assistant" && !m.isError ? <RichText text={m.content} /> : <span className="whitespace-pre-wrap">{m.content}</span>}
-                  {m.isStreaming && (
-                    <span className="inline-block ml-1 animate-pulse text-chikki-purpleLight font-bold">▊</span>
+                  {m.role === "assistant" && !m.isError ? (
+                    <Reveal
+                      text={m.content}
+                      streaming={Boolean(m.isStreaming)}
+                      onQuote={i === latestAssistantIndex && m.final && !thinking ? (line) => onSend(`About this: "${line.slice(0, 140)}". Can you explain that a bit more?`) : undefined}
+                    />
+                  ) : (
+                    <span className="whitespace-pre-wrap">{m.content}</span>
                   )}
                 </div>
               </div>
@@ -533,6 +561,7 @@ export default function ChatPanel({
                 </div>
               )}
             </div>
+            </Fragment>
             )
           ))}
 

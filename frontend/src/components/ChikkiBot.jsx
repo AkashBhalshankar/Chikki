@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useTransform } from "framer-motion";
 import { mouthLevel } from "../voiceLevel.js";
 import { seasonFor } from "../seasonal.js";
+import { readSettings } from "../settings.js";
 
 // Central style config per state - drives colors, eye shape, mouth path, and pose.
 const STATES = {
@@ -63,6 +64,42 @@ const SPRING = { type: "spring", stiffness: 260, damping: 26 };
 const COLOR = { duration: 0.4, ease: "easeInOut" };
 const FADE = { duration: 0.25 };
 
+// Accessories picked in Settings (the seasonal hats take over on festive days).
+function Outfit({ kind }) {
+  if (kind === "glasses") {
+    return (
+      <g fill="none" stroke="#E4E4F0" strokeWidth="1.6" opacity="0.95">
+        <circle cx="80" cy="50" r="9" />
+        <circle cx="100" cy="50" r="9" />
+        <path d="M 89 49 Q 90 47 91 49" />
+        <path d="M 71 49 L 66 47 M 109 49 L 114 47" />
+      </g>
+    );
+  }
+  if (kind === "headset") {
+    return (
+      <g stroke="#E4E4F0" strokeWidth="2.2" strokeLinecap="round" fill="none">
+        <path d="M 64 48 Q 64 22 90 22 Q 116 22 116 48" />
+        <rect x="59" y="42" width="7" height="14" rx="3" fill="#5B4FE9" stroke="none" />
+        <rect x="114" y="42" width="7" height="14" rx="3" fill="#5B4FE9" stroke="none" />
+        <path d="M 117 55 Q 116 66 100 69" />
+        <circle cx="98" cy="69" r="2.4" fill="#E4E4F0" stroke="none" />
+      </g>
+    );
+  }
+  if (kind === "cap") {
+    return (
+      <g>
+        <path d="M 70 31 L 90 23 L 110 31 L 90 39 Z" fill="#1c1c24" stroke="#5B4FE9" strokeWidth="1.2" />
+        <path d="M 76 34 L 76 40 Q 90 45 104 40 L 104 34" fill="#26263a" />
+        <path d="M 108 32 L 108 44" stroke="#F4D77A" strokeWidth="1.4" />
+        <circle cx="108" cy="46" r="2.2" fill="#F4D77A" />
+      </g>
+    );
+  }
+  return null;
+}
+
 // A decoration that fades and scales in and out as the face changes.
 function Pop({ show, children, id }) {
   return (
@@ -82,6 +119,12 @@ const ARC_WINK = "M 73 50 Q 77 46 81 50";
 export default function ChikkiBot({ state = "idle", expression = "confident", size, className, onClick, faceOnly = false, season }) {
   const festive = season === undefined ? seasonFor(new Date()) : season;
   const [isHovered, setIsHovered] = useState(false);
+  const [outfit, setOutfit] = useState(() => readSettings().outfit);
+  useEffect(() => {
+    const refresh = () => setOutfit(readSettings().outfit);
+    window.addEventListener("chikki:settings", refresh);
+    return () => window.removeEventListener("chikki:settings", refresh);
+  }, []);
   const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
   const [liveMouth, setLiveMouth] = useState(mouthLevel.get() >= 0);
   useEffect(() => mouthLevel.on("change", (v) => setLiveMouth((was) => (v >= 0) !== was ? v >= 0 : was)), []);
@@ -264,6 +307,8 @@ export default function ChikkiBot({ state = "idle", expression = "confident", si
         <motion.ellipse initial={false}
           animate={{ cx: mouth.round?.cx ?? 90, cy: mouth.round?.cy ?? 62, rx: mouth.round?.rx ?? 4, ry: mouth.round?.ry ?? 4, opacity: mouth.round ? 1 : 0, stroke: eyeColor }}
           transition={{ default: SPRING, opacity: FADE, stroke: COLOR }} fill="none" strokeWidth="2.5" />
+
+        {festive === null || festive === undefined || festive === false ? <Outfit kind={outfit} /> : null}
 
         <Pop show={cfg.dots} id="dots">
           {[[120, 35], [130, 30], [140, 27]].map(([x, y], i) => (

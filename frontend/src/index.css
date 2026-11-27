@@ -256,7 +256,7 @@ input {
 .dot-grid {
   background-image:
     radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    radial-gradient(60rem 32rem at 12% -8%, rgba(var(--accent-rgb), 0.16), transparent 62%),
+    radial-gradient(60rem 32rem at 12% -8%, rgba(var(--skin-rgb, var(--accent-rgb)), 0.16), transparent 62%),
     radial-gradient(48rem 30rem at 100% 108%, rgba(var(--mood-rgb, var(--accent-rgb)), 0.13), transparent 60%);
   background-size: 24px 24px, auto, auto;
   background-attachment: fixed;
@@ -283,6 +283,55 @@ html[data-theme="light"] .bot-g4 { stop-color: #394263; }
 .fade-swap { animation: fade-swap 0.35s ease both; }
 @keyframes fade-swap { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .prompt-button, .fade-swap { animation: none; } }
+
+/* background skins (dark mode): a tint and a glow colour; the accent colour stays the visitor's own */
+html[data-skin="sunrise"] { --bg-base: #130a07; --skin-rgb: 255, 128, 72; }
+html[data-skin="forest"] { --bg-base: #07120c; --skin-rgb: 52, 168, 100; }
+html[data-skin="ocean"] { --bg-base: #060e1a; --skin-rgb: 56, 140, 230; }
+html[data-font="readable"] body,
+html[data-font="readable"] .font-mono,
+html[data-font="readable"] button,
+html[data-font="readable"] input,
+html[data-font="readable"] textarea {
+  font-family: "Segoe UI", Verdana, Tahoma, system-ui, sans-serif;
+  letter-spacing: 0.01em;
+}
+html[data-font="readable"] .answer-card,
+html[data-font="readable"] .user-bubble { line-height: 1.75; }
+
+/* Chikki hops in when a screen appears */
+.chikki-svg { animation: bot-enter 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes bot-enter { from { translate: 0 22px; scale: 0.82; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .chikki-svg { animation: none; } }
+
+/* answers: skills as chips, links as small buttons, figures highlighted, a quiet way to ask about one line */
+.skill-chip {
+  display: inline-flex; align-items: center; border-radius: 9999px; padding: 0.15rem 0.65rem; font-size: 0.8em;
+  border: 1px solid rgba(var(--accent-rgb), 0.4); background: rgba(var(--accent-rgb), 0.12); color: inherit;
+}
+.link-chip {
+  display: inline-flex; align-items: center; border-radius: 9999px; padding: 0.05rem 0.55rem; font-size: 0.88em;
+  border: 1px solid rgba(var(--accent-rgb), 0.45); background: rgba(var(--accent-rgb), 0.1);
+  color: rgb(var(--chikki-purple-light)); text-decoration: none; transition: background 0.2s, transform 0.15s;
+}
+.link-chip:hover { background: rgba(var(--accent-rgb), 0.22); }
+.link-chip:active { transform: scale(0.96); }
+.stat { font-weight: 600; border-radius: 0.3rem; padding: 0 0.25rem; background: rgba(var(--accent-rgb), 0.16); }
+.quote-btn { margin-left: 0.4rem; opacity: 0; font-size: 0.85em; color: rgb(var(--chikki-purple-light)); background: none; border: 0; cursor: pointer; transition: opacity 0.2s; }
+p:hover > .quote-btn, li:hover > .quote-btn, .quote-btn:focus-visible { opacity: 0.85; }
+@media (hover: none) { .quote-btn { opacity: 0.45; } }
+
+/* day and time markers between messages */
+.time-marker { display: flex; align-items: center; gap: 0.75rem; font-size: 10px; letter-spacing: 0.08em; color: #71717a; }
+.time-marker::before, .time-marker::after { content: ""; flex: 1; height: 1px; background: rgba(255, 255, 255, 0.07); }
+html[data-theme="light"] .time-marker::before, html[data-theme="light"] .time-marker::after { background: rgba(15, 23, 42, 0.1); }
+
+/* on phones Chikki shrinks to a small avatar while you scroll through a long answer */
+.chat-chikki svg { transition: width 0.25s ease; }
+@media (max-width: 1023px) {
+  .chat-chikki.is-mini svg { width: 2rem; }
+  .chat-chikki.is-mini .chat-chikki-text { display: none; }
+}
 
 /* messages ease in */
 .msg-enter { animation: msg-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }

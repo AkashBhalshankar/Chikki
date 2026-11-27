@@ -54,3 +54,35 @@ test("Chikki nods along, reacts to surprise words, and the backdrop glow follows
   assert.equal(glowFor("thinking"), "90,140,230");
   assert.equal(glowFor("nothing"), null);
 });
+
+import { chipItems, splitStats, revealSlice } from "./markdown.js";
+import { formatMarker, timeMarker } from "./chatTime.js";
+
+test("short lists of names become chips and sentences stay bullets", () => {
+  assert.equal(chipItems(["Python", "FastAPI", "LangGraph", "**React**"]), true);
+  assert.equal(chipItems(["Python", "FastAPI"]), false);
+  assert.equal(chipItems(["He built a voice assistant.", "He tested it well.", "He shipped it."]), false);
+});
+
+test("figures in an answer are picked out", () => {
+  const pieces = splitStats("He cut effort by 30-40% over 3+ years across 5-7 applications.");
+  assert.deepEqual(pieces.filter((p) => p.stat).map((p) => p.value), ["30-40%", "3+ years", "5-7 applications"]);
+  assert.equal(splitStats("no figures here")[0].stat, false);
+});
+
+test("the typing reveal never shows half a word or an open bold mark", () => {
+  assert.equal(revealSlice("Hello world", 100), "Hello world");
+  assert.equal(revealSlice("Hello wonderful world", 9), "Hello");
+  const open = revealSlice("He built **LangGraph pipelines** fast", 20);
+  assert.ok(open.endsWith("**") && (open.match(/\*\*/g) || []).length % 2 === 0);
+  assert.equal(revealSlice("abc", 0), "");
+});
+
+test("time markers show for a new day or a long pause, not between quick messages", () => {
+  const noon = new Date(2026, 10, 27, 12, 0).getTime();
+  assert.match(timeMarker(undefined, noon, noon, "en-US"), /^Today /);
+  assert.equal(timeMarker(noon, noon + 5 * 60000, noon, "en-US"), null);
+  assert.match(timeMarker(noon, noon + 45 * 60000, noon + 45 * 60000, "en-US"), /^Today /);
+  assert.match(formatMarker(noon - 24 * 3600000, noon, "en-US"), /^Yesterday /);
+  assert.equal(timeMarker(noon, undefined, noon), null);
+});

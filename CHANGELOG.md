@@ -1,5 +1,13 @@
 # Changelog
 
+## UI polish round 2
+
+- Settings: background themes (Midnight, Sunrise, Forest, Ocean), Chikki's outfit, text size, easy-to-read font, vibration.
+- Answers: skills as chips, links as small buttons, figures highlighted, a typing reveal, and a quiet 'ask about this line' button.
+- Chat: day and time markers; Chikki shrinks to an avatar while you scroll on a phone; chat Chikki idles and dozes too.
+- Phones: light vibration, swipe in from the right edge for More, pull down at the top to refresh, status-bar colour.
+- Chikki hops in when a screen appears.
+
 ## Alive and useful
 
 - Chikki looks around after 25s of quiet and dozes off after 60s; nods while you speak and looks surprised at 'wow'.

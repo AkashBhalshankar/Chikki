@@ -3,9 +3,9 @@ import ReactDOM from "react-dom/client";
 import { MotionConfig } from "framer-motion";
 import App from "./App.jsx";
 import "./index.css";
-import { applyAccent, readSettings } from "./settings.js";
+import { applyLook, readSettings } from "./settings.js";
 
-applyAccent(readSettings().accent);
+applyLook(readSettings());
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

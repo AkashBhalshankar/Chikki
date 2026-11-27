@@ -2,12 +2,36 @@
 
 const KEY = "chikki_settings";
 
-export const DEFAULTS = { voice: "neerja", speed: 1, pause: "normal", sounds: true, transcript: false, accent: "violet" };
+export const DEFAULTS = {
+  voice: "neerja", speed: 1, pause: "normal", sounds: true, transcript: false, accent: "violet",
+  skin: "midnight", textSize: "normal", readable: false, outfit: "none", haptics: true,
+};
 
 export const ACCENTS = [
   { id: "violet", label: "Violet" },
   { id: "teal", label: "Teal" },
   { id: "amber", label: "Amber" },
+];
+
+export const SKINS = [
+  { id: "midnight", label: "Midnight" },
+  { id: "sunrise", label: "Sunrise" },
+  { id: "forest", label: "Forest" },
+  { id: "ocean", label: "Ocean" },
+];
+
+export const TEXT_SIZES = [
+  { id: "small", label: "Small", px: 14 },
+  { id: "normal", label: "Normal", px: 16 },
+  { id: "large", label: "Large", px: 18 },
+  { id: "xlarge", label: "Extra large", px: 20 },
+];
+
+export const OUTFITS = [
+  { id: "none", label: "None" },
+  { id: "glasses", label: "Glasses" },
+  { id: "headset", label: "Headset" },
+  { id: "cap", label: "Grad cap" },
 ];
 
 export const VOICES = [
@@ -55,6 +79,11 @@ export function normalizeSettings(raw) {
     sounds: typeof value.sounds === "boolean" ? value.sounds : DEFAULTS.sounds,
     accent: ACCENTS.some((a) => a.id === value.accent) ? value.accent : DEFAULTS.accent,
     transcript: typeof value.transcript === "boolean" ? value.transcript : DEFAULTS.transcript,
+    skin: SKINS.some((x) => x.id === value.skin) ? value.skin : DEFAULTS.skin,
+    textSize: TEXT_SIZES.some((x) => x.id === value.textSize) ? value.textSize : DEFAULTS.textSize,
+    readable: typeof value.readable === "boolean" ? value.readable : DEFAULTS.readable,
+    outfit: OUTFITS.some((x) => x.id === value.outfit) ? value.outfit : DEFAULTS.outfit,
+    haptics: typeof value.haptics === "boolean" ? value.haptics : DEFAULTS.haptics,
   };
 }
 
@@ -71,6 +100,9 @@ export function saveSettings(settings) {
   try {
     localStorage.setItem(KEY, JSON.stringify(clean));
   } catch (_) {}
+  try {
+    window.dispatchEvent(new Event("chikki:settings"));
+  } catch (_) {}
   return clean;
 }
 
@@ -80,5 +112,19 @@ export function applyAccent(accent) {
     const root = document.documentElement;
     if (accent && accent !== "violet") root.dataset.accent = accent;
     else delete root.dataset.accent;
+  } catch (_) {}
+}
+
+// Applies everything that changes how the page looks: accent colour, background skin, text size and font.
+export function applyLook(settings) {
+  applyAccent(settings.accent);
+  try {
+    const root = document.documentElement;
+    if (settings.skin && settings.skin !== "midnight") root.dataset.skin = settings.skin;
+    else delete root.dataset.skin;
+    if (settings.readable) root.dataset.font = "readable";
+    else delete root.dataset.font;
+    const size = TEXT_SIZES.find((x) => x.id === settings.textSize) || TEXT_SIZES[1];
+    root.style.fontSize = size.px === 16 ? "" : `${size.px}px`;
   } catch (_) {}
 }

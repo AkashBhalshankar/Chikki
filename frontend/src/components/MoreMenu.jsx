@@ -10,6 +10,12 @@ export default function MoreMenu({ items, direction = "down", label = "More" }) 
   const rootRef = useRef(null);
 
   useEffect(() => {
+    const openMenu = () => setOpen(true);
+    window.addEventListener("chikki:open-menu", openMenu);
+    return () => window.removeEventListener("chikki:open-menu", openMenu);
+  }, []);
+
+  useEffect(() => {
     if (!open) return undefined;
     const onPointer = (event) => {
       if (rootRef.current && !rootRef.current.contains(event.target)) setOpen(false);
