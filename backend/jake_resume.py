@@ -23,6 +23,17 @@ REGULAR, BOLD, ITALIC = "CMU-Regular", "CMU-Bold", "CMU-Italic"
 DEFAULT_LINKEDIN = "https://www.linkedin.com/in/akash-bhalshanakar/"
 DEFAULT_GITHUB = "https://github.com/AkashBhalshankar"
 SITE = "https://akashbhalshankar.com"
+# Listed in Akash's knowledge base but missing from the Drive resume, so it is added when the Drive text lacks it.
+NACHITRAM = {
+    "title": "NaChitram — Screen, Webcam & Whiteboard Recorder (Chrome Extension)",
+    "tech": "Chrome Extension (MV3), MediaRecorder, Web Audio",
+    "link": "Chrome Web Store",
+    "url": "https://chromewebstore.google.com/detail/scioflow-screen-webcam-wh/nklfcnddfghefifdpgmlkccbanmmoido",
+    "bullets": [
+        "Built a free Chrome extension for teachers and creators that records screen and webcam together, with a live whiteboard, a draggable camera bubble and a private teleprompter that never appears in the recording.",
+        "Engineered offscreen-page recording and audio mixing with MediaRecorder and Web Audio, writing video to local browser storage in chunks so long recordings survive a crash, with no accounts, servers or cloud upload.",
+    ],
+}
 APP_LINKS = {"shareinsync": "https://shareinsync.akashbhalshankar.com"}
 
 SECTIONS = {
@@ -233,6 +244,8 @@ def _render(data: dict, focus: str, linkedin_url: str, github_url: str, scale: f
                 kw[key] = kw[key] * scale
         return ParagraphStyle(name, parent=parent, **kw)
 
+    if not any("nachitram" in p["title"].lower() for p in data["projects"]):
+        data["projects"].append(dict(NACHITRAM, bullets=list(NACHITRAM["bullets"])))
     terms = _focus_terms(focus)
     for job in data["experience"]:
         job["bullets"].sort(key=lambda b: _score(b, terms), reverse=True)
@@ -313,7 +326,7 @@ def _render(data: dict, focus: str, linkedin_url: str, github_url: str, scale: f
                 title = f"<b>{escape(project['title'])}</b>"
                 if project["tech"]:
                     title += f" | <i>{escape(project['tech'])}</i>"
-                url = next((u for key, u in APP_LINKS.items() if key in project["title"].lower()), SITE)
+                url = project.get("url") or next((u for key, u in APP_LINKS.items() if key in project["title"].lower()), SITE)
                 label = f'<link href="{url}"><u>{escape(project["link"])}</u></link>' if project["link"] else ""
                 block = [
                     Spacer(1, 1),
