@@ -43,3 +43,17 @@ def test_builds_one_page_pdf_with_text():
 
 def test_unreadable_text_returns_none():
     assert jake_resume.build_jake_pdf("just some words") is None
+
+
+def test_a_pdf_it_made_reads_back_the_same():
+    """Akash may save the downloaded PDF to Drive, so its own text must parse back to the same resume."""
+    text = jake_resume.build_jake_pdf(SAMPLE)
+    first = jake_resume.parse_resume_text(SAMPLE)
+    reader = PdfReader(BytesIO(text))
+    again = jake_resume.parse_resume_text("\n".join(page.extract_text() for page in reader.pages))
+    assert again is not None
+    job, original = again["experience"][0], first["experience"][0]
+    assert (job["org"], job["place"], job["role"], job["date"]) == (original["org"], original["place"], original["role"], original["date"])
+    assert len(job["bullets"]) == len(original["bullets"])
+    assert again["projects"][0]["link"] == "Live Demo"
+    assert again["education"][0]["org"] == "KITS"

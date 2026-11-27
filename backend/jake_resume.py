@@ -101,6 +101,30 @@ def _split_org(line: str) -> tuple[str, str]:
     return line.strip(), ""
 
 
+PLACE_ONLY = re.compile(r"^[A-Z][A-Za-z. ]+,\s*[A-Z][A-Za-z. ]+$")
+DATE_ONLY = re.compile(r"^(?:[A-Z][a-z]{2,8}\.?\s+)?\d{4}\s*[–—-]\s*(?:(?:[A-Z][a-z]{2,8}\.?\s+)?\d{4}|Present|Current)$")
+
+
+def _merge_split_rows(raw: list[str]) -> list[str]:
+    """A PDF made by this module reads back as "org", "place", "role", "date" on four lines; join them in pairs."""
+    out: list[str] = []
+    i = 0
+    while i < len(raw):
+        if (
+            i + 3 < len(raw)
+            and not _is_bullet(raw[i])
+            and PLACE_ONLY.match(raw[i + 1])
+            and DATE_ONLY.match(raw[i + 3])
+        ):
+            out.append(f"{raw[i]} {raw[i + 1]}")
+            out.append(f"{raw[i + 2]} {raw[i + 3]}")
+            i += 4
+        else:
+            out.append(raw[i])
+            i += 1
+    return out
+
+
 def parse_resume_text(text: str) -> dict | None:
     lines = [_clean(line).strip() for line in text.replace("\r", "").split("\n")]
     lines = [line for line in lines if line]
@@ -120,6 +144,7 @@ def parse_resume_text(text: str) -> dict | None:
         return None
 
     def entries(raw: list[str]) -> list[dict]:
+        raw = _merge_split_rows(raw)
         result: list[dict] = []
         current: dict | None = None
         bullet_open = False
@@ -149,6 +174,10 @@ def parse_resume_text(text: str) -> dict | None:
             if _is_bullet(line):
                 if result:
                     result[-1]["bullets"].append(_strip_bullet(line))
+            elif result and not result[-1]["bullets"] and re.fullmatch(r"(Live Demo|Live App|Chrome Web Store|Demo|Live)", line):
+                result[-1]["link"] = line
+            elif result and not result[-1]["bullets"] and " | " not in line and not result[-1]["link"]:
+                result[-1]["tech"] = f"{result[-1]['tech']} {line}".strip()
             elif " | " in line or (result and not result[-1]["bullets"]):
                 link = re.search(r"\s+(Live Demo|Live App|Demo|Live)\s*$", line)
                 label = link.group(1) if link else ""
@@ -162,7 +191,7 @@ def parse_resume_text(text: str) -> dict | None:
     def labelled(raw: list[str]) -> list[tuple[str, str]]:
         result: list[tuple[str, str]] = []
         for line in raw:
-            match = re.match(r"^([A-Z][^:—–|]{1,45}?)\s*:\s*(.*)$", line)
+            match = re.match(r"^([A-Z][^:—–|]{1,30}?)\s*:\s*(.*)$", line)
             if match:
                 result.append((match.group(1).strip(), match.group(2).strip()))
             elif result:
