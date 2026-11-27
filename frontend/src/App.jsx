@@ -1752,11 +1752,8 @@ export default function App() {
               items={[
                 { key: "projects", label: "🗂️ Projects", onClick: openProjects },
                 { key: "settings", label: "⚙️ Settings", onClick: openSettings },
-                { key: "shortcuts", label: "⌨️ Keyboard shortcuts", onClick: openShortcuts },
                 { key: "interview", label: "🎤 Interview mode", onClick: openInterview },
                 { key: "journey", label: "🧭 Work journey", onClick: openJourney },
-                { key: "play", label: showOrb ? "✨ Put the sparkle away" : "✨ Play with Chikki", onClick: toggleOrb },
-                messages.some((m) => m.role === "user") && { key: "recap", label: "📝 Summarise our chat", onClick: openRecap },
                 { key: "how", label: "🧠 How Chikki works", onClick: openHow },
                 canCall && CONTACT_ACTIONS.phone && { key: "call", label: "📞 Call Akash", href: telHref(CONTACT_ACTIONS.phone) },
                 CONTACT_ACTIONS.linkedin && { key: "linkedin", label: "💼 LinkedIn", href: CONTACT_ACTIONS.linkedin },
