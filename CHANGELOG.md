@@ -1,5 +1,10 @@
 # Changelog
 
+## Install, access and efficiency
+- Chikki can be installed as an app (manifest, icons, a service worker that caches nothing so deploys are never stale). Chrome reports no installability problems.
+- Accessibility: visible keyboard focus, the conversation is announced to screen readers, labelled input, and people who ask their device for less motion get calmer animations.
+- The system prompt is about 8% shorter (the joke rules only apply to the separate joke prompt), which stretches the Groq daily token limit a little further.
+
 ## More for recruiters and for the owner
 - Interview mode: pick a role, Chikki answers five questions about Akash, then gives an honest fit verdict.
 - Project cards under answers that mention a project, plus a Projects window (all text taken from the resume).

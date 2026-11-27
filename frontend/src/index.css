@@ -623,3 +623,15 @@ html[data-theme="light"] .answer-card code { background: rgba(15, 23, 42, 0.08);
 @media (prefers-reduced-motion: reduce) {
   .thinking-word { animation: none; }
 }
+
+/* Keyboard focus is always visible */
+.action-button:focus-visible,
+.prompt-button:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+}

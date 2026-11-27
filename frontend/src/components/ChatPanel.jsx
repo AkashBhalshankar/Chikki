@@ -251,6 +251,9 @@ export default function ChatPanel({
         <div
           ref={scrollRef}
           className="chat-scroll-container surface-line chikki-scroll mt-3 w-full overflow-y-auto rounded-lg p-3 sm:p-4 space-y-4"
+          role="log"
+          aria-live="polite"
+          aria-label="Conversation with Chikki"
         >
           {messages.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center p-4 text-center">
@@ -493,6 +496,7 @@ export default function ChatPanel({
             onChange={(e) => setValue(e.target.value)}
             disabled={thinking}
             placeholder="Ask about Akash's skills, projects..."
+            aria-label="Ask Chikki a question"
             className="flex-1 rounded-lg border border-gray-800 bg-chikki-panel px-3.5 py-2.5 text-xs sm:text-sm text-gray-200 placeholder-gray-500 outline-none focus:border-chikki-purple disabled:opacity-50 min-h-[44px]"
           />
           <button
