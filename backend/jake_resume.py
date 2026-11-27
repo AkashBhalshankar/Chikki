@@ -229,12 +229,12 @@ def build_jake_pdf(text: str, focus: str = "", linkedin_url: str = "", github_ur
         return None
     from pypdf import PdfReader
 
-    result = None
-    for scale in (1.0, 0.98, 0.96, 0.94, 0.92, 0.9, 0.88, 0.86, 0.84):
+    # One page while the type stays readable (about 9.4pt or more); otherwise two pages at Jake's own size.
+    for scale in (1.0, 0.98, 0.96, 0.94):
         result = _render(data, focus, linkedin_url, github_url, scale)
         if len(PdfReader(BytesIO(result)).pages) == 1:
-            break
-    return result
+            return result
+    return _render(data, focus, linkedin_url, github_url, 1.08)
 
 
 def _render(data: dict, focus: str, linkedin_url: str, github_url: str, scale: float) -> bytes:
@@ -335,8 +335,7 @@ def _render(data: dict, focus: str, linkedin_url: str, github_url: str, scale: f
                     Spacer(1, 1),
                 ]
                 items = bullets(project["bullets"])
-                story.append(KeepTogether(block + items[:1]))
-                story.extend(items[1:])
+                story.append(KeepTogether(block + items))
         else:  # skills, certifications & leadership
             for label, value in content:
                 story.append(Paragraph(f"<b>{escape(label)}</b>: {escape(value)}", PS(
